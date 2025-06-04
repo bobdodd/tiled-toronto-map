@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Map Test</title>
+    <style>
+        body { margin: 0; }
+        #map-svg { width: 100vw; height: 100vh; display: block; }
+    </style>
+</head>
+<body>
+    <svg id="map-svg" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+        <g id="map-tiles"></g>
+    </svg>
+    
+    <script>
+        // Minimal tile loading
+        const svg = document.getElementById('map-svg');
+        const tiles = document.getElementById('map-tiles');
+        const zoom = 15;
+        const centerX = 9649;
+        const centerY = 12318;
+        
+        // Load a 3x3 grid
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                img.setAttribute('href', `https://tile.openstreetmap.org/${zoom}/${centerX + dx}/${centerY + dy}.png`);
+                img.setAttribute('x', 256 + dx * 256);
+                img.setAttribute('y', 150 + dy * 256);
+                img.setAttribute('width', 256);
+                img.setAttribute('height', 256);
+                tiles.appendChild(img);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -5,7 +5,7 @@ export class FeatureRenderer {
     }
     
     renderFeatures(features) {
-        const featuresGroup = document.getElementById('map-features');
+        const featuresGroup = document.querySelector('#map-features');
         
         // Clear existing features
         while (featuresGroup.firstChild) {

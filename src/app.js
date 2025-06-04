@@ -52,8 +52,8 @@ class MapApplication {
             this.mapRenderer.handleResize();
             this.mapRenderer.render();
             
-            // Load initial map features
-            this.loadMapFeatures();
+            // Temporarily disable feature loading to isolate issue
+            // this.loadMapFeatures();
         }, 100);
         
         // Listen for map view changes
@@ -317,13 +317,13 @@ class MapApplication {
         const originalSetCenter = this.mapRenderer.setCenter.bind(this.mapRenderer);
         this.mapRenderer.setCenter = (lat, lng) => {
             originalSetCenter(lat, lng);
-            debouncedLoad();
+            // debouncedLoad();
         };
         
         const originalSetZoom = this.mapRenderer.setZoom.bind(this.mapRenderer);
         this.mapRenderer.setZoom = (zoom) => {
             originalSetZoom(zoom);
-            debouncedLoad();
+            // debouncedLoad();
         };
     }
 }

@@ -8,7 +8,7 @@ export class MapRenderer {
         this.routeGroup = svgElement.querySelector('#navigation-route');
         
         this.tileSize = 256;
-        this.zoom = 15;
+        this.zoom = 16; // Try a different zoom level
         this.center = { lat: 40.7128, lng: -74.0060 }; // Default NYC
         
         // Get initial container size
@@ -75,15 +75,17 @@ export class MapRenderer {
         const key = `${z}/${x}/${y}`;
         if (this.loadedTiles.has(key)) return;
         
-        // Debug: Log first few tiles
-        if (this.loadedTiles.size < 3) {
+        // Debug: Log positioning
+        if (this.loadedTiles.size < 1) {
+            console.log(`ViewBox: ${this.viewBox.width}x${this.viewBox.height}`);
             console.log(`Loading tile ${key}`);
         }
         
         const tileUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
         
         const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-        image.setAttribute('href', tileUrl);
+        image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', tileUrl);
+        image.setAttribute('crossorigin', 'anonymous');
         // Use exact tile size
         image.setAttribute('width', this.tileSize);
         image.setAttribute('height', this.tileSize);
@@ -99,18 +101,7 @@ export class MapRenderer {
         image.setAttribute('y', offsetY);
         image.setAttribute('aria-label', `Map tile ${x},${y} at zoom ${z}`);
         
-        // Add error handling for failed tiles
-        image.addEventListener('error', () => {
-            // Replace failed tile with a placeholder
-            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-            rect.setAttribute('x', offsetX);
-            rect.setAttribute('y', offsetY);
-            rect.setAttribute('width', this.tileSize);
-            rect.setAttribute('height', this.tileSize);
-            rect.setAttribute('fill', '#e5e3df');
-            rect.setAttribute('aria-label', `Map tile ${x},${y} failed to load`);
-            image.parentNode.replaceChild(rect, image);
-        });
+        // Disable error handling for now
         
         this.tilesGroup.appendChild(image);
         this.loadedTiles.add(key);
