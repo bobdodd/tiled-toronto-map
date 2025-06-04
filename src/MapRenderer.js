@@ -80,10 +80,9 @@ export class MapRenderer {
         image.setAttribute('height', this.tileSize + 1);
         
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        // Add 0.5 pixel overlap to prevent gaps between tiles
-        const overlap = 0.5;
-        const offsetX = (x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2 - overlap;
-        const offsetY = (y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2 - overlap;
+        // Calculate position without gaps
+        const offsetX = Math.floor((x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2);
+        const offsetY = Math.floor((y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2);
         
         image.setAttribute('x', offsetX);
         image.setAttribute('y', offsetY);
@@ -96,8 +95,8 @@ export class MapRenderer {
             const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             rect.setAttribute('x', offsetX);
             rect.setAttribute('y', offsetY);
-            rect.setAttribute('width', this.tileSize);
-            rect.setAttribute('height', this.tileSize);
+            rect.setAttribute('width', this.tileSize + 1);
+            rect.setAttribute('height', this.tileSize + 1);
             rect.setAttribute('fill', '#e5e3df');
             rect.setAttribute('aria-label', `Map tile ${x},${y} failed to load`);
             image.parentNode.replaceChild(rect, image);
@@ -113,6 +112,15 @@ export class MapRenderer {
             this.tilesGroup.removeChild(this.tilesGroup.firstChild);
         }
         this.loadedTiles.clear();
+        
+        // Add a background rect to prevent any gaps
+        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bgRect.setAttribute('x', '-1000');
+        bgRect.setAttribute('y', '-1000');
+        bgRect.setAttribute('width', '3000');
+        bgRect.setAttribute('height', '3000');
+        bgRect.setAttribute('fill', '#e5e3df');
+        this.tilesGroup.appendChild(bgRect);
         
         // Calculate visible tile range
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);

@@ -177,12 +177,21 @@ main {
 }
 
 /* Ensure map tiles render properly */
+#map-tiles {
+    /* Ensure tiles are behind features */
+    opacity: 1;
+}
+
 #map-tiles image {
-    image-rendering: optimizeSpeed;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
+    /* Use auto for smoother tile rendering */
+    image-rendering: auto;
+    /* Prevent antialiasing artifacts */
+    shape-rendering: crispEdges;
+    /* Ensure no borders */
+    border: none;
+    stroke: none;
+    /* Prevent selection highlighting */
+    pointer-events: none;
 }
 
 /* Remove outlines but preserve intentional strokes */
