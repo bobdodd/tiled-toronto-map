@@ -75,16 +75,33 @@ export class MapRenderer {
         
         const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
         image.setAttribute('href', tileUrl);
-        image.setAttribute('width', this.tileSize);
-        image.setAttribute('height', this.tileSize);
+        // Slightly increase tile size to prevent gaps
+        image.setAttribute('width', this.tileSize + 1);
+        image.setAttribute('height', this.tileSize + 1);
         
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        const offsetX = (x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2;
-        const offsetY = (y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2;
+        // Add 0.5 pixel overlap to prevent gaps between tiles
+        const overlap = 0.5;
+        const offsetX = (x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2 - overlap;
+        const offsetY = (y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2 - overlap;
         
         image.setAttribute('x', offsetX);
         image.setAttribute('y', offsetY);
         image.setAttribute('aria-label', `Map tile ${x},${y} at zoom ${z}`);
+        image.setAttribute('preserveAspectRatio', 'none');
+        
+        // Add error handling for failed tiles
+        image.addEventListener('error', () => {
+            // Replace failed tile with a placeholder
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', offsetX);
+            rect.setAttribute('y', offsetY);
+            rect.setAttribute('width', this.tileSize);
+            rect.setAttribute('height', this.tileSize);
+            rect.setAttribute('fill', '#e5e3df');
+            rect.setAttribute('aria-label', `Map tile ${x},${y} failed to load`);
+            image.parentNode.replaceChild(rect, image);
+        });
         
         this.tilesGroup.appendChild(image);
         this.loadedTiles.add(key);
