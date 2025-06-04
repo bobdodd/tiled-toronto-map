@@ -183,10 +183,6 @@ main {
 }
 
 #map-tiles image {
-    /* Use auto for smoother tile rendering */
-    image-rendering: auto;
-    /* Prevent antialiasing artifacts */
-    shape-rendering: crispEdges;
     /* Ensure no borders */
     border: none;
     stroke: none;

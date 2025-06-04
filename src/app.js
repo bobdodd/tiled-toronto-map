@@ -47,11 +47,14 @@ class MapApplication {
             this.mapRenderer.handleResize();
         });
         
-        // Initial render
-        this.mapRenderer.render();
-        
-        // Load initial map features
-        this.loadMapFeatures();
+        // Initial render after a short delay to ensure DOM is ready
+        setTimeout(() => {
+            this.mapRenderer.handleResize();
+            this.mapRenderer.render();
+            
+            // Load initial map features
+            this.loadMapFeatures();
+        }, 100);
         
         // Listen for map view changes
         this.setupMapChangeListeners();

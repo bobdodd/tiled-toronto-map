@@ -11,11 +11,15 @@ export class MapRenderer {
         this.zoom = 15;
         this.center = { lat: 40.7128, lng: -74.0060 }; // Default NYC
         
+        // Get initial container size
+        const container = svgElement.parentElement;
+        const rect = container.getBoundingClientRect();
+        
         this.viewBox = {
             x: 0,
             y: 0,
-            width: 800,
-            height: 600
+            width: rect.width || 800,
+            height: rect.height || 600
         };
         
         this.tileCache = new Map();
@@ -79,10 +83,20 @@ export class MapRenderer {
         image.setAttribute('width', this.tileSize);
         image.setAttribute('height', this.tileSize);
         
+        // Add loading handler
+        image.addEventListener('load', () => {
+            // Tile loaded successfully
+            image.style.opacity = '1';
+        });
+        
+        // Start with hidden tile
+        image.style.opacity = '0';
+        image.style.transition = 'opacity 0.2s';
+        
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        // Calculate position without gaps
-        const offsetX = Math.floor((x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2);
-        const offsetY = Math.floor((y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2);
+        // Calculate position with slight overlap to prevent seams
+        const offsetX = (x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2;
+        const offsetY = (y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2;
         
         image.setAttribute('x', offsetX);
         image.setAttribute('y', offsetY);
@@ -114,11 +128,11 @@ export class MapRenderer {
         
         // Add a background rect to prevent any gaps
         const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bgRect.setAttribute('x', '0');
-        bgRect.setAttribute('y', '0');
-        bgRect.setAttribute('width', this.viewBox.width);
-        bgRect.setAttribute('height', this.viewBox.height);
-        bgRect.setAttribute('fill', '#e5e3df');
+        bgRect.setAttribute('x', '-10');
+        bgRect.setAttribute('y', '-10');
+        bgRect.setAttribute('width', this.viewBox.width + 20);
+        bgRect.setAttribute('height', this.viewBox.height + 20);
+        bgRect.setAttribute('fill', '#ffffff');
         this.tilesGroup.appendChild(bgRect);
         
         // Calculate visible tile range
@@ -262,6 +276,7 @@ export class MapRenderer {
         const rect = container.getBoundingClientRect();
         this.viewBox.width = rect.width;
         this.viewBox.height = rect.height;
+        this.updateViewBox();
         this.render();
     }
 }
