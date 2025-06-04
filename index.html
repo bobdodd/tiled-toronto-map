@@ -26,6 +26,49 @@
                 <span class="icon" aria-hidden="true">🎨</span>
                 <span>High Contrast</span>
             </button>
+            
+            <!-- Filter Controls -->
+            <div class="filter-container" aria-labelledby="filter-heading">
+                <h2 class="screen-reader-only" id="filter-heading">Map filters</h2>
+                <button class="filter-button" aria-expanded="false" aria-controls="filter-panel">
+                    <span class="icon" aria-hidden="true">🎛️</span>
+                    <span>Filters</span>
+                </button>
+                <div id="filter-panel" class="filter-panel" hidden>
+                    <fieldset>
+                        <legend>Show map features:</legend>
+                        <label><input type="checkbox" id="filter-buildings" checked> Buildings</label>
+                        <label><input type="checkbox" id="filter-roads" checked> Roads</label>
+                        <label><input type="checkbox" id="filter-transit" checked> Transit Stops</label>
+                        <label><input type="checkbox" id="filter-shops"> Shops</label>
+                        <label><input type="checkbox" id="filter-schools"> Schools</label>
+                        <label><input type="checkbox" id="filter-worship"> Places of Worship</label>
+                        <label><input type="checkbox" id="filter-parks"> Parks & Recreation</label>
+                        <label><input type="checkbox" id="filter-addresses"> Addresses</label>
+                    </fieldset>
+                </div>
+            </div>
+            
+            <!-- Rotor Controls -->
+            <div class="rotor-container" aria-labelledby="rotor-heading">
+                <h2 class="screen-reader-only" id="rotor-heading">Navigation rotor</h2>
+                <button class="rotor-button" aria-expanded="false" aria-controls="rotor-panel">
+                    <span class="icon" aria-hidden="true">🎯</span>
+                    <span>Rotor</span>
+                </button>
+                <div id="rotor-panel" class="rotor-panel" hidden>
+                    <fieldset>
+                        <legend>Navigate by:</legend>
+                        <label><input type="radio" name="rotor" value="none" checked> No selection</label>
+                        <label><input type="radio" name="rotor" value="transit"> Transit stops</label>
+                        <label><input type="radio" name="rotor" value="shops"> Shops</label>
+                        <label><input type="radio" name="rotor" value="schools"> Schools</label>
+                        <label><input type="radio" name="rotor" value="worship"> Places of Worship</label>
+                        <label><input type="radio" name="rotor" value="parks"> Parks</label>
+                        <label><input type="radio" name="rotor" value="everything"> Everything</label>
+                    </fieldset>
+                </div>
+            </div>
         </nav>
     </header>
 
@@ -74,5 +117,8 @@
     </div>
 
     <script type="module" src="src/app.js"></script>
+    
+    <!-- Live region for announcements -->
+    <div id="map-announcements" aria-live="polite" aria-atomic="true" class="screen-reader-only"></div>
 </body>
 </html>
