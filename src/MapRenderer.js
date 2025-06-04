@@ -8,7 +8,7 @@ export class MapRenderer {
         this.routeGroup = svgElement.querySelector('#navigation-route');
         
         this.tileSize = 256;
-        this.zoom = 16; // Try a different zoom level
+        this.zoom = 15;
         this.center = { lat: 40.7128, lng: -74.0060 }; // Default NYC
         
         // Get initial container size
@@ -75,11 +75,6 @@ export class MapRenderer {
         const key = `${z}/${x}/${y}`;
         if (this.loadedTiles.has(key)) return;
         
-        // Debug: Log positioning
-        if (this.loadedTiles.size < 1) {
-            console.log(`ViewBox: ${this.viewBox.width}x${this.viewBox.height}`);
-            console.log(`Loading tile ${key}`);
-        }
         
         const tileUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
         
@@ -101,7 +96,12 @@ export class MapRenderer {
         image.setAttribute('y', offsetY);
         image.setAttribute('aria-label', `Map tile ${x},${y} at zoom ${z}`);
         
-        // Disable error handling for now
+        // Add error handling for failed tiles
+        image.addEventListener('error', () => {
+            console.warn(`Failed to load tile ${x},${y} at zoom ${z}`);
+            // Don't replace with rect to avoid pattern issues
+            image.style.opacity = '0';
+        });
         
         this.tilesGroup.appendChild(image);
         this.loadedTiles.add(key);
