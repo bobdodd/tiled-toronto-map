@@ -31,12 +31,12 @@ export class FeatureRenderer {
         // Render each feature type
         this.renderBuildings(features.buildings, groups.buildings);
         this.renderRoads(features.roads, groups.roads);
+        this.renderTransitStops(features.transitStops, groups.transitStops);
+        this.renderParks(features.parks, groups.parks);
         // Temporarily disable other features
-        // this.renderTransitStops(features.transitStops, groups.transitStops);
         // this.renderShops(features.shops, groups.shops);
         // this.renderSchools(features.schools, groups.schools);
         // this.renderWorship(features.worship, groups.worship);
-        // this.renderParks(features.parks, groups.parks);
         // this.renderAddresses(features.addresses, groups.addresses);
     }
     
@@ -99,10 +99,11 @@ export class FeatureRenderer {
             const circle = this.createCircle(feature, 'transit-stop');
             const label = this.generateTransitLabel(feature.properties);
             circle.setAttribute('aria-label', label);
-            circle.setAttribute('fill', 'none');
-            circle.setAttribute('stroke', '#ff9800');
-            circle.setAttribute('stroke-width', '3');
-            circle.setAttribute('r', '8');
+            circle.setAttribute('fill', '#ff9800');
+            circle.setAttribute('fill-opacity', '0.7');
+            circle.setAttribute('stroke', '#ff6600');
+            circle.setAttribute('stroke-width', '2');
+            circle.setAttribute('r', '5');
             group.appendChild(circle);
         });
     }
