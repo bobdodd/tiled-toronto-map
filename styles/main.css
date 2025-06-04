@@ -179,6 +179,7 @@ main {
 #map-tiles {
     /* Ensure tiles are behind features */
     opacity: 1;
+    transition: opacity 0.3s ease;
 }
 
 #map-tiles image {
@@ -200,6 +201,20 @@ main {
 #map-features circle {
     stroke-linejoin: round;
     stroke-linecap: round;
+}
+
+/* Ensure proper rendering order */
+#roads-group {
+    /* Roads should render under buildings */
+}
+
+.road-casing {
+    /* Road casings provide the border */
+    opacity: 0.8;
+}
+
+.road {
+    /* Road surface */
 }
 
 #map-container:focus {

@@ -30,8 +30,8 @@ export class FeatureRenderer {
         
         // Render each feature type
         this.renderBuildings(features.buildings, groups.buildings);
+        this.renderRoads(features.roads, groups.roads);
         // Temporarily disable other features
-        // this.renderRoads(features.roads, groups.roads);
         // this.renderTransitStops(features.transitStops, groups.transitStops);
         // this.renderShops(features.shops, groups.shops);
         // this.renderSchools(features.schools, groups.schools);
@@ -60,14 +60,37 @@ export class FeatureRenderer {
     }
     
     renderRoads(roads, group) {
-        roads.forEach(feature => {
-            const polyline = this.createPolyline(feature, 'road');
+        // Sort roads by type so major roads render first (underneath)
+        const sortedRoads = [...roads].sort((a, b) => {
+            const order = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'service', 'footway'];
+            const aIndex = order.indexOf(a.properties.highway) || 999;
+            const bIndex = order.indexOf(b.properties.highway) || 999;
+            return aIndex - bIndex;
+        });
+        
+        sortedRoads.forEach(feature => {
+            const roadType = feature.properties.highway;
+            
+            // Draw road casing (darker outline) first
+            const casing = this.createPolyline(feature, 'road-casing');
+            casing.setAttribute('fill', 'none');
+            casing.setAttribute('stroke', this.getRoadCasingColor(roadType));
+            casing.setAttribute('stroke-width', this.getRoadCasingWidth(roadType));
+            casing.setAttribute('stroke-linecap', 'round');
+            casing.setAttribute('stroke-linejoin', 'round');
+            casing.setAttribute('aria-hidden', 'true');
+            group.appendChild(casing);
+            
+            // Draw road surface
+            const road = this.createPolyline(feature, 'road');
             const label = this.generateRoadLabel(feature.properties);
-            polyline.setAttribute('aria-label', label);
-            polyline.setAttribute('fill', 'none');
-            polyline.setAttribute('stroke', '#333');
-            polyline.setAttribute('stroke-width', this.getRoadWidth(feature.properties.highway));
-            group.appendChild(polyline);
+            road.setAttribute('aria-label', label);
+            road.setAttribute('fill', 'none');
+            road.setAttribute('stroke', this.getRoadColor(roadType));
+            road.setAttribute('stroke-width', this.getRoadWidth(roadType));
+            road.setAttribute('stroke-linecap', 'round');
+            road.setAttribute('stroke-linejoin', 'round');
+            group.appendChild(road);
         });
     }
     
@@ -384,15 +407,58 @@ export class FeatureRenderer {
     
     getRoadWidth(roadType) {
         const widths = {
-            primary: '4',
-            secondary: '3',
-            tertiary: '2.5',
-            residential: '2',
-            service: '1.5',
-            footway: '1',
-            pedestrian: '2'
+            motorway: '6',
+            trunk: '5',
+            primary: '4.5',
+            secondary: '4',
+            tertiary: '3.5',
+            residential: '3',
+            service: '2',
+            footway: '1.5',
+            pedestrian: '2.5',
+            unclassified: '3'
         };
         
-        return widths[roadType] || '2';
+        return widths[roadType] || '2.5';
+    }
+    
+    getRoadColor(roadType) {
+        const colors = {
+            motorway: '#e990a0',
+            trunk: '#fbb29a',
+            primary: '#fcd6a4',
+            secondary: '#f7fabf',
+            tertiary: '#ffffff',
+            residential: '#ffffff',
+            service: '#ffffff',
+            footway: '#fafaf5',
+            pedestrian: '#ededed',
+            unclassified: '#ffffff'
+        };
+        
+        return colors[roadType] || '#ffffff';
+    }
+    
+    getRoadCasingColor(roadType) {
+        const colors = {
+            motorway: '#dc2a67',
+            trunk: '#e06d5f',
+            primary: '#e5a864',
+            secondary: '#d4c26a',
+            tertiary: '#c6c6c6',
+            residential: '#c6c6c6',
+            service: '#c6c6c6',
+            footway: '#c5c5c5',
+            pedestrian: '#c5c5c5',
+            unclassified: '#c6c6c6'
+        };
+        
+        return colors[roadType] || '#c6c6c6';
+    }
+    
+    getRoadCasingWidth(roadType) {
+        // Casing is slightly wider than the road
+        const baseWidth = parseFloat(this.getRoadWidth(roadType));
+        return (baseWidth + 1.5).toString();
     }
 }

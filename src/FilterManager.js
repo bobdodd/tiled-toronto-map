@@ -54,7 +54,7 @@ export class FilterManager {
         // Map feature types to CSS classes
         const classMap = {
             buildings: '.building',
-            roads: '.road',
+            roads: '.road, .road-casing',  // Include both road and casing
             transit: '.transit-stop',
             shops: '.shop',
             schools: '.school',

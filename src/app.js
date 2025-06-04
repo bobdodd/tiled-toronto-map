@@ -285,6 +285,9 @@ class MapApplication {
             // Render features
             this.featureRenderer.renderFeatures(features);
             
+            // Hide OSM tiles now that we have vector features
+            this.hideTiles();
+            
             // Update accessibility
             this.accessibilityManager.updateTabOrder();
             
@@ -309,8 +312,26 @@ class MapApplication {
                 featuresGroup.removeChild(featuresGroup.firstChild);
             }
         }
+        // Show tiles again when features are cleared
+        this.showTiles();
         // Announce to screen readers
         this.announceStatus('Map updating...');
+    }
+    
+    hideTiles() {
+        const tilesGroup = document.querySelector('#map-tiles');
+        if (tilesGroup) {
+            tilesGroup.style.opacity = '0';
+            tilesGroup.style.pointerEvents = 'none';
+        }
+    }
+    
+    showTiles() {
+        const tilesGroup = document.querySelector('#map-tiles');
+        if (tilesGroup) {
+            tilesGroup.style.opacity = '1';
+            tilesGroup.style.pointerEvents = 'auto';
+        }
     }
     
     setupMapChangeListeners() {
