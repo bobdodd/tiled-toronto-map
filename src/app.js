@@ -302,6 +302,17 @@ class MapApplication {
         }
     }
     
+    clearMapFeatures() {
+        const featuresGroup = document.querySelector('#map-features');
+        if (featuresGroup) {
+            while (featuresGroup.firstChild) {
+                featuresGroup.removeChild(featuresGroup.firstChild);
+            }
+        }
+        // Announce to screen readers
+        this.announceStatus('Map updating...');
+    }
+    
     setupMapChangeListeners() {
         let loadTimeout;
         
@@ -316,12 +327,16 @@ class MapApplication {
         // Override MapRenderer methods to add feature loading
         const originalSetCenter = this.mapRenderer.setCenter.bind(this.mapRenderer);
         this.mapRenderer.setCenter = (lat, lng) => {
+            // Clear features immediately
+            this.clearMapFeatures();
             originalSetCenter(lat, lng);
             debouncedLoad();
         };
         
         const originalSetZoom = this.mapRenderer.setZoom.bind(this.mapRenderer);
         this.mapRenderer.setZoom = (zoom) => {
+            // Clear features immediately
+            this.clearMapFeatures();
             originalSetZoom(zoom);
             debouncedLoad();
         };

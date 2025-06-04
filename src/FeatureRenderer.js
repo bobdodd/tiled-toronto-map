@@ -6,6 +6,7 @@ export class FeatureRenderer {
     
     renderFeatures(features) {
         const featuresGroup = document.querySelector('#map-features');
+        if (!featuresGroup) return;
         
         // Clear existing features
         while (featuresGroup.firstChild) {
@@ -29,13 +30,14 @@ export class FeatureRenderer {
         
         // Render each feature type
         this.renderBuildings(features.buildings, groups.buildings);
-        this.renderRoads(features.roads, groups.roads);
-        this.renderTransitStops(features.transitStops, groups.transitStops);
-        this.renderShops(features.shops, groups.shops);
-        this.renderSchools(features.schools, groups.schools);
-        this.renderWorship(features.worship, groups.worship);
-        this.renderParks(features.parks, groups.parks);
-        this.renderAddresses(features.addresses, groups.addresses);
+        // Temporarily disable other features
+        // this.renderRoads(features.roads, groups.roads);
+        // this.renderTransitStops(features.transitStops, groups.transitStops);
+        // this.renderShops(features.shops, groups.shops);
+        // this.renderSchools(features.schools, groups.schools);
+        // this.renderWorship(features.worship, groups.worship);
+        // this.renderParks(features.parks, groups.parks);
+        // this.renderAddresses(features.addresses, groups.addresses);
     }
     
     createGroup(id, label) {

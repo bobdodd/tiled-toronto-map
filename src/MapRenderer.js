@@ -61,23 +61,23 @@ export class MapRenderer {
     }
 
     project(lat, lng) {
+        // Use the same projection as tile positioning for consistency
         const n = Math.pow(2, this.zoom);
         
-        // Get precise fractional tile coordinates (not rounded)
-        const x = (lng + 180) / 360 * n;
+        // Convert lat/lng to tile coordinates with fractional precision
+        const tileX = (lng + 180) / 360 * n;
         const latRad = lat * Math.PI / 180;
-        const y = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+        const tileY = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
         
-        // Get center position in fractional tiles
-        const centerX = (this.center.lng + 180) / 360 * n;
-        const centerLatRad = this.center.lat * Math.PI / 180;
-        const centerY = (1 - Math.log(Math.tan(centerLatRad) + 1 / Math.cos(centerLatRad)) / Math.PI) / 2 * n;
+        // Get the center tile position
+        const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
         
-        // Convert to screen coordinates
-        const screenX = (x - centerX) * this.tileSize + this.viewBox.width / 2;
-        const screenY = (y - centerY) * this.tileSize + this.viewBox.height / 2;
+        // Calculate pixel position relative to center
+        // Using integer center tile to match how tiles are positioned
+        const pixelX = (tileX - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2;
+        const pixelY = (tileY - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2;
         
-        return { x: screenX, y: screenY };
+        return { x: pixelX, y: pixelY };
     }
 
     async loadTile(x, y, z) {
@@ -97,9 +97,9 @@ export class MapRenderer {
         // Remove opacity handling for now
         
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        // Calculate position - ensure integer values
-        const offsetX = Math.round((x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2);
-        const offsetY = Math.round((y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2);
+        // Calculate position without rounding for precise alignment
+        const offsetX = (x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2;
+        const offsetY = (y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2;
         
         image.setAttribute('x', offsetX);
         image.setAttribute('y', offsetY);
