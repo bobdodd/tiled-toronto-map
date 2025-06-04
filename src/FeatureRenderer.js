@@ -33,11 +33,10 @@ export class FeatureRenderer {
         this.renderRoads(features.roads, groups.roads);
         this.renderTransitStops(features.transitStops, groups.transitStops);
         this.renderParks(features.parks, groups.parks);
-        // Temporarily disable other features
-        // this.renderShops(features.shops, groups.shops);
-        // this.renderSchools(features.schools, groups.schools);
-        // this.renderWorship(features.worship, groups.worship);
-        // this.renderAddresses(features.addresses, groups.addresses);
+        this.renderShops(features.shops, groups.shops);
+        this.renderSchools(features.schools, groups.schools);
+        this.renderWorship(features.worship, groups.worship);
+        this.renderAddresses(features.addresses, groups.addresses);
     }
     
     createGroup(id, label) {

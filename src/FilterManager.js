@@ -4,11 +4,11 @@ export class FilterManager {
             buildings: true,
             roads: true,
             transit: true,
-            shops: false,
-            schools: false,
-            worship: false,
-            parks: false,
-            addresses: false
+            shops: true,
+            schools: true,
+            worship: true,
+            parks: true,
+            addresses: true
         };
         
         this.setupEventListeners();
