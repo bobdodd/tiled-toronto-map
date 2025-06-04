@@ -195,12 +195,27 @@ main {
     outline: none;
 }
 
+/* Remove default focus styles from map features */
+#map-features polygon:focus,
+#map-features polyline:focus,
+#map-features circle:focus {
+    outline: none;
+}
+
+/* Focus outline styling */
+#focus-outline {
+    pointer-events: none;
+    z-index: 1000;
+}
+
 /* Style map features */
 #map-features polygon,
 #map-features polyline,
 #map-features circle {
     stroke-linejoin: round;
     stroke-linecap: round;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 /* Ensure proper rendering order */

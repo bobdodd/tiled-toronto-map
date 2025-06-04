@@ -8,6 +8,9 @@ export class FeatureRenderer {
         const featuresGroup = document.querySelector('#map-features');
         if (!featuresGroup) return;
         
+        // Save focus outline if it exists
+        const focusOutline = document.querySelector('#focus-outline');
+        
         // Clear existing features
         while (featuresGroup.firstChild) {
             featuresGroup.removeChild(featuresGroup.firstChild);
@@ -37,6 +40,11 @@ export class FeatureRenderer {
         this.renderSchools(features.schools, groups.schools);
         this.renderWorship(features.worship, groups.worship);
         this.renderAddresses(features.addresses, groups.addresses);
+        
+        // Re-add focus outline if it existed
+        if (focusOutline) {
+            featuresGroup.appendChild(focusOutline);
+        }
     }
     
     createGroup(id, label) {
@@ -47,14 +55,20 @@ export class FeatureRenderer {
     }
     
     renderBuildings(buildings, group) {
-        buildings.forEach(feature => {
-            const polygon = this.createPolygon(feature, 'building');
+        buildings.forEach((feature, index) => {
+            // Create individual group for each building
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'building-feature');
             const label = this.generateBuildingLabel(feature.properties);
-            polygon.setAttribute('aria-label', label);
+            featureGroup.setAttribute('aria-label', label);
+            
+            const polygon = this.createPolygon(feature, 'building');
             polygon.setAttribute('fill', '#e0e0e0');
             polygon.setAttribute('stroke', '#999');
             polygon.setAttribute('stroke-width', '1');
-            group.appendChild(polygon);
+            featureGroup.appendChild(polygon);
+            
+            group.appendChild(featureGroup);
         });
     }
     
@@ -67,7 +81,13 @@ export class FeatureRenderer {
             return aIndex - bIndex;
         });
         
-        sortedRoads.forEach(feature => {
+        sortedRoads.forEach((feature, index) => {
+            // Create individual group for each road
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'road-feature');
+            const label = this.generateRoadLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
             const roadType = feature.properties.highway;
             
             // Draw road casing (darker outline) first
@@ -78,120 +98,150 @@ export class FeatureRenderer {
             casing.setAttribute('stroke-linecap', 'round');
             casing.setAttribute('stroke-linejoin', 'round');
             casing.setAttribute('aria-hidden', 'true');
-            group.appendChild(casing);
+            featureGroup.appendChild(casing);
             
             // Draw road surface
             const road = this.createPolyline(feature, 'road');
-            const label = this.generateRoadLabel(feature.properties);
-            road.setAttribute('aria-label', label);
             road.setAttribute('fill', 'none');
             road.setAttribute('stroke', this.getRoadColor(roadType));
             road.setAttribute('stroke-width', this.getRoadWidth(roadType));
             road.setAttribute('stroke-linecap', 'round');
             road.setAttribute('stroke-linejoin', 'round');
-            group.appendChild(road);
+            featureGroup.appendChild(road);
+            
+            group.appendChild(featureGroup);
         });
     }
     
     renderTransitStops(stops, group) {
-        stops.forEach(feature => {
-            const circle = this.createCircle(feature, 'transit-stop');
+        stops.forEach((feature, index) => {
+            // Create individual group for each transit stop
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'transit-feature');
             const label = this.generateTransitLabel(feature.properties);
-            circle.setAttribute('aria-label', label);
+            featureGroup.setAttribute('aria-label', label);
+            
+            const circle = this.createCircle(feature, 'transit-stop');
             circle.setAttribute('fill', '#ff9800');
             circle.setAttribute('fill-opacity', '0.7');
             circle.setAttribute('stroke', '#ff6600');
             circle.setAttribute('stroke-width', '2');
             circle.setAttribute('r', '5');
-            group.appendChild(circle);
+            featureGroup.appendChild(circle);
+            
+            group.appendChild(featureGroup);
         });
     }
     
     renderShops(shops, group) {
-        shops.forEach(feature => {
+        shops.forEach((feature, index) => {
+            // Create individual group for each shop
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'shop-feature');
+            const label = this.generateShopLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
             if (feature.geometry.type === 'Point') {
                 const circle = this.createCircle(feature, 'shop');
-                const label = this.generateShopLabel(feature.properties);
-                circle.setAttribute('aria-label', label);
                 circle.setAttribute('fill', 'none');
                 circle.setAttribute('stroke', '#e91e63');
                 circle.setAttribute('stroke-width', '3');
                 circle.setAttribute('r', '6');
-                group.appendChild(circle);
+                featureGroup.appendChild(circle);
             } else {
                 const polygon = this.createPolygon(feature, 'shop');
-                const label = this.generateShopLabel(feature.properties);
-                polygon.setAttribute('aria-label', label);
                 polygon.setAttribute('fill', '#fce4ec');
                 polygon.setAttribute('stroke', '#e91e63');
                 polygon.setAttribute('stroke-width', '2');
-                group.appendChild(polygon);
+                featureGroup.appendChild(polygon);
             }
+            
+            group.appendChild(featureGroup);
         });
     }
     
     renderSchools(schools, group) {
-        schools.forEach(feature => {
+        schools.forEach((feature, index) => {
+            // Create individual group for each school
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'school-feature');
+            const label = this.generateSchoolLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
             if (feature.geometry.type === 'Point') {
                 const circle = this.createCircle(feature, 'school');
-                const label = this.generateSchoolLabel(feature.properties);
-                circle.setAttribute('aria-label', label);
                 circle.setAttribute('fill', '#3f51b5');
                 circle.setAttribute('r', '8');
-                group.appendChild(circle);
+                featureGroup.appendChild(circle);
             } else {
                 const polygon = this.createPolygon(feature, 'school');
-                const label = this.generateSchoolLabel(feature.properties);
-                polygon.setAttribute('aria-label', label);
                 polygon.setAttribute('fill', '#e8eaf6');
                 polygon.setAttribute('stroke', '#3f51b5');
                 polygon.setAttribute('stroke-width', '2');
-                group.appendChild(polygon);
+                featureGroup.appendChild(polygon);
             }
+            
+            group.appendChild(featureGroup);
         });
     }
     
     renderWorship(places, group) {
-        places.forEach(feature => {
+        places.forEach((feature, index) => {
+            // Create individual group for each place of worship
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'worship-feature');
+            const label = this.generateWorshipLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
             if (feature.geometry.type === 'Point') {
                 const circle = this.createCircle(feature, 'worship');
-                const label = this.generateWorshipLabel(feature.properties);
-                circle.setAttribute('aria-label', label);
                 circle.setAttribute('fill', '#9c27b0');
                 circle.setAttribute('r', '7');
-                group.appendChild(circle);
+                featureGroup.appendChild(circle);
             } else {
                 const polygon = this.createPolygon(feature, 'worship');
-                const label = this.generateWorshipLabel(feature.properties);
-                polygon.setAttribute('aria-label', label);
                 polygon.setAttribute('fill', '#f3e5f5');
                 polygon.setAttribute('stroke', '#9c27b0');
                 polygon.setAttribute('stroke-width', '2');
-                group.appendChild(polygon);
+                featureGroup.appendChild(polygon);
             }
+            
+            group.appendChild(featureGroup);
         });
     }
     
     renderParks(parks, group) {
-        parks.forEach(feature => {
-            const polygon = this.createPolygon(feature, 'park');
+        parks.forEach((feature, index) => {
+            // Create individual group for each park
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'park-feature');
             const label = this.generateParkLabel(feature.properties);
-            polygon.setAttribute('aria-label', label);
+            featureGroup.setAttribute('aria-label', label);
+            
+            const polygon = this.createPolygon(feature, 'park');
             polygon.setAttribute('fill', '#c8e6c9');
             polygon.setAttribute('stroke', '#4caf50');
             polygon.setAttribute('stroke-width', '1');
-            group.appendChild(polygon);
+            featureGroup.appendChild(polygon);
+            
+            group.appendChild(featureGroup);
         });
     }
     
     renderAddresses(addresses, group) {
-        addresses.forEach(feature => {
-            const circle = this.createCircle(feature, 'address');
+        addresses.forEach((feature, index) => {
+            // Create individual group for each address
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'address-feature');
             const label = this.generateAddressLabel(feature.properties);
-            circle.setAttribute('aria-label', label);
+            featureGroup.setAttribute('aria-label', label);
+            
+            const circle = this.createCircle(feature, 'address');
             circle.setAttribute('fill', '#2196f3');
             circle.setAttribute('r', '4');
-            group.appendChild(circle);
+            featureGroup.appendChild(circle);
+            
+            group.appendChild(featureGroup);
         });
     }
     

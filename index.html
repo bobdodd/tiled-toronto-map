@@ -14,15 +14,15 @@
     <header role="banner">
         <h1>Interactive Map</h1>
         <nav role="navigation" aria-label="Map controls">
-            <button id="toggle-tracking" aria-pressed="false">
+            <button id="toggle-tracking" aria-pressed="false" tabindex="1">
                 <span class="icon" aria-hidden="true">📍</span>
                 <span>Track Location</span>
             </button>
-            <button id="toggle-navigation" aria-pressed="false">
+            <button id="toggle-navigation" aria-pressed="false" tabindex="2">
                 <span class="icon" aria-hidden="true">🧭</span>
                 <span>Navigation</span>
             </button>
-            <button id="toggle-contrast" aria-pressed="false">
+            <button id="toggle-contrast" aria-pressed="false" tabindex="3">
                 <span class="icon" aria-hidden="true">🎨</span>
                 <span>High Contrast</span>
             </button>
@@ -30,7 +30,7 @@
             <!-- Filter Controls -->
             <div class="filter-container" aria-labelledby="filter-heading">
                 <h2 class="screen-reader-only" id="filter-heading">Map filters</h2>
-                <button class="filter-button" aria-expanded="false" aria-controls="filter-panel">
+                <button class="filter-button" aria-expanded="false" aria-controls="filter-panel" tabindex="4">
                     <span class="icon" aria-hidden="true">🎛️</span>
                     <span>Filters</span>
                 </button>
@@ -52,7 +52,7 @@
             <!-- Rotor Controls -->
             <div class="rotor-container" aria-labelledby="rotor-heading">
                 <h2 class="screen-reader-only" id="rotor-heading">Navigation rotor</h2>
-                <button class="rotor-button" aria-expanded="false" aria-controls="rotor-panel">
+                <button class="rotor-button" aria-expanded="false" aria-controls="rotor-panel" tabindex="5">
                     <span class="icon" aria-hidden="true">🎯</span>
                     <span>Rotor</span>
                 </button>
@@ -73,7 +73,7 @@
     </header>
 
     <main>
-        <div id="map-container" role="application" aria-label="Interactive map" tabindex="0">
+        <div id="map-container" role="application" aria-label="Interactive map">
             <svg id="map-svg" role="document" aria-labelledby="map-heading" focusable="true"
                  width="100%" height="100%" viewBox="0 0 800 600"
                  xmlns="http://www.w3.org/2000/svg">
@@ -85,9 +85,9 @@
                 <g id="navigation-route" aria-label="Navigation route"></g>
             </svg>
             <div id="map-controls" class="map-controls">
-                <button id="zoom-in" aria-label="Zoom in">+</button>
-                <button id="zoom-out" aria-label="Zoom out">−</button>
-                <button id="center-location" aria-label="Center on current location">⊙</button>
+                <button id="zoom-in" aria-label="Zoom in" tabindex="6">+</button>
+                <button id="zoom-out" aria-label="Zoom out" tabindex="7">−</button>
+                <button id="center-location" aria-label="Center on current location" tabindex="8">⊙</button>
             </div>
         </div>
         
