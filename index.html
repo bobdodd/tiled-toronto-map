@@ -78,11 +78,18 @@
                  width="100%" height="600" viewBox="0 0 800 600"
                  xmlns="http://www.w3.org/2000/svg">
                 <title id="map-heading">Interactive street map</title>
-                <g id="map-tiles" aria-label="Map tiles"></g>
-                <g id="map-features" aria-label="Map features"></g>
-                <g id="map-labels" aria-label="Map labels"></g>
-                <g id="user-location" aria-label="User location"></g>
-                <g id="navigation-route" aria-label="Navigation route"></g>
+                <defs>
+                    <clipPath id="map-clip">
+                        <rect x="0" y="0" width="800" height="600" />
+                    </clipPath>
+                </defs>
+                <g id="map-content" clip-path="url(#map-clip)">
+                    <g id="map-tiles" aria-label="Map tiles"></g>
+                    <g id="map-features" aria-label="Map features"></g>
+                    <g id="map-labels" aria-label="Map labels"></g>
+                    <g id="user-location" aria-label="User location"></g>
+                    <g id="navigation-route" aria-label="Navigation route"></g>
+                </g>
             </svg>
             <div id="map-controls" class="map-controls">
                 <button id="zoom-in" aria-label="Zoom in">+</button>

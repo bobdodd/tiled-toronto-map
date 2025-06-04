@@ -1,11 +1,11 @@
 export class MapRenderer {
     constructor(svgElement) {
         this.svg = svgElement;
-        this.tilesGroup = svgElement.getElementById('map-tiles');
-        this.featuresGroup = svgElement.getElementById('map-features');
-        this.labelsGroup = svgElement.getElementById('map-labels');
-        this.locationGroup = svgElement.getElementById('user-location');
-        this.routeGroup = svgElement.getElementById('navigation-route');
+        this.tilesGroup = svgElement.querySelector('#map-tiles');
+        this.featuresGroup = svgElement.querySelector('#map-features');
+        this.labelsGroup = svgElement.querySelector('#map-labels');
+        this.locationGroup = svgElement.querySelector('#user-location');
+        this.routeGroup = svgElement.querySelector('#navigation-route');
         
         this.tileSize = 256;
         this.zoom = 15;
@@ -75,9 +75,9 @@ export class MapRenderer {
         
         const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
         image.setAttribute('href', tileUrl);
-        // Slightly increase tile size to prevent gaps
-        image.setAttribute('width', this.tileSize + 1);
-        image.setAttribute('height', this.tileSize + 1);
+        // Use exact tile size
+        image.setAttribute('width', this.tileSize);
+        image.setAttribute('height', this.tileSize);
         
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
         // Calculate position without gaps
@@ -87,7 +87,6 @@ export class MapRenderer {
         image.setAttribute('x', offsetX);
         image.setAttribute('y', offsetY);
         image.setAttribute('aria-label', `Map tile ${x},${y} at zoom ${z}`);
-        image.setAttribute('preserveAspectRatio', 'none');
         
         // Add error handling for failed tiles
         image.addEventListener('error', () => {
@@ -95,8 +94,8 @@ export class MapRenderer {
             const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             rect.setAttribute('x', offsetX);
             rect.setAttribute('y', offsetY);
-            rect.setAttribute('width', this.tileSize + 1);
-            rect.setAttribute('height', this.tileSize + 1);
+            rect.setAttribute('width', this.tileSize);
+            rect.setAttribute('height', this.tileSize);
             rect.setAttribute('fill', '#e5e3df');
             rect.setAttribute('aria-label', `Map tile ${x},${y} failed to load`);
             image.parentNode.replaceChild(rect, image);
@@ -115,10 +114,10 @@ export class MapRenderer {
         
         // Add a background rect to prevent any gaps
         const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bgRect.setAttribute('x', '-1000');
-        bgRect.setAttribute('y', '-1000');
-        bgRect.setAttribute('width', '3000');
-        bgRect.setAttribute('height', '3000');
+        bgRect.setAttribute('x', '0');
+        bgRect.setAttribute('y', '0');
+        bgRect.setAttribute('width', this.viewBox.width);
+        bgRect.setAttribute('height', this.viewBox.height);
         bgRect.setAttribute('fill', '#e5e3df');
         this.tilesGroup.appendChild(bgRect);
         
@@ -144,8 +143,9 @@ export class MapRenderer {
     }
 
     updateViewBox() {
+        // Keep viewBox static at 0 0 width height
         this.svg.setAttribute('viewBox', 
-            `${this.viewBox.x} ${this.viewBox.y} ${this.viewBox.width} ${this.viewBox.height}`);
+            `0 0 ${this.viewBox.width} ${this.viewBox.height}`);
     }
 
     drawUserLocation(lat, lng, accuracy) {

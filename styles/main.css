@@ -173,7 +173,7 @@ main {
     width: 100%;
     height: 100%;
     background: #e5e3df;
-    shape-rendering: crispEdges;
+    overflow: visible;
 }
 
 /* Ensure map tiles render properly */
