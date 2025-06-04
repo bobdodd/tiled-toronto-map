@@ -75,6 +75,11 @@ export class MapRenderer {
         const key = `${z}/${x}/${y}`;
         if (this.loadedTiles.has(key)) return;
         
+        // Debug: Log first few tiles
+        if (this.loadedTiles.size < 3) {
+            console.log(`Loading tile ${key}`);
+        }
+        
         const tileUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
         
         const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
@@ -83,20 +88,12 @@ export class MapRenderer {
         image.setAttribute('width', this.tileSize);
         image.setAttribute('height', this.tileSize);
         
-        // Add loading handler
-        image.addEventListener('load', () => {
-            // Tile loaded successfully
-            image.style.opacity = '1';
-        });
-        
-        // Start with hidden tile
-        image.style.opacity = '0';
-        image.style.transition = 'opacity 0.2s';
+        // Remove opacity handling for now
         
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        // Calculate position with slight overlap to prevent seams
-        const offsetX = (x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2;
-        const offsetY = (y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2;
+        // Calculate position - ensure integer values
+        const offsetX = Math.round((x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2);
+        const offsetY = Math.round((y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2);
         
         image.setAttribute('x', offsetX);
         image.setAttribute('y', offsetY);
@@ -126,14 +123,7 @@ export class MapRenderer {
         }
         this.loadedTiles.clear();
         
-        // Add a background rect to prevent any gaps
-        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bgRect.setAttribute('x', '-10');
-        bgRect.setAttribute('y', '-10');
-        bgRect.setAttribute('width', this.viewBox.width + 20);
-        bgRect.setAttribute('height', this.viewBox.height + 20);
-        bgRect.setAttribute('fill', '#ffffff');
-        this.tilesGroup.appendChild(bgRect);
+        // Don't add a background rect - let's see if this is causing the issue
         
         // Calculate visible tile range
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
