@@ -200,15 +200,40 @@ export class OSMDataFetcher {
         if (coordinates.length < 2) return;
         
         // Buildings
-        if (tags.building) {
-            features.buildings.push({
-                type: 'Feature',
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [coordinates]
-                },
-                properties: tags
+        if (tags.building && coordinates.length >= 3) {
+            // Ensure polygon is closed
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            // Check if this is a reasonable building size
+            // Calculate rough bounding box
+            let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+            closedCoords.forEach(coord => {
+                minLat = Math.min(minLat, coord[1]);
+                maxLat = Math.max(maxLat, coord[1]);
+                minLng = Math.min(minLng, coord[0]);
+                maxLng = Math.max(maxLng, coord[0]);
             });
+            
+            // If the building spans more than 0.01 degrees (about 1km), skip it
+            const latSpan = maxLat - minLat;
+            const lngSpan = maxLng - minLng;
+            
+            if (latSpan < 0.01 && lngSpan < 0.01) {
+                features.buildings.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else {
+                console.warn('Skipping large building:', tags.name || 'unnamed', latSpan, lngSpan);
+            }
         }
         
         // Roads
@@ -224,48 +249,84 @@ export class OSMDataFetcher {
         }
         
         // Parks
-        if (tags.leisure) {
-            features.parks.push({
-                type: 'Feature',
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [coordinates]
-                },
-                properties: tags
+        if (tags.leisure && coordinates.length >= 3) {
+            // Ensure polygon is closed
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            // Check size
+            let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+            closedCoords.forEach(coord => {
+                minLat = Math.min(minLat, coord[1]);
+                maxLat = Math.max(maxLat, coord[1]);
+                minLng = Math.min(minLng, coord[0]);
+                maxLng = Math.max(maxLng, coord[0]);
             });
+            
+            const latSpan = maxLat - minLat;
+            const lngSpan = maxLng - minLng;
+            
+            if (latSpan < 0.05 && lngSpan < 0.05) { // Parks can be larger than buildings
+                features.parks.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            }
         }
         
         // Shops (polygon)
-        if (tags.shop) {
+        if (tags.shop && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
             features.shops.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Polygon',
-                    coordinates: [coordinates]
+                    coordinates: [closedCoords]
                 },
                 properties: tags
             });
         }
         
         // Schools (polygon)
-        if (tags.amenity === 'school') {
+        if (tags.amenity === 'school' && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
             features.schools.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Polygon',
-                    coordinates: [coordinates]
+                    coordinates: [closedCoords]
                 },
                 properties: tags
             });
         }
         
         // Places of worship (polygon)
-        if (tags.amenity === 'place_of_worship') {
+        if (tags.amenity === 'place_of_worship' && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
             features.worship.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Polygon',
-                    coordinates: [coordinates]
+                    coordinates: [closedCoords]
                 },
                 properties: tags
             });

@@ -61,14 +61,23 @@ export class MapRenderer {
     }
 
     project(lat, lng) {
-        const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        const tile = this.latLngToTile(lat, lng, this.zoom);
+        const n = Math.pow(2, this.zoom);
         
-        const scale = this.tileSize;
-        const x = (tile.x - centerTile.x) * scale + this.viewBox.width / 2;
-        const y = (tile.y - centerTile.y) * scale + this.viewBox.height / 2;
+        // Get precise fractional tile coordinates (not rounded)
+        const x = (lng + 180) / 360 * n;
+        const latRad = lat * Math.PI / 180;
+        const y = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
         
-        return { x, y };
+        // Get center position in fractional tiles
+        const centerX = (this.center.lng + 180) / 360 * n;
+        const centerLatRad = this.center.lat * Math.PI / 180;
+        const centerY = (1 - Math.log(Math.tan(centerLatRad) + 1 / Math.cos(centerLatRad)) / Math.PI) / 2 * n;
+        
+        // Convert to screen coordinates
+        const screenX = (x - centerX) * this.tileSize + this.viewBox.width / 2;
+        const screenY = (y - centerY) * this.tileSize + this.viewBox.height / 2;
+        
+        return { x: screenX, y: screenY };
     }
 
     async loadTile(x, y, z) {
@@ -114,7 +123,15 @@ export class MapRenderer {
         }
         this.loadedTiles.clear();
         
-        // Don't add a background rect - let's see if this is causing the issue
+        // Add a solid background to prevent any patterns
+        const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bgRect.setAttribute('x', '0');
+        bgRect.setAttribute('y', '0');
+        bgRect.setAttribute('width', this.viewBox.width);
+        bgRect.setAttribute('height', this.viewBox.height);
+        bgRect.setAttribute('fill', '#e5e3df');
+        bgRect.setAttribute('stroke', 'none');
+        this.tilesGroup.appendChild(bgRect);
         
         // Calculate visible tile range
         const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);

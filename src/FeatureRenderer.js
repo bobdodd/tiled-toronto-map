@@ -50,7 +50,7 @@ export class FeatureRenderer {
             const polygon = this.createPolygon(feature, 'building');
             const label = this.generateBuildingLabel(feature.properties);
             polygon.setAttribute('aria-label', label);
-            polygon.setAttribute('fill', '#d4d4d4');
+            polygon.setAttribute('fill', '#e0e0e0');
             polygon.setAttribute('stroke', '#999');
             polygon.setAttribute('stroke-width', '1');
             group.appendChild(polygon);
