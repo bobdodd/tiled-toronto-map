@@ -15,31 +15,13 @@ export class FilterManager {
     }
     
     setupEventListeners() {
-        // Toggle filter panel
-        const filterButton = document.querySelector('.filter-button');
-        const filterPanel = document.getElementById('filter-panel');
-        
-        filterButton.addEventListener('click', () => {
-            const isExpanded = filterButton.getAttribute('aria-expanded') === 'true';
-            filterButton.setAttribute('aria-expanded', !isExpanded);
-            filterPanel.hidden = isExpanded;
-        });
-        
-        // Handle filter changes
+        // Handle filter changes - now inside accordion
         Object.keys(this.filters).forEach(filterType => {
             const checkbox = document.getElementById(`filter-${filterType}`);
             if (checkbox) {
                 checkbox.addEventListener('change', (e) => {
                     this.toggleFilter(filterType, e.target.checked);
                 });
-            }
-        });
-        
-        // Close panel when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.filter-container')) {
-                filterButton.setAttribute('aria-expanded', 'false');
-                filterPanel.hidden = true;
             }
         });
     }

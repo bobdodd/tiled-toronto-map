@@ -19,30 +19,12 @@ export class AccessibilityManager {
     }
     
     setupEventListeners() {
-        // Toggle rotor panel
-        const rotorButton = document.querySelector('.rotor-button');
-        const rotorPanel = document.getElementById('rotor-panel');
-        
-        rotorButton.addEventListener('click', () => {
-            const isExpanded = rotorButton.getAttribute('aria-expanded') === 'true';
-            rotorButton.setAttribute('aria-expanded', !isExpanded);
-            rotorPanel.hidden = isExpanded;
-        });
-        
-        // Handle rotor changes
+        // Handle rotor changes - now inside accordion
         const rotorRadios = document.querySelectorAll('input[name="rotor"]');
         rotorRadios.forEach(radio => {
             radio.addEventListener('change', (e) => {
                 this.setRotor(e.target.value);
             });
-        });
-        
-        // Close panel when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.rotor-container')) {
-                rotorButton.setAttribute('aria-expanded', 'false');
-                rotorPanel.hidden = true;
-            }
         });
         
         // Initialize with default rotor value

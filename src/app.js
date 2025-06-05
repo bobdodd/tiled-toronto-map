@@ -15,9 +15,9 @@ class MapApplication {
         this.featureRenderer = null;
         this.isTracking = false;
         this.isNavigating = false;
-        this.highContrast = false;
         
         this.init();
+        
     }
 
     init() {
@@ -67,17 +67,41 @@ class MapApplication {
     }
 
     setupEventListeners() {
-        // Map controls
-        document.getElementById('zoom-in').addEventListener('click', () => {
-            this.mapRenderer.zoomIn();
+        // Sidebar toggle
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const controlSidebar = document.getElementById('control-sidebar');
+        
+        sidebarToggle.addEventListener('click', () => {
+            const isExpanded = sidebarToggle.getAttribute('aria-expanded') === 'true';
+            controlSidebar.classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed');
+            sidebarToggle.setAttribute('aria-expanded', !isExpanded);
+            
+            // Toggle icons
+            const hamburgerIcon = sidebarToggle.querySelector('.hamburger-icon');
+            const closeIcon = sidebarToggle.querySelector('.close-icon');
+            
+            if (isExpanded) {
+                // Closing - show hamburger
+                hamburgerIcon.style.display = 'inline';
+                closeIcon.style.display = 'none';
+            } else {
+                // Opening - show close
+                hamburgerIcon.style.display = 'none';
+                closeIcon.style.display = 'inline';
+            }
         });
         
-        document.getElementById('zoom-out').addEventListener('click', () => {
-            this.mapRenderer.zoomOut();
-        });
-        
-        document.getElementById('center-location').addEventListener('click', () => {
-            this.centerOnCurrentLocation();
+        // Accordion functionality
+        const accordionHeaders = document.querySelectorAll('.accordion-header');
+        accordionHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const isExpanded = header.getAttribute('aria-expanded') === 'true';
+                const content = document.getElementById(header.getAttribute('aria-controls'));
+                
+                header.setAttribute('aria-expanded', !isExpanded);
+                content.hidden = isExpanded;
+            });
         });
         
         // Toggle buttons
@@ -85,18 +109,13 @@ class MapApplication {
             this.toggleLocationTracking(e.currentTarget);
         });
         
-        document.getElementById('toggle-navigation').addEventListener('click', (e) => {
-            this.toggleNavigation(e.currentTarget);
-        });
-        
-        document.getElementById('toggle-contrast').addEventListener('click', (e) => {
-            this.toggleHighContrast(e.currentTarget);
-        });
-        
         // Debug controls
         document.getElementById('set-location').addEventListener('click', () => {
             this.setMockLocation();
         });
+        
+        // Compass navigator controls
+        this.setupCompassNavigator();
         
         // Location tracker callbacks
         this.locationTracker.onUpdate((position) => {
@@ -108,6 +127,65 @@ class MapApplication {
         });
     }
 
+    setupCompassNavigator() {
+        // Direction buttons
+        document.getElementById('nav-n').addEventListener('click', () => {
+            this.panMap(0, -1);
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-ne').addEventListener('click', () => {
+            this.panMap(1, -1);
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-e').addEventListener('click', () => {
+            this.panMap(1, 0);
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-se').addEventListener('click', () => {
+            this.panMap(1, 1);
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-s').addEventListener('click', () => {
+            this.panMap(0, 1);
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-sw').addEventListener('click', () => {
+            this.panMap(-1, 1);
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-w').addEventListener('click', () => {
+            this.panMap(-1, 0);
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-nw').addEventListener('click', () => {
+            this.panMap(-1, -1);
+            this.announceMapChange();
+        });
+        
+        // Zoom buttons
+        document.getElementById('nav-zoom-in').addEventListener('click', () => {
+            this.mapRenderer.zoomIn();
+            this.announceMapChange();
+        });
+        
+        document.getElementById('nav-zoom-out').addEventListener('click', () => {
+            this.mapRenderer.zoomOut();
+            this.announceMapChange();
+        });
+        
+        // Center location button
+        document.getElementById('nav-center').addEventListener('click', () => {
+            this.centerOnCurrentLocation();
+        });
+    }
+    
     setupKeyboardNavigation() {
         const mapContainer = document.getElementById('map-container');
         
@@ -115,30 +193,48 @@ class MapApplication {
             const step = e.shiftKey ? 5 : 1;
             let handled = true;
             
+            // Check for modifier key (Ctrl or Cmd)
+            const hasModifier = e.ctrlKey || e.metaKey;
+            
             switch(e.key) {
                 case 'ArrowUp':
-                    this.panMap(0, -step);
+                    if (hasModifier) {
+                        this.panMap(0, -step);
+                        handled = true;
+                    }
                     break;
                 case 'ArrowDown':
-                    this.panMap(0, step);
+                    if (hasModifier) {
+                        this.panMap(0, step);
+                        handled = true;
+                    }
                     break;
                 case 'ArrowLeft':
-                    this.panMap(-step, 0);
+                    if (hasModifier) {
+                        this.panMap(-step, 0);
+                        handled = true;
+                    }
                     break;
                 case 'ArrowRight':
-                    this.panMap(step, 0);
+                    if (hasModifier) {
+                        this.panMap(step, 0);
+                        handled = true;
+                    }
                     break;
                 case '+':
                 case '=':
                     this.mapRenderer.zoomIn();
+                    handled = true;
                     break;
                 case '-':
                 case '_':
                     this.mapRenderer.zoomOut();
+                    handled = true;
                     break;
                 case 'h':
                 case 'H':
                     this.centerOnCurrentLocation();
+                    handled = true;
                     break;
                 default:
                     handled = false;
@@ -174,28 +270,8 @@ class MapApplication {
         }
     }
 
-    toggleNavigation(button) {
-        this.isNavigating = !this.isNavigating;
-        button.setAttribute('aria-pressed', this.isNavigating);
-        
-        const navPanel = document.getElementById('navigation-panel');
-        navPanel.classList.toggle('active', this.isNavigating);
-        
-        if (this.isNavigating) {
-            this.announceStatus('Navigation mode enabled');
-            document.getElementById('destination-input').focus();
-        } else {
-            this.announceStatus('Navigation mode disabled');
-        }
-    }
+    // Navigation is now handled by accordion, remove old toggle method
 
-    toggleHighContrast(button) {
-        this.highContrast = !this.highContrast;
-        button.setAttribute('aria-pressed', this.highContrast);
-        
-        document.body.classList.toggle('high-contrast', this.highContrast);
-        this.announceStatus(this.highContrast ? 'High contrast mode enabled' : 'High contrast mode disabled');
-    }
 
     handleLocationUpdate(position) {
         // Update location display
