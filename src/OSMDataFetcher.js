@@ -50,6 +50,40 @@ export class OSMDataFetcher {
                 
                 // Address points
                 node["addr:housenumber"](${bbox});
+                
+                // Accessibility features
+                // Public facilities
+                node["amenity"="toilets"](${bbox});
+                node["amenity"="parking"]["wheelchair"="yes"](${bbox});
+                way["amenity"="parking"]["wheelchair"="yes"](${bbox});
+                node["amenity"="drinking_water"](${bbox});
+                node["amenity"="bench"](${bbox});
+                way["amenity"="shelter"](${bbox});
+                node["amenity"="shelter"](${bbox});
+                
+                // Navigation & mobility
+                node["highway"="crossing"](${bbox});
+                node["barrier"="kerb"](${bbox});
+                node["highway"="elevator"](${bbox});
+                way["highway"="steps"](${bbox});
+                node["highway"="steps"](${bbox});
+                way["tactile_paving"="yes"](${bbox});
+                node["tactile_paving"="yes"](${bbox});
+                
+                // Audio & visual aids
+                node["traffic_signals:sound"="yes"](${bbox});
+                node["information"="tactile_map"](${bbox});
+                node["amenity"="clock"]["display"="digital"](${bbox});
+                node["tourism"="information"](${bbox});
+                
+                // Emergency & safety
+                node["emergency"="phone"](${bbox});
+                node["emergency"="defibrillator"](${bbox});
+                node["amenity"="hospital"]["wheelchair"="yes"](${bbox});
+                way["amenity"="hospital"]["wheelchair"="yes"](${bbox});
+                node["barrier"="bollard"](${bbox});
+                way["barrier"="fence"](${bbox});
+                way["barrier"="wall"](${bbox});
             );
             out body;
             >;
@@ -86,7 +120,26 @@ export class OSMDataFetcher {
                 schools: [],
                 worship: [],
                 parks: [],
-                addresses: []
+                addresses: [],
+                // Accessibility features
+                accessibleToilets: [],
+                accessibleParking: [],
+                drinkingWater: [],
+                benches: [],
+                shelters: [],
+                crossings: [],
+                curbCuts: [],
+                elevators: [],
+                steps: [],
+                tactilePaving: [],
+                audioSignals: [],
+                tactileMaps: [],
+                digitalClocks: [],
+                infoPoints: [],
+                emergencyPhones: [],
+                defibrillators: [],
+                accessibleMedical: [],
+                barriers: []
             };
         }
     }
@@ -100,7 +153,26 @@ export class OSMDataFetcher {
             schools: [],
             worship: [],
             parks: [],
-            addresses: []
+            addresses: [],
+            // Accessibility features
+            accessibleToilets: [],
+            accessibleParking: [],
+            drinkingWater: [],
+            benches: [],
+            shelters: [],
+            crossings: [],
+            curbCuts: [],
+            elevators: [],
+            steps: [],
+            tactilePaving: [],
+            audioSignals: [],
+            tactileMaps: [],
+            digitalClocks: [],
+            infoPoints: [],
+            emergencyPhones: [],
+            defibrillators: [],
+            accessibleMedical: [],
+            barriers: []
         };
         
         // Create a map of nodes for reference
@@ -178,6 +250,205 @@ export class OSMDataFetcher {
         // Addresses
         if (tags['addr:housenumber']) {
             features.addresses.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        // Accessibility features
+        if (tags.amenity === 'toilets') {
+            features.accessibleToilets.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'parking' && tags.wheelchair === 'yes') {
+            features.accessibleParking.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'drinking_water') {
+            features.drinkingWater.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'bench') {
+            features.benches.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'shelter') {
+            features.shelters.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.highway === 'crossing') {
+            features.crossings.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'kerb') {
+            features.curbCuts.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.highway === 'elevator') {
+            features.elevators.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.highway === 'steps') {
+            features.steps.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tactile_paving === 'yes') {
+            features.tactilePaving.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags['traffic_signals:sound'] === 'yes') {
+            features.audioSignals.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.information === 'tactile_map') {
+            features.tactileMaps.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'clock' && tags.display === 'digital') {
+            features.digitalClocks.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'information') {
+            features.infoPoints.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.emergency === 'phone') {
+            features.emergencyPhones.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.emergency === 'defibrillator') {
+            features.defibrillators.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'hospital' && tags.wheelchair === 'yes') {
+            features.accessibleMedical.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'bollard') {
+            features.barriers.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Point',
@@ -327,6 +598,88 @@ export class OSMDataFetcher {
                 geometry: {
                     type: 'Polygon',
                     coordinates: [closedCoords]
+                },
+                properties: tags
+            });
+        }
+        
+        // Accessibility features (ways)
+        if (tags.amenity === 'parking' && tags.wheelchair === 'yes' && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            features.accessibleParking.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [closedCoords]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'shelter' && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            features.shelters.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [closedCoords]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.highway === 'steps') {
+            features.steps.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tactile_paving === 'yes') {
+            features.tactilePaving.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'hospital' && tags.wheelchair === 'yes' && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            features.accessibleMedical.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [closedCoords]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'fence' || tags.barrier === 'wall') {
+            features.barriers.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
                 },
                 properties: tags
             });

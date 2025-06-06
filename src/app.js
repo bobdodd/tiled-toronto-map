@@ -104,6 +104,30 @@ class MapApplication {
             });
         });
         
+        // Filter accordion functionality
+        const filterAccordionHeaders = document.querySelectorAll('.filter-accordion-header');
+        filterAccordionHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const isExpanded = header.getAttribute('aria-expanded') === 'true';
+                const content = document.getElementById(header.getAttribute('aria-controls'));
+                
+                header.setAttribute('aria-expanded', !isExpanded);
+                content.hidden = isExpanded;
+            });
+        });
+        
+        // Filter sub-accordion functionality (nested)
+        const filterSubAccordionHeaders = document.querySelectorAll(".filter-sub-accordion-header");
+        filterSubAccordionHeaders.forEach(header => {
+            header.addEventListener("click", () => {
+                const isExpanded = header.getAttribute("aria-expanded") === "true";
+                const content = document.getElementById(header.getAttribute("aria-controls"));
+                
+                header.setAttribute("aria-expanded", !isExpanded);
+                content.hidden = isExpanded;
+            });
+        });
+        
         // Toggle buttons
         document.getElementById('toggle-tracking').addEventListener('click', (e) => {
             this.toggleLocationTracking(e.currentTarget);

@@ -49,15 +49,164 @@
                 </button>
                 <div id="filter-content" class="accordion-content" hidden>
                     <fieldset>
-                        <legend class="screen-reader-only">Show map features</legend>
-                        <label><input type="checkbox" id="filter-buildings" checked> Buildings</label>
-                        <label><input type="checkbox" id="filter-roads" checked> Roads</label>
-                        <label><input type="checkbox" id="filter-transit" checked> Transit Stops</label>
-                        <label><input type="checkbox" id="filter-shops" checked> Shops</label>
-                        <label><input type="checkbox" id="filter-schools" checked> Schools</label>
-                        <label><input type="checkbox" id="filter-worship" checked> Places of Worship</label>
-                        <label><input type="checkbox" id="filter-parks" checked> Parks & Recreation</label>
-                        <label><input type="checkbox" id="filter-addresses" checked> Addresses</label>
+                        <legend class="screen-reader-only">Show map features by category</legend>
+                        
+                        <!-- Buildings & Infrastructure -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="buildings-filter-content">
+                                <span class="icon" aria-hidden="true">🏢</span>
+                                <span class="label">Buildings & Infrastructure</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="buildings-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-buildings" checked> Buildings</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Transportation -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="transportation-filter-content">
+                                <span class="icon" aria-hidden="true">🚗</span>
+                                <span class="label">Transportation</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="transportation-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-roads" checked> Roads</label>
+                                <label><input type="checkbox" id="filter-transit" checked> Transit Stops</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Education & Culture -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="education-filter-content">
+                                <span class="icon" aria-hidden="true">🏫</span>
+                                <span class="label">Education & Culture</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="education-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-schools" checked> Schools</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Commerce & Services -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="commerce-filter-content">
+                                <span class="icon" aria-hidden="true">🛍️</span>
+                                <span class="label">Commerce & Services</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="commerce-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-shops" checked> Shops</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Recreation & Nature -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="recreation-filter-content">
+                                <span class="icon" aria-hidden="true">🌳</span>
+                                <span class="label">Recreation & Nature</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="recreation-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-parks" checked> Parks & Recreation</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Places of Worship -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="worship-filter-content">
+                                <span class="icon" aria-hidden="true">⛪</span>
+                                <span class="label">Places of Worship</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="worship-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-worship" checked> Places of Worship</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Addresses & Navigation -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="addresses-filter-content">
+                                <span class="icon" aria-hidden="true">📍</span>
+                                <span class="label">Addresses & Navigation</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="addresses-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-addresses" checked> Addresses</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Accessibility -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="accessibility-filter-content">
+                                <span class="icon" aria-hidden="true">♿</span>
+                                <span class="label">Accessibility</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="accessibility-filter-content" class="filter-accordion-content" hidden>
+                                <!-- Public Facilities -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="public-facilities-content">
+                                        <span class="icon" aria-hidden="true">🚻</span>
+                                        <span class="label">Public Facilities</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="public-facilities-content" class="filter-sub-accordion-content" hidden>
+                                    <label><input type="checkbox" id="filter-accessible-toilets" checked> Accessible Toilets</label>
+                                    <label><input type="checkbox" id="filter-accessible-parking" checked> Accessible Parking</label>
+                                    <label><input type="checkbox" id="filter-drinking-water" checked> Drinking Water</label>
+                                    <label><input type="checkbox" id="filter-benches" checked> Benches & Rest Areas</label>
+                                        <label><input type="checkbox" id="filter-shelters" checked> Shelters</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Navigation & Mobility -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="navigation-mobility-content">
+                                        <span class="icon" aria-hidden="true">🚶</span>
+                                        <span class="label">Navigation & Mobility</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="navigation-mobility-content" class="filter-sub-accordion-content" hidden>
+                                    <label><input type="checkbox" id="filter-crossings" checked> Pedestrian Crossings</label>
+                                    <label><input type="checkbox" id="filter-curb-cuts" checked> Curb Cuts & Ramps</label>
+                                    <label><input type="checkbox" id="filter-elevators" checked> Elevators</label>
+                                    <label><input type="checkbox" id="filter-steps" checked> Steps & Handrails</label>
+                                        <label><input type="checkbox" id="filter-tactile-paving" checked> Tactile Paving</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Audio & Visual Aids -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="audio-visual-content">
+                                        <span class="icon" aria-hidden="true">🔊</span>
+                                        <span class="label">Audio & Visual Aids</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="audio-visual-content" class="filter-sub-accordion-content" hidden>
+                                    <label><input type="checkbox" id="filter-audio-signals" checked> Audio Crossing Signals</label>
+                                    <label><input type="checkbox" id="filter-tactile-maps" checked> Tactile Maps</label>
+                                    <label><input type="checkbox" id="filter-digital-clocks" checked> Digital Clocks</label>
+                                        <label><input type="checkbox" id="filter-info-points" checked> Information Points</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Emergency & Safety -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="emergency-safety-content">
+                                        <span class="icon" aria-hidden="true">🆘</span>
+                                        <span class="label">Emergency & Safety</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="emergency-safety-content" class="filter-sub-accordion-content" hidden>
+                                    <label><input type="checkbox" id="filter-emergency-phones" checked> Emergency Phones</label>
+                                    <label><input type="checkbox" id="filter-defibrillators" checked> Defibrillators</label>
+                                    <label><input type="checkbox" id="filter-accessible-medical" checked> Accessible Medical</label>
+                                        <label><input type="checkbox" id="filter-barriers" checked> Barriers & Obstacles</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </fieldset>
                 </div>
             </div>
@@ -71,13 +220,40 @@
                 </button>
                 <div id="rotor-content" class="accordion-content" hidden>
                     <fieldset>
-                        <legend class="screen-reader-only">Navigate by</legend>
+                        <legend class="screen-reader-only">Navigate by category or feature type</legend>
+                        
                         <label><input type="radio" name="rotor" value="none" checked> No selection</label>
-                        <label><input type="radio" name="rotor" value="transit"> Transit stops</label>
-                        <label><input type="radio" name="rotor" value="shops"> Shops</label>
-                        <label><input type="radio" name="rotor" value="schools"> Schools</label>
-                        <label><input type="radio" name="rotor" value="worship"> Places of Worship</label>
-                        <label><input type="radio" name="rotor" value="parks"> Parks</label>
+                        
+                        <!-- Category Groups -->
+                        <div class="rotor-category">
+                            <h4 class="rotor-category-title">By Category</h4>
+                            <label><input type="radio" name="rotor" value="buildings"> Buildings & Infrastructure</label>
+                            <label><input type="radio" name="rotor" value="transportation"> Transportation</label>
+                            <label><input type="radio" name="rotor" value="education"> Education & Culture</label>
+                            <label><input type="radio" name="rotor" value="commerce"> Commerce & Services</label>
+                            <label><input type="radio" name="rotor" value="recreation"> Recreation & Nature</label>
+                            <label><input type="radio" name="rotor" value="worship"> Places of Worship</label>
+                            <label><input type="radio" name="rotor" value="addresses"> Addresses & Navigation</label>
+                        </div>
+                        
+                        <!-- Individual Feature Types -->
+                        <div class="rotor-category">
+                            <h4 class="rotor-category-title">By Feature Type</h4>
+                            <label><input type="radio" name="rotor" value="transit"> Transit stops only</label>
+                            <label><input type="radio" name="rotor" value="shops"> Shops only</label>
+                            <label><input type="radio" name="rotor" value="schools"> Schools only</label>
+                            <label><input type="radio" name="rotor" value="parks"> Parks only</label>
+                        </div>
+                        
+                        <!-- Accessibility Features -->
+                        <div class="rotor-category">
+                            <h4 class="rotor-category-title">Accessibility Features</h4>
+                            <label><input type="radio" name="rotor" value="accessibility-all"> All Accessibility Features</label>
+                            <label><input type="radio" name="rotor" value="essential-navigation"> Essential Navigation</label>
+                            <label><input type="radio" name="rotor" value="public-facilities"> Public Facilities</label>
+                            <label><input type="radio" name="rotor" value="emergency-features"> Emergency Features</label>
+                        </div>
+                        
                         <label><input type="radio" name="rotor" value="everything"> Everything</label>
                     </fieldset>
                 </div>

@@ -106,7 +106,13 @@ export class AccessibilityManager {
         if (element.classList) {
             // Don't show focus on road casings (they're just the outline)
             if (element.classList.contains('road-casing')) return false;
-            const featureClasses = ['building', 'road', 'transit-stop', 'shop', 'school', 'worship', 'park', 'address'];
+            const featureClasses = [
+                'building', 'road', 'transit-stop', 'shop', 'school', 'worship', 'park', 'address',
+                'accessible-toilet', 'accessible-parking', 'drinking-water', 'bench', 'shelter',
+                'crossing', 'curb-cut', 'elevator', 'steps', 'tactile-paving', 'audio-signal',
+                'tactile-map', 'digital-clock', 'info-point', 'emergency-phone', 'defibrillator',
+                'accessible-medical', 'barrier'
+            ];
             return featureClasses.some(cls => element.classList.contains(cls));
         }
         
@@ -232,12 +238,25 @@ export class AccessibilityManager {
         
         // Map rotor values to feature class selectors
         const featureSelectors = {
+            // Category groups
+            'buildings': '.building-feature',
+            'transportation': '.road-feature, .transit-feature',
+            'education': '.school-feature',
+            'commerce': '.shop-feature',
+            'recreation': '.park-feature',
+            'worship': '.worship-feature',
+            'addresses': '.address-feature',
+            // Individual feature types
             'transit': '.transit-feature',
             'shops': '.shop-feature',
             'schools': '.school-feature',
-            'worship': '.worship-feature',
             'parks': '.park-feature',
-            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature'
+            // Accessibility feature groups
+            'accessibility-all': '.accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature',
+            'essential-navigation': '.crossing-feature, .curb-cut-feature, .elevator-feature, .tactile-paving-feature',
+            'public-facilities': '.accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature',
+            'emergency-features': '.emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature',
+            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature'
         };
         
         const selector = featureSelectors[this.currentRotor];
@@ -283,11 +302,24 @@ export class AccessibilityManager {
         const announcements = document.getElementById('map-announcements');
         const rotorNames = {
             'none': 'No features selected for navigation',
-            'transit': 'Now navigating transit stops',
-            'shops': 'Now navigating shops',
-            'schools': 'Now navigating schools',
+            // Category groups
+            'buildings': 'Now navigating buildings and infrastructure',
+            'transportation': 'Now navigating transportation features',
+            'education': 'Now navigating education and culture features',
+            'commerce': 'Now navigating commerce and services',
+            'recreation': 'Now navigating recreation and nature features',
             'worship': 'Now navigating places of worship',
-            'parks': 'Now navigating parks',
+            'addresses': 'Now navigating addresses and navigation points',
+            // Individual feature types
+            'transit': 'Now navigating transit stops only',
+            'shops': 'Now navigating shops only',
+            'schools': 'Now navigating schools only',
+            'parks': 'Now navigating parks only',
+            // Accessibility feature groups
+            'accessibility-all': 'Now navigating all accessibility features',
+            'essential-navigation': 'Now navigating essential navigation features: crossings, ramps, elevators, tactile paving',
+            'public-facilities': 'Now navigating public accessibility facilities: toilets, parking, water, benches, shelters',
+            'emergency-features': 'Now navigating emergency accessibility features: phones, defibrillators, medical facilities',
             'everything': 'Now navigating all map features'
         };
         

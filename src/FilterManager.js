@@ -8,7 +8,26 @@ export class FilterManager {
             schools: true,
             worship: true,
             parks: true,
-            addresses: true
+            addresses: true,
+            // Accessibility features
+            'accessible-toilets': true,
+            'accessible-parking': true,
+            'drinking-water': true,
+            'benches': true,
+            'shelters': true,
+            'crossings': true,
+            'curb-cuts': true,
+            'elevators': true,
+            'steps': true,
+            'tactile-paving': true,
+            'audio-signals': true,
+            'tactile-maps': true,
+            'digital-clocks': true,
+            'info-points': true,
+            'emergency-phones': true,
+            'defibrillators': true,
+            'accessible-medical': true,
+            'barriers': true
         };
         
         this.setupEventListeners();
@@ -42,7 +61,26 @@ export class FilterManager {
             schools: '.school',
             worship: '.worship',
             parks: '.park',
-            addresses: '.address'
+            addresses: '.address',
+            // Accessibility features
+            'accessible-toilets': '.accessible-toilet',
+            'accessible-parking': '.accessible-parking',
+            'drinking-water': '.drinking-water',
+            'benches': '.bench',
+            'shelters': '.shelter',
+            'crossings': '.crossing',
+            'curb-cuts': '.curb-cut',
+            'elevators': '.elevator',
+            'steps': '.steps',
+            'tactile-paving': '.tactile-paving',
+            'audio-signals': '.audio-signal',
+            'tactile-maps': '.tactile-map',
+            'digital-clocks': '.digital-clock',
+            'info-points': '.info-point',
+            'emergency-phones': '.emergency-phone',
+            'defibrillators': '.defibrillator',
+            'accessible-medical': '.accessible-medical',
+            'barriers': '.barrier'
         };
         
         const selector = classMap[featureType];
@@ -64,7 +102,26 @@ export class FilterManager {
             schools: 'Schools',
             worship: 'Places of worship',
             parks: 'Parks and recreation',
-            addresses: 'Addresses'
+            addresses: 'Addresses',
+            // Accessibility features
+            'accessible-toilets': 'Accessible toilets',
+            'accessible-parking': 'Accessible parking',
+            'drinking-water': 'Drinking water',
+            'benches': 'Benches and rest areas',
+            'shelters': 'Shelters',
+            'crossings': 'Pedestrian crossings',
+            'curb-cuts': 'Curb cuts and ramps',
+            'elevators': 'Elevators',
+            'steps': 'Steps and handrails',
+            'tactile-paving': 'Tactile paving',
+            'audio-signals': 'Audio crossing signals',
+            'tactile-maps': 'Tactile maps',
+            'digital-clocks': 'Digital clocks',
+            'info-points': 'Information points',
+            'emergency-phones': 'Emergency phones',
+            'defibrillators': 'Defibrillators',
+            'accessible-medical': 'Accessible medical facilities',
+            'barriers': 'Barriers and obstacles'
         };
         
         const featureName = featureNames[featureType] || featureType;
