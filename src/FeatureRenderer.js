@@ -51,7 +51,12 @@ export class FeatureRenderer {
             emergencyPhones: this.createGroup('emergency-phones-group', 'Emergency phones'),
             defibrillators: this.createGroup('defibrillators-group', 'Defibrillators'),
             accessibleMedical: this.createGroup('accessible-medical-group', 'Accessible medical'),
-            barriers: this.createGroup('barriers-group', 'Barriers')
+            barriers: this.createGroup('barriers-group', 'Barriers'),
+            // Transportation Infrastructure
+            railways: this.createGroup('railways-group', 'Railway systems'),
+            airports: this.createGroup('airports-group', 'Airport facilities'),
+            enhancedHighways: this.createGroup('enhanced-highways-group', 'Major highways'),
+            transitPlatforms: this.createGroup('transit-platforms-group', 'Transit platforms')
         };
         
         // Add groups to features container
@@ -94,6 +99,12 @@ export class FeatureRenderer {
         this.renderDefibrillators(features.defibrillators, groups.defibrillators);
         this.renderAccessibleMedical(features.accessibleMedical, groups.accessibleMedical);
         this.renderBarriers(features.barriers, groups.barriers);
+        
+        // Render transportation infrastructure
+        this.renderRailways(features.railways, groups.railways);
+        this.renderAirports(features.airports, groups.airports);
+        this.renderEnhancedHighways(features.enhancedHighways, groups.enhancedHighways);
+        this.renderTransitPlatforms(features.transitPlatforms, groups.transitPlatforms);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -1160,6 +1171,292 @@ export class FeatureRenderer {
         
         if (props.emergency === 'yes') {
             label += ', emergency services available';
+        }
+        
+        return label;
+    }
+    
+    // Transportation Infrastructure rendering methods
+    renderRailways(railways, group) {
+        railways.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'railway-feature');
+            const label = this.generateRailwayLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            const line = this.createPolyline(feature, 'railway');
+            const railwayType = feature.properties.railway;
+            
+            // Style based on railway type
+            switch (railwayType) {
+                case 'rail':
+                    line.setAttribute('stroke', '#8b4513');
+                    line.setAttribute('stroke-width', '3');
+                    break;
+                case 'subway':
+                    line.setAttribute('stroke', '#ff6600');
+                    line.setAttribute('stroke-width', '2');
+                    break;
+                case 'tram':
+                    line.setAttribute('stroke', '#00bcd4');
+                    line.setAttribute('stroke-width', '2');
+                    break;
+                case 'light_rail':
+                    line.setAttribute('stroke', '#4caf50');
+                    line.setAttribute('stroke-width', '2');
+                    break;
+                case 'monorail':
+                    line.setAttribute('stroke', '#9c27b0');
+                    line.setAttribute('stroke-width', '2');
+                    break;
+                default:
+                    line.setAttribute('stroke', '#666');
+                    line.setAttribute('stroke-width', '2');
+            }
+            
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke-dasharray', '5,5');
+            featureGroup.appendChild(line);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderAirports(airports, group) {
+        airports.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'airport-feature');
+            const label = this.generateAirportLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            const aerowayType = feature.properties.aeroway;
+            
+            if (feature.geometry.type === 'LineString') {
+                const line = this.createPolyline(feature, 'airport-way');
+                line.setAttribute('fill', 'none');
+                
+                switch (aerowayType) {
+                    case 'runway':
+                        line.setAttribute('stroke', '#666');
+                        line.setAttribute('stroke-width', '8');
+                        break;
+                    case 'taxiway':
+                        line.setAttribute('stroke', '#999');
+                        line.setAttribute('stroke-width', '4');
+                        break;
+                }
+                featureGroup.appendChild(line);
+            } else if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'airport-terminal');
+                polygon.setAttribute('fill', '#e3f2fd');
+                polygon.setAttribute('stroke', '#1976d2');
+                polygon.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'airport-point');
+                circle.setAttribute('fill', '#1976d2');
+                circle.setAttribute('stroke', '#0d47a1');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '8');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderEnhancedHighways(highways, group) {
+        highways.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'enhanced-highway-feature');
+            const label = this.generateEnhancedHighwayLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            const highwayType = feature.properties.highway;
+            
+            // Enhanced styling for major highways
+            const casing = this.createPolyline(feature, 'highway-casing');
+            const surface = this.createPolyline(feature, 'highway-surface');
+            
+            casing.setAttribute('fill', 'none');
+            surface.setAttribute('fill', 'none');
+            
+            switch (highwayType) {
+                case 'motorway':
+                    casing.setAttribute('stroke', '#8b0000');
+                    casing.setAttribute('stroke-width', '12');
+                    surface.setAttribute('stroke', '#ff4444');
+                    surface.setAttribute('stroke-width', '8');
+                    break;
+                case 'trunk':
+                    casing.setAttribute('stroke', '#b8860b');
+                    casing.setAttribute('stroke-width', '10');
+                    surface.setAttribute('stroke', '#ffd700');
+                    surface.setAttribute('stroke-width', '6');
+                    break;
+                case 'motorway_link':
+                    casing.setAttribute('stroke', '#8b0000');
+                    casing.setAttribute('stroke-width', '8');
+                    surface.setAttribute('stroke', '#ff4444');
+                    surface.setAttribute('stroke-width', '4');
+                    break;
+                case 'trunk_link':
+                    casing.setAttribute('stroke', '#b8860b');
+                    casing.setAttribute('stroke-width', '6');
+                    surface.setAttribute('stroke', '#ffd700');
+                    surface.setAttribute('stroke-width', '3');
+                    break;
+            }
+            
+            featureGroup.appendChild(casing);
+            featureGroup.appendChild(surface);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderTransitPlatforms(platforms, group) {
+        platforms.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'transit-platform-feature');
+            const label = this.generateTransitPlatformLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'transit-platform');
+                polygon.setAttribute('fill', '#fff3e0');
+                polygon.setAttribute('stroke', '#f57c00');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'LineString') {
+                const line = this.createPolyline(feature, 'transit-platform');
+                line.setAttribute('stroke', '#f57c00');
+                line.setAttribute('stroke-width', '6');
+                line.setAttribute('fill', 'none');
+                featureGroup.appendChild(line);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'transit-platform', 12, 12);
+                rect.setAttribute('fill', '#fff3e0');
+                rect.setAttribute('stroke', '#f57c00');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Label generation methods for transportation infrastructure
+    generateRailwayLabel(props) {
+        let label = '';
+        const railwayType = props.railway;
+        
+        switch (railwayType) {
+            case 'rail':
+                label = 'Railway track';
+                break;
+            case 'subway':
+                label = 'Subway line';
+                break;
+            case 'tram':
+                label = 'Tram line';
+                break;
+            case 'light_rail':
+                label = 'Light rail';
+                break;
+            case 'monorail':
+                label = 'Monorail';
+                break;
+            default:
+                label = 'Railway';
+        }
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.operator) {
+            label += ` operated by ${props.operator}`;
+        }
+        
+        return label;
+    }
+    
+    generateAirportLabel(props) {
+        let label = '';
+        const aerowayType = props.aeroway;
+        
+        switch (aerowayType) {
+            case 'runway':
+                label = 'Airport runway';
+                break;
+            case 'taxiway':
+                label = 'Airport taxiway';
+                break;
+            case 'terminal':
+                label = 'Airport terminal';
+                break;
+            default:
+                label = 'Airport facility';
+        }
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.ref) {
+            label += ` ${props.ref}`;
+        }
+        
+        return label;
+    }
+    
+    generateEnhancedHighwayLabel(props) {
+        let label = '';
+        const highwayType = props.highway;
+        
+        switch (highwayType) {
+            case 'motorway':
+                label = 'Motorway';
+                break;
+            case 'trunk':
+                label = 'Trunk road';
+                break;
+            case 'motorway_link':
+                label = 'Motorway link';
+                break;
+            case 'trunk_link':
+                label = 'Trunk road link';
+                break;
+            default:
+                label = 'Major highway';
+        }
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.ref) {
+            label += ` (${props.ref})`;
+        }
+        
+        return label;
+    }
+    
+    generateTransitPlatformLabel(props) {
+        let label = 'Transit platform';
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.public_transport === 'platform') {
+            label = 'Public transport platform';
+        } else if (props.railway === 'platform') {
+            label = 'Railway platform';
+        }
+        
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
         }
         
         return label;

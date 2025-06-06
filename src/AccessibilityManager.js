@@ -10,7 +10,13 @@ export class AccessibilityManager {
             'parks': '.park',
             'hospitals': '.hospital',
             'pharmacies': '.pharmacy',
-            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary'
+            // Transportation infrastructure
+            'railways': '.railway',
+            'airports': '.airport-way, .airport-terminal, .airport-point',
+            'enhanced-highways': '.highway-casing, .highway-surface',
+            'transit-platforms': '.transit-platform',
+            'transportation': '.road, .transit-stop, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform',
+            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform'
         };
         
         this.SVG_NS = 'http://www.w3.org/2000/svg';

@@ -34,7 +34,12 @@ export class FilterManager {
             'emergency-phones': true,
             'defibrillators': true,
             'accessible-medical': true,
-            'barriers': true
+            'barriers': true,
+            // Transportation Infrastructure
+            'railways': true,
+            'airports': true,
+            'enhanced-highways': true,
+            'transit-platforms': true
         };
         
         this.setupEventListeners();
@@ -94,7 +99,12 @@ export class FilterManager {
             'emergency-phones': '.emergency-phone',
             'defibrillators': '.defibrillator',
             'accessible-medical': '.accessible-medical',
-            'barriers': '.barrier'
+            'barriers': '.barrier',
+            // Transportation Infrastructure
+            'railways': '.railway',
+            'airports': '.airport-way, .airport-terminal, .airport-point',
+            'enhanced-highways': '.highway-casing, .highway-surface',
+            'transit-platforms': '.transit-platform'
         };
         
         const selector = classMap[featureType];

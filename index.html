@@ -220,8 +220,44 @@
                                 <span class="accordion-arrow">▼</span>
                             </button>
                             <div id="transportation-filter-content" class="filter-accordion-content" hidden>
-                                <label><input type="checkbox" id="filter-roads" checked> Roads</label>
-                                <label><input type="checkbox" id="filter-transit" checked> Transit Stops</label>
+                                <!-- Roads & Highways -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="roads-highways-content">
+                                        <span class="icon" aria-hidden="true">🛣️</span>
+                                        <span class="label">Roads & Highways</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="roads-highways-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-enhanced-highways" checked> Major Highways</label>
+                                        <label><input type="checkbox" id="filter-roads" checked> Roads</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Public Transit -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="public-transit-content">
+                                        <span class="icon" aria-hidden="true">🚌</span>
+                                        <span class="label">Public Transit</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="public-transit-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-railways" checked> Railway Systems</label>
+                                        <label><input type="checkbox" id="filter-transit" checked> Transit Stops</label>
+                                        <label><input type="checkbox" id="filter-transit-platforms" checked> Transit Platforms</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Aviation -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="aviation-content">
+                                        <span class="icon" aria-hidden="true">✈️</span>
+                                        <span class="label">Aviation</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="aviation-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-airports" checked> Airport Facilities</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </fieldset>

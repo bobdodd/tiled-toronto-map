@@ -101,6 +101,33 @@ export class OSMDataFetcher {
                 node["barrier"="bollard"](${bbox});
                 way["barrier"="fence"](${bbox});
                 way["barrier"="wall"](${bbox});
+                
+                // Transportation Infrastructure
+                // Railway systems
+                way["railway"="rail"](${bbox});
+                way["railway"="subway"](${bbox});
+                way["railway"="tram"](${bbox});
+                way["railway"="light_rail"](${bbox});
+                way["railway"="monorail"](${bbox});
+                
+                // Airport facilities
+                way["aeroway"="runway"](${bbox});
+                way["aeroway"="taxiway"](${bbox});
+                node["aeroway"="terminal"](${bbox});
+                way["aeroway"="terminal"](${bbox});
+                relation["aeroway"="terminal"](${bbox});
+                
+                // Enhanced highways
+                way["highway"="motorway"](${bbox});
+                way["highway"="trunk"](${bbox});
+                way["highway"="motorway_link"](${bbox});
+                way["highway"="trunk_link"](${bbox});
+                
+                // Transit platforms
+                node["public_transport"="platform"](${bbox});
+                way["public_transport"="platform"](${bbox});
+                node["railway"="platform"](${bbox});
+                way["railway"="platform"](${bbox});
             );
             out body;
             >;
@@ -163,7 +190,12 @@ export class OSMDataFetcher {
                 emergencyPhones: [],
                 defibrillators: [],
                 accessibleMedical: [],
-                barriers: []
+                barriers: [],
+                // Transportation Infrastructure
+                railways: [],
+                airports: [],
+                enhancedHighways: [],
+                transitPlatforms: []
             };
         }
     }
@@ -203,7 +235,12 @@ export class OSMDataFetcher {
             emergencyPhones: [],
             defibrillators: [],
             accessibleMedical: [],
-            barriers: []
+            barriers: [],
+            // Transportation Infrastructure
+            railways: [],
+            airports: [],
+            enhancedHighways: [],
+            transitPlatforms: []
         };
         
         // Create a map of nodes for reference
@@ -555,6 +592,29 @@ export class OSMDataFetcher {
                 properties: tags
             });
         }
+        
+        // Transportation Infrastructure nodes
+        if (tags.aeroway === 'terminal') {
+            features.airports.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.public_transport === 'platform' || tags.railway === 'platform') {
+            features.transitPlatforms.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
     }
     
     processWay(way, nodes, features) {
@@ -850,6 +910,89 @@ export class OSMDataFetcher {
                 },
                 properties: tags
             });
+        }
+        
+        // Transportation Infrastructure (ways)
+        // Railway systems
+        if (tags.railway === 'rail' || tags.railway === 'subway' || tags.railway === 'tram' || 
+            tags.railway === 'light_rail' || tags.railway === 'monorail') {
+            features.railways.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        // Airport facilities
+        if (tags.aeroway === 'runway' || tags.aeroway === 'taxiway') {
+            features.airports.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.aeroway === 'terminal' && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            features.airports.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [closedCoords]
+                },
+                properties: tags
+            });
+        }
+        
+        // Enhanced highways (motorways and trunk roads)
+        if (tags.highway === 'motorway' || tags.highway === 'trunk' || 
+            tags.highway === 'motorway_link' || tags.highway === 'trunk_link') {
+            features.enhancedHighways.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        // Transit platforms
+        if (tags.public_transport === 'platform' || tags.railway === 'platform') {
+            if (coordinates.length >= 3) {
+                const closedCoords = [...coordinates];
+                if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                    closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                    closedCoords.push(closedCoords[0]);
+                }
+                features.transitPlatforms.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else {
+                features.transitPlatforms.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: coordinates
+                    },
+                    properties: tags
+                });
+            }
         }
     }
     
