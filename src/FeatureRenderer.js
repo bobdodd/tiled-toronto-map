@@ -88,7 +88,12 @@ export class FeatureRenderer {
             sportsCentres: this.createGroup('sports-centres-group', 'Sports centres'),
             swimmingPools: this.createGroup('swimming-pools-group', 'Swimming pools'),
             golfCourses: this.createGroup('golf-courses-group', 'Golf courses'),
-            stadiums: this.createGroup('stadiums-group', 'Stadiums')
+            stadiums: this.createGroup('stadiums-group', 'Stadiums'),
+            // Emergency Services
+            policeStations: this.createGroup('police-stations-group', 'Police stations'),
+            fireStations: this.createGroup('fire-stations-group', 'Fire stations'),
+            emergencyPhonesCivil: this.createGroup('emergency-phones-civil-group', 'Emergency phones (civil)'),
+            emergencyDefibrillators: this.createGroup('emergency-defibrillators-group', 'Emergency defibrillators')
         };
         
         // Add groups to features container
@@ -173,6 +178,12 @@ export class FeatureRenderer {
         this.renderSwimmingPools(features.swimmingPools, groups.swimmingPools);
         this.renderGolfCourses(features.golfCourses, groups.golfCourses);
         this.renderStadiums(features.stadiums, groups.stadiums);
+        
+        // Render emergency services
+        this.renderPoliceStations(features.policeStations, groups.policeStations);
+        this.renderFireStations(features.fireStations, groups.fireStations);
+        this.renderEmergencyPhonesCivil(features.emergencyPhones, groups.emergencyPhonesCivil);
+        this.renderEmergencyDefibrillators(features.emergencyDefibrillators, groups.emergencyDefibrillators);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -2590,6 +2601,241 @@ export class FeatureRenderer {
         
         if (props.phone) {
             label += `, phone: ${props.phone}`;
+        }
+        
+        return label;
+    }
+    
+    // Emergency Services Rendering Methods
+    renderPoliceStations(policeStations, group) {
+        policeStations.forEach((feature, index) => {
+            // Create individual group for each police station
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'police-station-feature');
+            featureGroup.setAttribute('aria-label', this.generateEmergencyLabel(feature.properties, 'Police station'));
+            
+            if (feature.geometry.type === 'Polygon') {
+                // Render as polygon (building)
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                const coords = feature.geometry.coordinates[0];
+                const projectedCoords = coords.map(coord => this.mapRenderer.project(coord[1], coord[0]));
+                const points = projectedCoords.map(p => `${p.x},${p.y}`).join(' ');
+                
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('fill', '#003d82');
+                polygon.setAttribute('stroke', '#001a3a');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('class', 'police-station');
+                
+                featureGroup.appendChild(polygon);
+            } else {
+                // Render as point (shield symbol)
+                const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                
+                // Create shield shape
+                const shield = document.createElementNS(this.SVG_NS, 'path');
+                const shieldPath = `M ${point.x} ${point.y - 8} 
+                                   C ${point.x - 6} ${point.y - 8} ${point.x - 6} ${point.y - 2} ${point.x - 6} ${point.y + 2}
+                                   L ${point.x} ${point.y + 8}
+                                   L ${point.x + 6} ${point.y + 2}
+                                   C ${point.x + 6} ${point.y - 2} ${point.x + 6} ${point.y - 8} ${point.x} ${point.y - 8} Z`;
+                shield.setAttribute('d', shieldPath);
+                shield.setAttribute('fill', '#003d82');
+                shield.setAttribute('stroke', '#001a3a');
+                shield.setAttribute('stroke-width', '2');
+                shield.setAttribute('class', 'police-station');
+                
+                featureGroup.appendChild(shield);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderFireStations(fireStations, group) {
+        fireStations.forEach((feature, index) => {
+            // Create individual group for each fire station
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'fire-station-feature');
+            featureGroup.setAttribute('aria-label', this.generateEmergencyLabel(feature.properties, 'Fire station'));
+            
+            if (feature.geometry.type === 'Polygon') {
+                // Render as polygon (building)
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                const coords = feature.geometry.coordinates[0];
+                const projectedCoords = coords.map(coord => this.mapRenderer.project(coord[1], coord[0]));
+                const points = projectedCoords.map(p => `${p.x},${p.y}`).join(' ');
+                
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('fill', '#d32f2f');
+                polygon.setAttribute('stroke', '#b71c1c');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('class', 'fire-station');
+                
+                featureGroup.appendChild(polygon);
+            } else {
+                // Render as point (fire truck symbol)
+                const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                
+                // Create fire truck rectangle
+                const truck = document.createElementNS(this.SVG_NS, 'rect');
+                truck.setAttribute('x', point.x - 8);
+                truck.setAttribute('y', point.y - 4);
+                truck.setAttribute('width', '16');
+                truck.setAttribute('height', '8');
+                truck.setAttribute('fill', '#d32f2f');
+                truck.setAttribute('stroke', '#b71c1c');
+                truck.setAttribute('stroke-width', '2');
+                truck.setAttribute('class', 'fire-station');
+                
+                featureGroup.appendChild(truck);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderEmergencyPhonesCivil(emergencyPhones, group) {
+        emergencyPhones.forEach((feature, index) => {
+            // Create individual group for each emergency phone
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'emergency-phone-feature');
+            featureGroup.setAttribute('aria-label', this.generateEmergencyLabel(feature.properties, 'Emergency phone'));
+            
+            const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+            
+            // Create phone symbol (rectangle with small circle)
+            const phoneBox = document.createElementNS(this.SVG_NS, 'rect');
+            phoneBox.setAttribute('x', point.x - 4);
+            phoneBox.setAttribute('y', point.y - 6);
+            phoneBox.setAttribute('width', '8');
+            phoneBox.setAttribute('height', '12');
+            phoneBox.setAttribute('fill', '#ff6600');
+            phoneBox.setAttribute('stroke', '#e65100');
+            phoneBox.setAttribute('stroke-width', '2');
+            phoneBox.setAttribute('class', 'emergency-phone');
+            
+            const phoneCircle = document.createElementNS(this.SVG_NS, 'circle');
+            phoneCircle.setAttribute('cx', point.x);
+            phoneCircle.setAttribute('cy', point.y - 2);
+            phoneCircle.setAttribute('r', '2');
+            phoneCircle.setAttribute('fill', '#e65100');
+            phoneCircle.setAttribute('class', 'emergency-phone');
+            
+            featureGroup.appendChild(phoneBox);
+            featureGroup.appendChild(phoneCircle);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderEmergencyDefibrillators(emergencyDefibrillators, group) {
+        emergencyDefibrillators.forEach((feature, index) => {
+            // Create individual group for each defibrillator
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'emergency-defibrillator-feature');
+            featureGroup.setAttribute('aria-label', this.generateEmergencyLabel(feature.properties, 'Emergency defibrillator'));
+            
+            const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+            
+            // Create AED symbol (green cross in circle)
+            const circle = document.createElementNS(this.SVG_NS, 'circle');
+            circle.setAttribute('cx', point.x);
+            circle.setAttribute('cy', point.y);
+            circle.setAttribute('r', '8');
+            circle.setAttribute('fill', '#4caf50');
+            circle.setAttribute('stroke', '#2e7d32');
+            circle.setAttribute('stroke-width', '2');
+            circle.setAttribute('class', 'emergency-defibrillator');
+            
+            // Add cross symbol
+            const crossV = document.createElementNS(this.SVG_NS, 'rect');
+            crossV.setAttribute('x', point.x - 1);
+            crossV.setAttribute('y', point.y - 5);
+            crossV.setAttribute('width', '2');
+            crossV.setAttribute('height', '10');
+            crossV.setAttribute('fill', 'white');
+            crossV.setAttribute('class', 'emergency-defibrillator');
+            
+            const crossH = document.createElementNS(this.SVG_NS, 'rect');
+            crossH.setAttribute('x', point.x - 5);
+            crossH.setAttribute('y', point.y - 1);
+            crossH.setAttribute('width', '10');
+            crossH.setAttribute('height', '2');
+            crossH.setAttribute('fill', 'white');
+            crossH.setAttribute('class', 'emergency-defibrillator');
+            
+            featureGroup.appendChild(circle);
+            featureGroup.appendChild(crossV);
+            featureGroup.appendChild(crossH);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Label generation method for emergency services
+    generateEmergencyLabel(props, baseType) {
+        let label = baseType;
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.operator) {
+            label += ` (${props.operator})`;
+        }
+        
+        // Emergency-specific info
+        if (props.emergency) {
+            label += `, emergency type: ${props.emergency}`;
+        }
+        
+        if (props.ref) {
+            label += `, reference: ${props.ref}`;
+        }
+        
+        // Service hours
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        } else if (baseType.includes('Police') || baseType.includes('Fire')) {
+            label += ', 24/7 emergency service';
+        }
+        
+        // Accessibility
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        // Equipment info for defibrillators
+        if (baseType.includes('defibrillator')) {
+            if (props.defibrillator === 'yes') {
+                label += ', AED available';
+            }
+            if (props.access) {
+                label += `, access: ${props.access}`;
+            }
+            if (props.indoor === 'yes') {
+                label += ', located indoors';
+            } else if (props.indoor === 'no') {
+                label += ', located outdoors';
+            }
+        }
+        
+        // Location info for emergency phones
+        if (baseType.includes('phone')) {
+            if (props.covered === 'yes') {
+                label += ', covered';
+            }
+            if (props.shelter === 'yes') {
+                label += ', in shelter';
+            }
+        }
+        
+        // Contact info
+        if (props.phone) {
+            label += `, phone: ${props.phone}`;
+        }
+        
+        if (props.website) {
+            label += ', has website';
         }
         
         return label;

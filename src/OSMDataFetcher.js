@@ -206,6 +206,16 @@ export class OSMDataFetcher {
                 node["leisure"="stadium"](${bbox});
                 way["leisure"="stadium"](${bbox});
                 relation["leisure"="stadium"](${bbox});
+                
+                // Emergency Services
+                node["amenity"="police"](${bbox});
+                way["amenity"="police"](${bbox});
+                relation["amenity"="police"](${bbox});
+                node["amenity"="fire_station"](${bbox});
+                way["amenity"="fire_station"](${bbox});
+                relation["amenity"="fire_station"](${bbox});
+                node["emergency"="phone"](${bbox});
+                node["emergency"="defibrillator"](${bbox});
             );
             out body;
             >;
@@ -305,7 +315,12 @@ export class OSMDataFetcher {
                 sportsCentres: [],
                 swimmingPools: [],
                 golfCourses: [],
-                stadiums: []
+                stadiums: [],
+                // Emergency Services
+                policeStations: [],
+                fireStations: [],
+                emergencyPhones: [],
+                emergencyDefibrillators: []
             };
         }
     }
@@ -382,7 +397,12 @@ export class OSMDataFetcher {
             sportsCentres: [],
             swimmingPools: [],
             golfCourses: [],
-            stadiums: []
+            stadiums: [],
+            // Emergency Services
+            policeStations: [],
+            fireStations: [],
+            emergencyPhones: [],
+            emergencyDefibrillators: []
         };
         
         // Create a map of nodes for reference
@@ -1069,6 +1089,51 @@ export class OSMDataFetcher {
                 properties: tags
             });
         }
+        
+        // Emergency Services
+        if (tags.amenity === 'police') {
+            features.policeStations.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'fire_station') {
+            features.fireStations.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.emergency === 'phone') {
+            features.emergencyPhones.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.emergency === 'defibrillator') {
+            features.emergencyDefibrillators.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
     }
     
     processWay(way, nodes, features) {
@@ -1734,6 +1799,36 @@ export class OSMDataFetcher {
                 });
             } else if (tags.leisure === 'stadium') {
                 features.stadiums.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            }
+        }
+        
+        // Emergency Services (ways)
+        if ((tags.amenity === 'police' || tags.amenity === 'fire_station') && 
+            coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            if (tags.amenity === 'police') {
+                features.policeStations.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'fire_station') {
+                features.fireStations.push({
                     type: 'Feature',
                     geometry: {
                         type: 'Polygon',

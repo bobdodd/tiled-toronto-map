@@ -71,7 +71,12 @@ export class FilterManager {
             'sports-centres': false,
             'swimming-pools': false,
             'golf-courses': false,
-            'stadiums': false
+            'stadiums': false,
+            // Emergency Services
+            'police-stations': false,
+            'fire-stations': false,
+            'emergency-phones-civil': false,
+            'emergency-defibrillators': false
         };
         
         this.setupEventListeners();
@@ -177,7 +182,12 @@ export class FilterManager {
             'sports-centres': '.sports-centre',
             'swimming-pools': '.swimming-pool',
             'golf-courses': '.golf-course',
-            'stadiums': '.stadium'
+            'stadiums': '.stadium',
+            // Emergency Services
+            'police-stations': '.police-station',
+            'fire-stations': '.fire-station',
+            'emergency-phones-civil': '.emergency-phone',
+            'emergency-defibrillators': '.emergency-defibrillator'
         };
         
         const selector = classMap[featureType];
@@ -262,7 +272,12 @@ export class FilterManager {
             'sports-centres': 'Sports centres',
             'swimming-pools': 'Swimming pools',
             'golf-courses': 'Golf courses',
-            'stadiums': 'Stadiums'
+            'stadiums': 'Stadiums',
+            // Emergency Services
+            'police-stations': 'Police stations',
+            'fire-stations': 'Fire stations',
+            'emergency-phones-civil': 'Emergency phones',
+            'emergency-defibrillators': 'Emergency defibrillators'
         };
         
         const featureName = featureNames[featureType] || featureType;
