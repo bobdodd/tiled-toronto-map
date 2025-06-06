@@ -3,48 +3,48 @@ export class FilterManager {
         this.filters = {
             buildings: true,
             roads: true,
-            transit: true,
-            shops: true,
-            schools: true,
-            worship: true,
-            parks: true,
-            addresses: true,
+            transit: false,
+            shops: false,
+            schools: false,
+            worship: false,
+            parks: false,
+            addresses: false,
             // Healthcare features
-            hospitals: true,
-            clinics: true,
-            doctors: true,
-            dentists: true,
-            pharmacies: true,
-            veterinary: true,
+            hospitals: false,
+            clinics: false,
+            doctors: false,
+            dentists: false,
+            pharmacies: false,
+            veterinary: false,
             // Accessibility features
-            'accessible-toilets': true,
-            'accessible-parking': true,
-            'drinking-water': true,
-            'benches': true,
-            'shelters': true,
-            'crossings': true,
-            'curb-cuts': true,
-            'elevators': true,
-            'steps': true,
-            'tactile-paving': true,
-            'audio-signals': true,
-            'tactile-maps': true,
-            'digital-clocks': true,
-            'info-points': true,
-            'emergency-phones': true,
-            'defibrillators': true,
-            'accessible-medical': true,
-            'barriers': true,
+            'accessible-toilets': false,
+            'accessible-parking': false,
+            'drinking-water': false,
+            'benches': false,
+            'shelters': false,
+            'crossings': false,
+            'curb-cuts': false,
+            'elevators': false,
+            'steps': false,
+            'tactile-paving': false,
+            'audio-signals': false,
+            'tactile-maps': false,
+            'digital-clocks': false,
+            'info-points': false,
+            'emergency-phones': false,
+            'defibrillators': false,
+            'accessible-medical': false,
+            'barriers': false,
             // Transportation Infrastructure
-            'railways': true,
-            'airports': true,
-            'enhanced-highways': true,
-            'transit-platforms': true,
+            'railways': false,
+            'airports': false,
+            'enhanced-highways': false,
+            'transit-platforms': false,
             // Financial Services
-            'banks': true,
-            'atms': true,
-            'post-offices': true,
-            'currency-exchange': true
+            'banks': false,
+            'atms': false,
+            'post-offices': false,
+            'currency-exchange': false
         };
         
         this.setupEventListeners();
@@ -58,6 +58,15 @@ export class FilterManager {
                 checkbox.addEventListener('change', (e) => {
                     this.toggleFilter(filterType, e.target.checked);
                 });
+            }
+        });
+    }
+    
+    applyInitialVisibility() {
+        // Apply initial filter states to hide features that should be hidden by default
+        Object.entries(this.filters).forEach(([filterType, enabled]) => {
+            if (!enabled) {
+                this.updateVisibility(filterType, false);
             }
         });
     }
