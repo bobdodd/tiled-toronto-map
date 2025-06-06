@@ -209,7 +209,59 @@
                                 <span class="accordion-arrow">▼</span>
                             </button>
                             <div id="education-filter-content" class="filter-accordion-content" hidden>
-                                <label><input type="checkbox" id="filter-schools"> Schools</label>
+                                <!-- Education -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="education-content">
+                                        <span class="icon" aria-hidden="true">📚</span>
+                                        <span class="label">Education</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="education-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-schools"> Schools</label>
+                                        <label><input type="checkbox" id="filter-libraries"> Libraries</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Entertainment -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="entertainment-content">
+                                        <span class="icon" aria-hidden="true">🎭</span>
+                                        <span class="label">Entertainment</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="entertainment-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-cinemas"> Cinemas</label>
+                                        <label><input type="checkbox" id="filter-theatres"> Theatres</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Community & Arts -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="community-arts-content">
+                                        <span class="icon" aria-hidden="true">🎨</span>
+                                        <span class="label">Community & Arts</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="community-arts-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-community-centres"> Community Centres</label>
+                                        <label><input type="checkbox" id="filter-arts-centres"> Arts Centres</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Sports & Recreation -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="sports-recreation-content">
+                                        <span class="icon" aria-hidden="true">⚽</span>
+                                        <span class="label">Sports & Recreation</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="sports-recreation-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-sports-centres"> Sports Centres</label>
+                                        <label><input type="checkbox" id="filter-swimming-pools"> Swimming Pools</label>
+                                        <label><input type="checkbox" id="filter-golf-courses"> Golf Courses</label>
+                                        <label><input type="checkbox" id="filter-stadiums"> Stadiums</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -377,7 +429,8 @@
                             <label><input type="radio" name="rotor" value="addresses"> Addresses & Navigation</label>
                             <label><input type="radio" name="rotor" value="buildings"> Buildings & Infrastructure</label>
                             <label><input type="radio" name="rotor" value="commerce"> Commerce & Services</label>
-                            <label><input type="radio" name="rotor" value="education"> Education & Culture</label>
+                            <label><input type="radio" name="rotor" value="education"> Education</label>
+                            <label><input type="radio" name="rotor" value="entertainment"> Entertainment & Culture</label>
                             <label><input type="radio" name="rotor" value="healthcare"> Healthcare</label>
                             <label><input type="radio" name="rotor" value="recreation"> Recreation & Nature</label>
                             <label><input type="radio" name="rotor" value="tourism"> Tourism & Accommodation</label>

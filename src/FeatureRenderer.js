@@ -78,7 +78,17 @@ export class FeatureRenderer {
             museums: this.createGroup('museums-group', 'Museums'),
             galleries: this.createGroup('galleries-group', 'Art galleries'),
             viewpoints: this.createGroup('viewpoints-group', 'Scenic viewpoints'),
-            touristInfo: this.createGroup('tourist-info-group', 'Tourist information')
+            touristInfo: this.createGroup('tourist-info-group', 'Tourist information'),
+            // Entertainment & Culture
+            cinemas: this.createGroup('cinemas-group', 'Cinemas'),
+            theatres: this.createGroup('theatres-group', 'Theatres'),
+            libraries: this.createGroup('libraries-group', 'Libraries'),
+            communityCentres: this.createGroup('community-centres-group', 'Community centres'),
+            artsCentres: this.createGroup('arts-centres-group', 'Arts centres'),
+            sportsCentres: this.createGroup('sports-centres-group', 'Sports centres'),
+            swimmingPools: this.createGroup('swimming-pools-group', 'Swimming pools'),
+            golfCourses: this.createGroup('golf-courses-group', 'Golf courses'),
+            stadiums: this.createGroup('stadiums-group', 'Stadiums')
         };
         
         // Add groups to features container
@@ -152,6 +162,17 @@ export class FeatureRenderer {
         this.renderGalleries(features.galleries, groups.galleries);
         this.renderViewpoints(features.viewpoints, groups.viewpoints);
         this.renderTouristInfo(features.touristInfo, groups.touristInfo);
+        
+        // Render entertainment & culture
+        this.renderCinemas(features.cinemas, groups.cinemas);
+        this.renderTheatres(features.theatres, groups.theatres);
+        this.renderLibraries(features.libraries, groups.libraries);
+        this.renderCommunityCentres(features.communityCentres, groups.communityCentres);
+        this.renderArtsCentres(features.artsCentres, groups.artsCentres);
+        this.renderSportsCentres(features.sportsCentres, groups.sportsCentres);
+        this.renderSwimmingPools(features.swimmingPools, groups.swimmingPools);
+        this.renderGolfCourses(features.golfCourses, groups.golfCourses);
+        this.renderStadiums(features.stadiums, groups.stadiums);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -2189,6 +2210,313 @@ export class FeatureRenderer {
             
             group.appendChild(featureGroup);
         });
+    }
+    
+    // Entertainment & Culture rendering methods
+    renderCinemas(cinemas, group) {
+        cinemas.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'cinema-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Cinema');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'cinema');
+                polygon.setAttribute('fill', '#e1bee7');
+                polygon.setAttribute('stroke', '#8e24aa');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'cinema');
+                circle.setAttribute('fill', '#8e24aa');
+                circle.setAttribute('stroke', '#6a1b9a');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '9');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderTheatres(theatres, group) {
+        theatres.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'theatre-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Theatre');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'theatre');
+                polygon.setAttribute('fill', '#ffcdd2');
+                polygon.setAttribute('stroke', '#d32f2f');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'theatre', 16, 12);
+                rect.setAttribute('fill', '#d32f2f');
+                rect.setAttribute('stroke', '#b71c1c');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderLibraries(libraries, group) {
+        libraries.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'library-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Library');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'library');
+                polygon.setAttribute('fill', '#e8f5e8');
+                polygon.setAttribute('stroke', '#2e7d32');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'library', 12, 15);
+                rect.setAttribute('fill', '#2e7d32');
+                rect.setAttribute('stroke', '#1b5e20');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCommunityCentres(centres, group) {
+        centres.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'community-centre-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Community centre');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'community-centre');
+                polygon.setAttribute('fill', '#e3f2fd');
+                polygon.setAttribute('stroke', '#1565c0');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'community-centre');
+                circle.setAttribute('fill', '#1565c0');
+                circle.setAttribute('stroke', '#0d47a1');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '10');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderArtsCentres(centres, group) {
+        centres.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'arts-centre-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Arts centre');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'arts-centre');
+                polygon.setAttribute('fill', '#fce4ec');
+                polygon.setAttribute('stroke', '#c2185b');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const diamond = this.createDiamond(feature, 'arts-centre', 9);
+                diamond.setAttribute('fill', '#c2185b');
+                diamond.setAttribute('stroke', '#880e4f');
+                diamond.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(diamond);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderSportsCentres(centres, group) {
+        centres.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'sports-centre-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Sports centre');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'sports-centre');
+                polygon.setAttribute('fill', '#fff3e0');
+                polygon.setAttribute('stroke', '#ef6c00');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'sports-centre', 14, 14);
+                rect.setAttribute('fill', '#ef6c00');
+                rect.setAttribute('stroke', '#e65100');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderSwimmingPools(pools, group) {
+        pools.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'swimming-pool-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Swimming pool');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'swimming-pool');
+                polygon.setAttribute('fill', '#e0f2f1');
+                polygon.setAttribute('stroke', '#00695c');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'swimming-pool');
+                circle.setAttribute('fill', '#00695c');
+                circle.setAttribute('stroke', '#004d40');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '8');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderGolfCourses(courses, group) {
+        courses.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'golf-course-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Golf course');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'golf-course');
+                polygon.setAttribute('fill', '#f1f8e9');
+                polygon.setAttribute('stroke', '#689f38');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'golf-course');
+                circle.setAttribute('fill', '#689f38');
+                circle.setAttribute('stroke', '#33691e');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '12');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderStadiums(stadiums, group) {
+        stadiums.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'stadium-feature');
+            const label = this.generateEntertainmentLabel(feature.properties, 'Stadium');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'stadium');
+                polygon.setAttribute('fill', '#ffebee');
+                polygon.setAttribute('stroke', '#d84315');
+                polygon.setAttribute('stroke-width', '3');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'stadium');
+                circle.setAttribute('fill', '#d84315');
+                circle.setAttribute('stroke', '#bf360c');
+                circle.setAttribute('stroke-width', '3');
+                circle.setAttribute('r', '15');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Label generation method for entertainment features
+    generateEntertainmentLabel(props, baseType) {
+        let label = baseType;
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.operator || props.brand) {
+            label += ` (${props.operator || props.brand})`;
+        }
+        
+        // Entertainment-specific info
+        if (props.screen) {
+            label += `, ${props.screen} screens`;
+        }
+        
+        if (props.capacity) {
+            label += `, capacity: ${props.capacity}`;
+        }
+        
+        if (props.sport) {
+            label += `, sport: ${props.sport}`;
+        }
+        
+        if (props.leisure_centre) {
+            label += `, leisure centre type: ${props.leisure_centre}`;
+        }
+        
+        if (props.access && props.access !== 'yes') {
+            label += `, access: ${props.access}`;
+        }
+        
+        // Accessibility and services
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        if (props.internet_access === 'wlan' || props.wifi === 'yes') {
+            label += ', WiFi available';
+        }
+        
+        if (props.parking === 'yes') {
+            label += ', parking available';
+        }
+        
+        if (props.fee === 'yes') {
+            label += ', admission fee required';
+        } else if (props.fee === 'no') {
+            label += ', free admission';
+        }
+        
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        }
+        
+        if (props.website) {
+            label += ', has website';
+        }
+        
+        if (props.phone) {
+            label += `, phone: ${props.phone}`;
+        }
+        
+        return label;
     }
     
     // Label generation method for tourism features

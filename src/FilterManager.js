@@ -61,7 +61,17 @@ export class FilterManager {
             'museums': false,
             'galleries': false,
             'viewpoints': false,
-            'tourist-info': false
+            'tourist-info': false,
+            // Entertainment & Culture
+            'cinemas': false,
+            'theatres': false,
+            'libraries': false,
+            'community-centres': false,
+            'arts-centres': false,
+            'sports-centres': false,
+            'swimming-pools': false,
+            'golf-courses': false,
+            'stadiums': false
         };
         
         this.setupEventListeners();
@@ -157,7 +167,17 @@ export class FilterManager {
             'museums': '.museum',
             'galleries': '.gallery',
             'viewpoints': '.viewpoint',
-            'tourist-info': '.tourist-info'
+            'tourist-info': '.tourist-info',
+            // Entertainment & Culture
+            'cinemas': '.cinema',
+            'theatres': '.theatre',
+            'libraries': '.library',
+            'community-centres': '.community-centre',
+            'arts-centres': '.arts-centre',
+            'sports-centres': '.sports-centre',
+            'swimming-pools': '.swimming-pool',
+            'golf-courses': '.golf-course',
+            'stadiums': '.stadium'
         };
         
         const selector = classMap[featureType];
@@ -232,7 +252,17 @@ export class FilterManager {
             'museums': 'Museums',
             'galleries': 'Art galleries',
             'viewpoints': 'Scenic viewpoints',
-            'tourist-info': 'Tourist information'
+            'tourist-info': 'Tourist information',
+            // Entertainment & Culture
+            'cinemas': 'Cinemas',
+            'theatres': 'Theatres',
+            'libraries': 'Libraries',
+            'community-centres': 'Community centres',
+            'arts-centres': 'Arts centres',
+            'sports-centres': 'Sports centres',
+            'swimming-pools': 'Swimming pools',
+            'golf-courses': 'Golf courses',
+            'stadiums': 'Stadiums'
         };
         
         const featureName = featureNames[featureType] || featureType;

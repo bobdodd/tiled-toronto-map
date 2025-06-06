@@ -177,6 +177,35 @@ export class OSMDataFetcher {
                 node["tourism"="viewpoint"](${bbox});
                 node["tourism"="information"](${bbox});
                 way["tourism"="information"](${bbox});
+                
+                // Entertainment & Culture
+                node["amenity"="cinema"](${bbox});
+                way["amenity"="cinema"](${bbox});
+                relation["amenity"="cinema"](${bbox});
+                node["amenity"="theatre"](${bbox});
+                way["amenity"="theatre"](${bbox});
+                relation["amenity"="theatre"](${bbox});
+                node["amenity"="library"](${bbox});
+                way["amenity"="library"](${bbox});
+                relation["amenity"="library"](${bbox});
+                node["amenity"="community_centre"](${bbox});
+                way["amenity"="community_centre"](${bbox});
+                relation["amenity"="community_centre"](${bbox});
+                node["amenity"="arts_centre"](${bbox});
+                way["amenity"="arts_centre"](${bbox});
+                relation["amenity"="arts_centre"](${bbox});
+                node["leisure"="sports_centre"](${bbox});
+                way["leisure"="sports_centre"](${bbox});
+                relation["leisure"="sports_centre"](${bbox});
+                node["leisure"="swimming_pool"](${bbox});
+                way["leisure"="swimming_pool"](${bbox});
+                relation["leisure"="swimming_pool"](${bbox});
+                node["leisure"="golf_course"](${bbox});
+                way["leisure"="golf_course"](${bbox});
+                relation["leisure"="golf_course"](${bbox});
+                node["leisure"="stadium"](${bbox});
+                way["leisure"="stadium"](${bbox});
+                relation["leisure"="stadium"](${bbox});
             );
             out body;
             >;
@@ -266,7 +295,17 @@ export class OSMDataFetcher {
                 museums: [],
                 galleries: [],
                 viewpoints: [],
-                touristInfo: []
+                touristInfo: [],
+                // Entertainment & Culture
+                cinemas: [],
+                theatres: [],
+                libraries: [],
+                communityCentres: [],
+                artsCentres: [],
+                sportsCentres: [],
+                swimmingPools: [],
+                golfCourses: [],
+                stadiums: []
             };
         }
     }
@@ -333,7 +372,17 @@ export class OSMDataFetcher {
             museums: [],
             galleries: [],
             viewpoints: [],
-            touristInfo: []
+            touristInfo: [],
+            // Entertainment & Culture
+            cinemas: [],
+            theatres: [],
+            libraries: [],
+            communityCentres: [],
+            artsCentres: [],
+            sportsCentres: [],
+            swimmingPools: [],
+            golfCourses: [],
+            stadiums: []
         };
         
         // Create a map of nodes for reference
@@ -920,6 +969,106 @@ export class OSMDataFetcher {
                 properties: tags
             });
         }
+        
+        // Entertainment & Culture features
+        if (tags.amenity === 'cinema') {
+            features.cinemas.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'theatre') {
+            features.theatres.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'library') {
+            features.libraries.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'community_centre') {
+            features.communityCentres.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'arts_centre') {
+            features.artsCentres.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.leisure === 'sports_centre') {
+            features.sportsCentres.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.leisure === 'swimming_pool') {
+            features.swimmingPools.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.leisure === 'golf_course') {
+            features.golfCourses.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.leisure === 'stadium') {
+            features.stadiums.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
     }
     
     processWay(way, nodes, features) {
@@ -1487,6 +1636,104 @@ export class OSMDataFetcher {
                 });
             } else if (tags.tourism === 'information') {
                 features.touristInfo.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            }
+        }
+        
+        // Entertainment & Culture (ways)
+        if ((tags.amenity === 'cinema' || tags.amenity === 'theatre' || 
+             tags.amenity === 'library' || tags.amenity === 'community_centre' || 
+             tags.amenity === 'arts_centre' || tags.leisure === 'sports_centre' || 
+             tags.leisure === 'swimming_pool' || tags.leisure === 'golf_course' || 
+             tags.leisure === 'stadium') && 
+            coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            // Determine which entertainment category to add to
+            if (tags.amenity === 'cinema') {
+                features.cinemas.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'theatre') {
+                features.theatres.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'library') {
+                features.libraries.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'community_centre') {
+                features.communityCentres.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'arts_centre') {
+                features.artsCentres.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.leisure === 'sports_centre') {
+                features.sportsCentres.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.leisure === 'swimming_pool') {
+                features.swimmingPools.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.leisure === 'golf_course') {
+                features.golfCourses.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.leisure === 'stadium') {
+                features.stadiums.push({
                     type: 'Feature',
                     geometry: {
                         type: 'Polygon',
