@@ -9,6 +9,13 @@ export class FilterManager {
             worship: true,
             parks: true,
             addresses: true,
+            // Healthcare features
+            hospitals: true,
+            clinics: true,
+            doctors: true,
+            dentists: true,
+            pharmacies: true,
+            veterinary: true,
             // Accessibility features
             'accessible-toilets': true,
             'accessible-parking': true,
@@ -62,6 +69,13 @@ export class FilterManager {
             worship: '.worship',
             parks: '.park',
             addresses: '.address',
+            // Healthcare features
+            hospitals: '.hospital',
+            clinics: '.clinic',
+            doctors: '.doctor',
+            dentists: '.dentist',
+            pharmacies: '.pharmacy',
+            veterinary: '.veterinary',
             // Accessibility features
             'accessible-toilets': '.accessible-toilet',
             'accessible-parking': '.accessible-parking',
@@ -103,6 +117,13 @@ export class FilterManager {
             worship: 'Places of worship',
             parks: 'Parks and recreation',
             addresses: 'Addresses',
+            // Healthcare features
+            hospitals: 'Hospitals',
+            clinics: 'Clinics',
+            doctors: 'Doctors',
+            dentists: 'Dentists',
+            pharmacies: 'Pharmacies',
+            veterinary: 'Veterinary clinics',
             // Accessibility features
             'accessible-toilets': 'Accessible toilets',
             'accessible-parking': 'Accessible parking',

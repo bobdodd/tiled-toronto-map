@@ -171,6 +171,23 @@
                             </div>
                         </div>
                         
+                        <!-- Healthcare -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="healthcare-filter-content">
+                                <span class="icon" aria-hidden="true">🏥</span>
+                                <span class="label">Healthcare</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="healthcare-filter-content" class="filter-accordion-content" hidden>
+                                <label><input type="checkbox" id="filter-clinics" checked> Clinics</label>
+                                <label><input type="checkbox" id="filter-dentists" checked> Dentists</label>
+                                <label><input type="checkbox" id="filter-doctors" checked> Doctors</label>
+                                <label><input type="checkbox" id="filter-hospitals" checked> Hospitals</label>
+                                <label><input type="checkbox" id="filter-pharmacies" checked> Pharmacies</label>
+                                <label><input type="checkbox" id="filter-veterinary" checked> Veterinary</label>
+                            </div>
+                        </div>
+                        
                         <!-- Places of Worship -->
                         <div class="filter-accordion-item">
                             <button class="filter-accordion-header" aria-expanded="false" aria-controls="worship-filter-content">
@@ -231,6 +248,7 @@
                             <label><input type="radio" name="rotor" value="buildings"> Buildings & Infrastructure</label>
                             <label><input type="radio" name="rotor" value="commerce"> Commerce & Services</label>
                             <label><input type="radio" name="rotor" value="education"> Education & Culture</label>
+                            <label><input type="radio" name="rotor" value="healthcare"> Healthcare</label>
                             <label><input type="radio" name="rotor" value="worship"> Places of Worship</label>
                             <label><input type="radio" name="rotor" value="recreation"> Recreation & Nature</label>
                             <label><input type="radio" name="rotor" value="transportation"> Transportation</label>
@@ -239,7 +257,9 @@
                         <!-- Individual Feature Types -->
                         <div class="rotor-category">
                             <h4 class="rotor-category-title">By Feature Type</h4>
+                            <label><input type="radio" name="rotor" value="hospitals"> Hospitals only</label>
                             <label><input type="radio" name="rotor" value="parks"> Parks only</label>
+                            <label><input type="radio" name="rotor" value="pharmacies"> Pharmacies only</label>
                             <label><input type="radio" name="rotor" value="schools"> Schools only</label>
                             <label><input type="radio" name="rotor" value="shops"> Shops only</label>
                             <label><input type="radio" name="rotor" value="transit"> Transit stops only</label>

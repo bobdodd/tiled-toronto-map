@@ -8,7 +8,9 @@ export class AccessibilityManager {
             'schools': '.school',
             'worship': '.worship',
             'parks': '.park',
-            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address'
+            'hospitals': '.hospital',
+            'pharmacies': '.pharmacy',
+            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary'
         };
         
         this.SVG_NS = 'http://www.w3.org/2000/svg';
@@ -108,6 +110,7 @@ export class AccessibilityManager {
             if (element.classList.contains('road-casing')) return false;
             const featureClasses = [
                 'building', 'road', 'transit-stop', 'shop', 'school', 'worship', 'park', 'address',
+                'hospital', 'clinic', 'doctor', 'dentist', 'pharmacy', 'veterinary',
                 'accessible-toilet', 'accessible-parking', 'drinking-water', 'bench', 'shelter',
                 'crossing', 'curb-cut', 'elevator', 'steps', 'tactile-paving', 'audio-signal',
                 'tactile-map', 'digital-clock', 'info-point', 'emergency-phone', 'defibrillator',
@@ -246,7 +249,10 @@ export class AccessibilityManager {
             'recreation': '.park-feature',
             'worship': '.worship-feature',
             'addresses': '.address-feature',
+            'healthcare': '.hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature',
             // Individual feature types
+            'hospitals': '.hospital-feature',
+            'pharmacies': '.pharmacy-feature',
             'transit': '.transit-feature',
             'shops': '.shop-feature',
             'schools': '.school-feature',
@@ -256,7 +262,7 @@ export class AccessibilityManager {
             'essential-navigation': '.crossing-feature, .curb-cut-feature, .elevator-feature, .tactile-paving-feature',
             'public-facilities': '.accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature',
             'emergency-features': '.emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature',
-            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature'
+            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature'
         };
         
         const selector = featureSelectors[this.currentRotor];

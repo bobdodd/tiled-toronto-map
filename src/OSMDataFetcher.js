@@ -44,6 +44,23 @@ export class OSMDataFetcher {
                 node["amenity"="place_of_worship"](${bbox});
                 way["amenity"="place_of_worship"](${bbox});
                 
+                // Healthcare facilities
+                node["amenity"="hospital"](${bbox});
+                way["amenity"="hospital"](${bbox});
+                relation["amenity"="hospital"](${bbox});
+                node["amenity"="clinic"](${bbox});
+                way["amenity"="clinic"](${bbox});
+                node["amenity"="doctors"](${bbox});
+                way["amenity"="doctors"](${bbox});
+                node["amenity"="dentist"](${bbox});
+                way["amenity"="dentist"](${bbox});
+                node["amenity"="pharmacy"](${bbox});
+                way["amenity"="pharmacy"](${bbox});
+                node["amenity"="veterinary"](${bbox});
+                way["amenity"="veterinary"](${bbox});
+                node["healthcare"](${bbox});
+                way["healthcare"](${bbox});
+                
                 // Parks and recreation
                 way["leisure"~"^(park|playground|garden|sports_centre|pitch)$"](${bbox});
                 relation["leisure"~"^(park|playground|garden)$"](${bbox});
@@ -121,6 +138,13 @@ export class OSMDataFetcher {
                 worship: [],
                 parks: [],
                 addresses: [],
+                // Healthcare features
+                hospitals: [],
+                clinics: [],
+                doctors: [],
+                dentists: [],
+                pharmacies: [],
+                veterinary: [],
                 // Accessibility features
                 accessibleToilets: [],
                 accessibleParking: [],
@@ -154,6 +178,13 @@ export class OSMDataFetcher {
             worship: [],
             parks: [],
             addresses: [],
+            // Healthcare features
+            hospitals: [],
+            clinics: [],
+            doctors: [],
+            dentists: [],
+            pharmacies: [],
+            veterinary: [],
             // Accessibility features
             accessibleToilets: [],
             accessibleParking: [],
@@ -238,6 +269,73 @@ export class OSMDataFetcher {
         // Places of worship
         if (tags.amenity === 'place_of_worship') {
             features.worship.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        // Healthcare facilities
+        if (tags.amenity === 'hospital') {
+            features.hospitals.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'clinic') {
+            features.clinics.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'doctors') {
+            features.doctors.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'dentist') {
+            features.dentists.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'pharmacy') {
+            features.pharmacies.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'veterinary') {
+            features.veterinary.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Point',
@@ -601,6 +699,75 @@ export class OSMDataFetcher {
                 },
                 properties: tags
             });
+        }
+        
+        // Healthcare facilities (polygon)
+        if ((tags.amenity === 'hospital' || tags.amenity === 'clinic' || 
+             tags.amenity === 'doctors' || tags.amenity === 'dentist' || 
+             tags.amenity === 'pharmacy' || tags.amenity === 'veterinary') && 
+            coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            // Determine which healthcare category to add to
+            if (tags.amenity === 'hospital') {
+                features.hospitals.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'clinic') {
+                features.clinics.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'doctors') {
+                features.doctors.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'dentist') {
+                features.dentists.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'pharmacy') {
+                features.pharmacies.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'veterinary') {
+                features.veterinary.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            }
         }
         
         // Accessibility features (ways)

@@ -26,6 +26,13 @@ export class FeatureRenderer {
             worship: this.createGroup('worship-group', 'Places of worship'),
             parks: this.createGroup('parks-group', 'Parks and recreation'),
             addresses: this.createGroup('addresses-group', 'Addresses'),
+            // Healthcare features
+            hospitals: this.createGroup('hospitals-group', 'Hospitals'),
+            clinics: this.createGroup('clinics-group', 'Clinics'),
+            doctors: this.createGroup('doctors-group', 'Doctors'),
+            dentists: this.createGroup('dentists-group', 'Dentists'),
+            pharmacies: this.createGroup('pharmacies-group', 'Pharmacies'),
+            veterinary: this.createGroup('veterinary-group', 'Veterinary'),
             // Accessibility features
             accessibleToilets: this.createGroup('accessible-toilets-group', 'Accessible toilets'),
             accessibleParking: this.createGroup('accessible-parking-group', 'Accessible parking'),
@@ -59,6 +66,14 @@ export class FeatureRenderer {
         this.renderSchools(features.schools, groups.schools);
         this.renderWorship(features.worship, groups.worship);
         this.renderAddresses(features.addresses, groups.addresses);
+        
+        // Render healthcare features
+        this.renderHospitals(features.hospitals, groups.hospitals);
+        this.renderClinics(features.clinics, groups.clinics);
+        this.renderDoctors(features.doctors, groups.doctors);
+        this.renderDentists(features.dentists, groups.dentists);
+        this.renderPharmacies(features.pharmacies, groups.pharmacies);
+        this.renderVeterinary(features.veterinary, groups.veterinary);
         
         // Render accessibility features
         this.renderAccessibleToilets(features.accessibleToilets, groups.accessibleToilets);
@@ -954,6 +969,197 @@ export class FeatureRenderer {
         
         if (props.opening_hours) {
             label += `, hours: ${props.opening_hours}`;
+        }
+        
+        return label;
+    }
+    
+    // Healthcare feature rendering methods
+    renderHospitals(hospitals, group) {
+        hospitals.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'hospital-feature');
+            const label = this.generateHealthcareLabel(feature.properties, 'Hospital');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'hospital');
+                circle.setAttribute('fill', '#dc3545');
+                circle.setAttribute('stroke', '#c82333');
+                circle.setAttribute('stroke-width', '3');
+                circle.setAttribute('r', '10');
+                featureGroup.appendChild(circle);
+            } else {
+                const polygon = this.createPolygon(feature, 'hospital');
+                polygon.setAttribute('fill', '#f8d7da');
+                polygon.setAttribute('stroke', '#dc3545');
+                polygon.setAttribute('stroke-width', '3');
+                featureGroup.appendChild(polygon);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderClinics(clinics, group) {
+        clinics.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'clinic-feature');
+            const label = this.generateHealthcareLabel(feature.properties, 'Clinic');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'clinic');
+                circle.setAttribute('fill', '#007bff');
+                circle.setAttribute('stroke', '#0056b3');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '8');
+                featureGroup.appendChild(circle);
+            } else {
+                const polygon = this.createPolygon(feature, 'clinic');
+                polygon.setAttribute('fill', '#d1ecf1');
+                polygon.setAttribute('stroke', '#007bff');
+                polygon.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(polygon);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderDoctors(doctors, group) {
+        doctors.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'doctor-feature');
+            const label = this.generateHealthcareLabel(feature.properties, 'Doctor');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'doctor');
+                circle.setAttribute('fill', '#28a745');
+                circle.setAttribute('stroke', '#1e7e34');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '7');
+                featureGroup.appendChild(circle);
+            } else {
+                const polygon = this.createPolygon(feature, 'doctor');
+                polygon.setAttribute('fill', '#d4edda');
+                polygon.setAttribute('stroke', '#28a745');
+                polygon.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(polygon);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderDentists(dentists, group) {
+        dentists.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'dentist-feature');
+            const label = this.generateHealthcareLabel(feature.properties, 'Dentist');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'dentist');
+                circle.setAttribute('fill', '#17a2b8');
+                circle.setAttribute('stroke', '#138496');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '7');
+                featureGroup.appendChild(circle);
+            } else {
+                const polygon = this.createPolygon(feature, 'dentist');
+                polygon.setAttribute('fill', '#d1ecf1');
+                polygon.setAttribute('stroke', '#17a2b8');
+                polygon.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(polygon);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderPharmacies(pharmacies, group) {
+        pharmacies.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'pharmacy-feature');
+            const label = this.generateHealthcareLabel(feature.properties, 'Pharmacy');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'pharmacy');
+                circle.setAttribute('fill', '#20c997');
+                circle.setAttribute('stroke', '#17a085');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '8');
+                featureGroup.appendChild(circle);
+            } else {
+                const polygon = this.createPolygon(feature, 'pharmacy');
+                polygon.setAttribute('fill', '#d1f2eb');
+                polygon.setAttribute('stroke', '#20c997');
+                polygon.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(polygon);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderVeterinary(veterinary, group) {
+        veterinary.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'veterinary-feature');
+            const label = this.generateHealthcareLabel(feature.properties, 'Veterinary');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'veterinary');
+                circle.setAttribute('fill', '#fd7e14');
+                circle.setAttribute('stroke', '#dc6402');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '7');
+                featureGroup.appendChild(circle);
+            } else {
+                const polygon = this.createPolygon(feature, 'veterinary');
+                polygon.setAttribute('fill', '#ffeaa7');
+                polygon.setAttribute('stroke', '#fd7e14');
+                polygon.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(polygon);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    generateHealthcareLabel(props, baseType) {
+        let label = props.name || baseType;
+        
+        if (props.operator) {
+            label += `, operated by ${props.operator}`;
+        }
+        
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        }
+        
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        } else if (props.wheelchair === 'no') {
+            label += ', not wheelchair accessible';
+        } else if (props.wheelchair === 'limited') {
+            label += ', limited wheelchair access';
+        }
+        
+        if (props.phone) {
+            label += `, phone: ${props.phone}`;
+        }
+        
+        if (props.website) {
+            label += ', has website';
+        }
+        
+        if (props.emergency === 'yes') {
+            label += ', emergency services available';
         }
         
         return label;
