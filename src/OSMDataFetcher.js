@@ -154,6 +154,29 @@ export class OSMDataFetcher {
                 way["amenity"="pub"](${bbox});
                 node["amenity"="food_court"](${bbox});
                 way["amenity"="food_court"](${bbox});
+                
+                // Accommodation & Tourism
+                node["tourism"="hotel"](${bbox});
+                way["tourism"="hotel"](${bbox});
+                relation["tourism"="hotel"](${bbox});
+                node["tourism"="hostel"](${bbox});
+                way["tourism"="hostel"](${bbox});
+                node["tourism"="guest_house"](${bbox});
+                way["tourism"="guest_house"](${bbox});
+                node["tourism"="camp_site"](${bbox});
+                way["tourism"="camp_site"](${bbox});
+                relation["tourism"="camp_site"](${bbox});
+                node["tourism"="attraction"](${bbox});
+                way["tourism"="attraction"](${bbox});
+                relation["tourism"="attraction"](${bbox});
+                node["tourism"="museum"](${bbox});
+                way["tourism"="museum"](${bbox});
+                relation["tourism"="museum"](${bbox});
+                node["tourism"="gallery"](${bbox});
+                way["tourism"="gallery"](${bbox});
+                node["tourism"="viewpoint"](${bbox});
+                node["tourism"="information"](${bbox});
+                way["tourism"="information"](${bbox});
             );
             out body;
             >;
@@ -233,7 +256,17 @@ export class OSMDataFetcher {
                 fastFood: [],
                 bars: [],
                 pubs: [],
-                foodCourts: []
+                foodCourts: [],
+                // Accommodation & Tourism
+                hotels: [],
+                hostels: [],
+                guestHouses: [],
+                campsites: [],
+                attractions: [],
+                museums: [],
+                galleries: [],
+                viewpoints: [],
+                touristInfo: []
             };
         }
     }
@@ -290,7 +323,17 @@ export class OSMDataFetcher {
             fastFood: [],
             bars: [],
             pubs: [],
-            foodCourts: []
+            foodCourts: [],
+            // Accommodation & Tourism
+            hotels: [],
+            hostels: [],
+            guestHouses: [],
+            campsites: [],
+            attractions: [],
+            museums: [],
+            galleries: [],
+            viewpoints: [],
+            touristInfo: []
         };
         
         // Create a map of nodes for reference
@@ -769,6 +812,106 @@ export class OSMDataFetcher {
         
         if (tags.amenity === 'food_court') {
             features.foodCourts.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        // Accommodation & Tourism nodes
+        if (tags.tourism === 'hotel') {
+            features.hotels.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'hostel') {
+            features.hostels.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'guest_house') {
+            features.guestHouses.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'camp_site') {
+            features.campsites.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'attraction') {
+            features.attractions.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'museum') {
+            features.museums.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'gallery') {
+            features.galleries.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'viewpoint') {
+            features.viewpoints.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.tourism === 'information') {
+            features.touristInfo.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Point',
@@ -1256,6 +1399,94 @@ export class OSMDataFetcher {
                 });
             } else if (tags.amenity === 'food_court') {
                 features.foodCourts.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            }
+        }
+        
+        // Accommodation & Tourism (ways)
+        if ((tags.tourism === 'hotel' || tags.tourism === 'hostel' || 
+             tags.tourism === 'guest_house' || tags.tourism === 'camp_site' || 
+             tags.tourism === 'attraction' || tags.tourism === 'museum' || 
+             tags.tourism === 'gallery' || tags.tourism === 'information') && 
+            coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            // Determine which tourism category to add to
+            if (tags.tourism === 'hotel') {
+                features.hotels.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.tourism === 'hostel') {
+                features.hostels.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.tourism === 'guest_house') {
+                features.guestHouses.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.tourism === 'camp_site') {
+                features.campsites.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.tourism === 'attraction') {
+                features.attractions.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.tourism === 'museum') {
+                features.museums.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.tourism === 'gallery') {
+                features.galleries.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.tourism === 'information') {
+                features.touristInfo.push({
                     type: 'Feature',
                     geometry: {
                         type: 'Polygon',

@@ -51,7 +51,17 @@ export class FilterManager {
             'fast-food': false,
             'bars': false,
             'pubs': false,
-            'food-courts': false
+            'food-courts': false,
+            // Accommodation & Tourism
+            'hotels': false,
+            'hostels': false,
+            'guest-houses': false,
+            'campsites': false,
+            'attractions': false,
+            'museums': false,
+            'galleries': false,
+            'viewpoints': false,
+            'tourist-info': false
         };
         
         this.setupEventListeners();
@@ -137,7 +147,17 @@ export class FilterManager {
             'fast-food': '.fast-food',
             'bars': '.bar',
             'pubs': '.pub',
-            'food-courts': '.food-court'
+            'food-courts': '.food-court',
+            // Accommodation & Tourism
+            'hotels': '.hotel',
+            'hostels': '.hostel',
+            'guest-houses': '.guest-house',
+            'campsites': '.campsite',
+            'attractions': '.attraction',
+            'museums': '.museum',
+            'galleries': '.gallery',
+            'viewpoints': '.viewpoint',
+            'tourist-info': '.tourist-info'
         };
         
         const selector = classMap[featureType];
@@ -202,7 +222,17 @@ export class FilterManager {
             'fast-food': 'Fast food',
             'bars': 'Bars',
             'pubs': 'Pubs',
-            'food-courts': 'Food courts'
+            'food-courts': 'Food courts',
+            // Accommodation & Tourism
+            'hotels': 'Hotels',
+            'hostels': 'Hostels',
+            'guest-houses': 'Guest houses',
+            'campsites': 'Campsites',
+            'attractions': 'Tourist attractions',
+            'museums': 'Museums',
+            'galleries': 'Art galleries',
+            'viewpoints': 'Scenic viewpoints',
+            'tourist-info': 'Tourist information'
         };
         
         const featureName = featureNames[featureType] || featureType;

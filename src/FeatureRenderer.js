@@ -68,7 +68,17 @@ export class FeatureRenderer {
             fastFood: this.createGroup('fast-food-group', 'Fast food'),
             bars: this.createGroup('bars-group', 'Bars'),
             pubs: this.createGroup('pubs-group', 'Pubs'),
-            foodCourts: this.createGroup('food-courts-group', 'Food courts')
+            foodCourts: this.createGroup('food-courts-group', 'Food courts'),
+            // Accommodation & Tourism
+            hotels: this.createGroup('hotels-group', 'Hotels'),
+            hostels: this.createGroup('hostels-group', 'Hostels'),
+            guestHouses: this.createGroup('guest-houses-group', 'Guest houses'),
+            campsites: this.createGroup('campsites-group', 'Campsites'),
+            attractions: this.createGroup('attractions-group', 'Tourist attractions'),
+            museums: this.createGroup('museums-group', 'Museums'),
+            galleries: this.createGroup('galleries-group', 'Art galleries'),
+            viewpoints: this.createGroup('viewpoints-group', 'Scenic viewpoints'),
+            touristInfo: this.createGroup('tourist-info-group', 'Tourist information')
         };
         
         // Add groups to features container
@@ -131,6 +141,17 @@ export class FeatureRenderer {
         this.renderBars(features.bars, groups.bars);
         this.renderPubs(features.pubs, groups.pubs);
         this.renderFoodCourts(features.foodCourts, groups.foodCourts);
+        
+        // Render accommodation & tourism
+        this.renderHotels(features.hotels, groups.hotels);
+        this.renderHostels(features.hostels, groups.hostels);
+        this.renderGuestHouses(features.guestHouses, groups.guestHouses);
+        this.renderCampsites(features.campsites, groups.campsites);
+        this.renderAttractions(features.attractions, groups.attractions);
+        this.renderMuseums(features.museums, groups.museums);
+        this.renderGalleries(features.galleries, groups.galleries);
+        this.renderViewpoints(features.viewpoints, groups.viewpoints);
+        this.renderTouristInfo(features.touristInfo, groups.touristInfo);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -1935,6 +1956,312 @@ export class FeatureRenderer {
         
         if (props.opening_hours) {
             label += `, hours: ${props.opening_hours}`;
+        }
+        
+        return label;
+    }
+    
+    // Accommodation & Tourism rendering methods
+    renderHotels(hotels, group) {
+        hotels.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'hotel-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Hotel');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'hotel');
+                polygon.setAttribute('fill', '#e1f5fe');
+                polygon.setAttribute('stroke', '#0277bd');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'hotel', 12, 12);
+                rect.setAttribute('fill', '#0277bd');
+                rect.setAttribute('stroke', '#01579b');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderHostels(hostels, group) {
+        hostels.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'hostel-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Hostel');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'hostel');
+                polygon.setAttribute('fill', '#f3e5f5');
+                polygon.setAttribute('stroke', '#7b1fa2');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'hostel');
+                circle.setAttribute('fill', '#7b1fa2');
+                circle.setAttribute('stroke', '#4a148c');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '8');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderGuestHouses(guestHouses, group) {
+        guestHouses.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'guest-house-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Guest house');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'guest-house');
+                polygon.setAttribute('fill', '#fff3e0');
+                polygon.setAttribute('stroke', '#ff8f00');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const triangle = this.createTriangle(feature, 'guest-house', 8);
+                triangle.setAttribute('fill', '#ff8f00');
+                triangle.setAttribute('stroke', '#e65100');
+                triangle.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(triangle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCampsites(campsites, group) {
+        campsites.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'campsite-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Campsite');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'campsite');
+                polygon.setAttribute('fill', '#e8f5e8');
+                polygon.setAttribute('stroke', '#388e3c');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const diamond = this.createDiamond(feature, 'campsite', 8);
+                diamond.setAttribute('fill', '#388e3c');
+                diamond.setAttribute('stroke', '#1b5e20');
+                diamond.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(diamond);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderAttractions(attractions, group) {
+        attractions.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'attraction-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Tourist attraction');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'attraction');
+                polygon.setAttribute('fill', '#fce4ec');
+                polygon.setAttribute('stroke', '#e91e63');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'attraction');
+                circle.setAttribute('fill', '#e91e63');
+                circle.setAttribute('stroke', '#ad1457');
+                circle.setAttribute('stroke-width', '3');
+                circle.setAttribute('r', '10');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderMuseums(museums, group) {
+        museums.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'museum-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Museum');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'museum');
+                polygon.setAttribute('fill', '#f1f8e9');
+                polygon.setAttribute('stroke', '#689f38');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'museum', 14, 10);
+                rect.setAttribute('fill', '#689f38');
+                rect.setAttribute('stroke', '#33691e');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderGalleries(galleries, group) {
+        galleries.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'gallery-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Art gallery');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'gallery');
+                polygon.setAttribute('fill', '#fafafa');
+                polygon.setAttribute('stroke', '#424242');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'gallery', 10, 12);
+                rect.setAttribute('fill', '#424242');
+                rect.setAttribute('stroke', '#212121');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderViewpoints(viewpoints, group) {
+        viewpoints.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'viewpoint-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Scenic viewpoint');
+            featureGroup.setAttribute('aria-label', label);
+            
+            // Viewpoints are typically points only
+            const triangle = this.createTriangle(feature, 'viewpoint', 10);
+            triangle.setAttribute('fill', '#ff9800');
+            triangle.setAttribute('stroke', '#e65100');
+            triangle.setAttribute('stroke-width', '3');
+            featureGroup.appendChild(triangle);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderTouristInfo(touristInfo, group) {
+        touristInfo.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'tourist-info-feature');
+            const label = this.generateTourismLabel(feature.properties, 'Tourist information');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'tourist-info');
+                polygon.setAttribute('fill', '#e3f2fd');
+                polygon.setAttribute('stroke', '#1976d2');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'tourist-info');
+                circle.setAttribute('fill', '#1976d2');
+                circle.setAttribute('stroke', '#0d47a1');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '7');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Label generation method for tourism features
+    generateTourismLabel(props, baseType) {
+        let label = baseType;
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.operator || props.brand) {
+            label += ` (${props.operator || props.brand})`;
+        }
+        
+        // Accommodation-specific info
+        if (props.stars) {
+            label += `, ${props.stars} stars`;
+        }
+        
+        if (props.rooms) {
+            label += `, ${props.rooms} rooms`;
+        }
+        
+        if (props.beds) {
+            label += `, ${props.beds} beds`;
+        }
+        
+        // Tourism-specific info
+        if (props.historic) {
+            label += `, historic ${props.historic}`;
+        }
+        
+        if (props.museum_type) {
+            label += `, ${props.museum_type} museum`;
+        }
+        
+        if (props.artwork_type) {
+            label += `, ${props.artwork_type} gallery`;
+        }
+        
+        if (props.information) {
+            label += `, ${props.information} information`;
+        }
+        
+        // Accessibility and services
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        if (props.internet_access === 'wlan' || props.wifi === 'yes') {
+            label += ', WiFi available';
+        }
+        
+        if (props.parking === 'yes') {
+            label += ', parking available';
+        }
+        
+        if (props.fee === 'yes') {
+            label += ', entrance fee required';
+        } else if (props.fee === 'no') {
+            label += ', free admission';
+        }
+        
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        }
+        
+        if (props.website) {
+            label += ', has website';
+        }
+        
+        if (props.phone) {
+            label += `, phone: ${props.phone}`;
         }
         
         return label;

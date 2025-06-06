@@ -302,6 +302,58 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Accommodation & Tourism -->
+                        <div class="filter-accordion-item">
+                            <button class="filter-accordion-header" aria-expanded="false" aria-controls="tourism-filter-content">
+                                <span class="icon" aria-hidden="true">🏨</span>
+                                <span class="label">Accommodation & Tourism</span>
+                                <span class="accordion-arrow">▼</span>
+                            </button>
+                            <div id="tourism-filter-content" class="filter-accordion-content" hidden>
+                                <!-- Accommodation -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="accommodation-content">
+                                        <span class="icon" aria-hidden="true">🛏️</span>
+                                        <span class="label">Accommodation</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="accommodation-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-hotels"> Hotels</label>
+                                        <label><input type="checkbox" id="filter-hostels"> Hostels</label>
+                                        <label><input type="checkbox" id="filter-guest-houses"> Guest Houses</label>
+                                        <label><input type="checkbox" id="filter-campsites"> Campsites</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Attractions & Culture -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="attractions-content">
+                                        <span class="icon" aria-hidden="true">🎭</span>
+                                        <span class="label">Attractions & Culture</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="attractions-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-attractions"> Tourist Attractions</label>
+                                        <label><input type="checkbox" id="filter-museums"> Museums</label>
+                                        <label><input type="checkbox" id="filter-galleries"> Art Galleries</label>
+                                        <label><input type="checkbox" id="filter-viewpoints"> Scenic Viewpoints</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tourist Services -->
+                                <div class="filter-sub-accordion-item">
+                                    <button class="filter-sub-accordion-header" aria-expanded="false" aria-controls="tourist-services-content">
+                                        <span class="icon" aria-hidden="true">ℹ️</span>
+                                        <span class="label">Tourist Services</span>
+                                        <span class="accordion-arrow">▼</span>
+                                    </button>
+                                    <div id="tourist-services-content" class="filter-sub-accordion-content" hidden>
+                                        <label><input type="checkbox" id="filter-tourist-info"> Tourist Information</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </fieldset>
                 </div>
             </div>
@@ -327,9 +379,10 @@
                             <label><input type="radio" name="rotor" value="commerce"> Commerce & Services</label>
                             <label><input type="radio" name="rotor" value="education"> Education & Culture</label>
                             <label><input type="radio" name="rotor" value="healthcare"> Healthcare</label>
-                            <label><input type="radio" name="rotor" value="worship"> Places of Worship</label>
                             <label><input type="radio" name="rotor" value="recreation"> Recreation & Nature</label>
+                            <label><input type="radio" name="rotor" value="tourism"> Tourism & Accommodation</label>
                             <label><input type="radio" name="rotor" value="transportation"> Transportation</label>
+                            <label><input type="radio" name="rotor" value="worship"> Places of Worship</label>
                         </div>
                         
                         <!-- Individual Feature Types -->
