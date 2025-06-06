@@ -62,22 +62,30 @@
    - **Post Offices** (orange circles/polygons): Service hours and operator information
    - **Currency Exchange** (purple triangles/polygons): Bureau de change services
 
-8. **Shops** (purple circles)
+8. **Sustenance & Food**
+   - **Restaurants** (red circles/polygons): Cuisine type, dietary options, takeaway/delivery info
+   - **Cafes** (purple circles/polygons): Coffee shops and casual dining with WiFi and accessibility details
+   - **Fast Food** (orange squares): Quick service restaurants with brand and dietary information
+   - **Bars** (blue triangles): Drinking establishments with outdoor seating and accessibility info
+   - **Pubs** (teal diamonds): Traditional pubs with food service and accessibility details
+   - **Food Courts** (purple squares): Multi-vendor dining areas in shopping centers and malls
+
+9. **Shops** (purple circles)
    - Fill: #9c27b0 with 0.7 opacity
    - Stroke: #7b1fa2
    - All shop types as points and polygons
 
-9. **Schools** (blue squares)
+10. **Schools** (blue squares)
    - Fill: #2196f3 with 0.7 opacity
    - Stroke: #1976d2
    - Educational amenities as points and polygons
 
-10. **Places of Worship** (gold triangles)
+11. **Places of Worship** (gold triangles)
     - Fill: #ff9800 with 0.7 opacity
     - Stroke: #f57c00
     - Religious amenities as points and polygons
 
-11. **Addresses** (small gray circles)
+12. **Addresses** (small gray circles)
     - Fill: #757575 with 0.6 opacity
     - Stroke: #424242
     - Address points with house numbers
@@ -101,20 +109,18 @@
 1. **Healthcare** (#1) - Hospitals, clinics, doctors, dentists, pharmacies, veterinary
 2. **Transportation Infrastructure** (#2) - Railways, airports, enhanced highways, transit platforms  
 3. **Financial Services** (#3) - Banks, ATMs, post offices, currency exchange
+4. **Sustenance & Food** (#4) - Restaurants, cafes, fast food, bars, pubs, food courts
 
 ### Next Priority Features to Implement
 Based on unimplemented_osm_features.md high-priority list:
 
-4. **Sustenance & Food** (#4)
-   - Restaurants, cafes, fast food, bars, pubs, food courts
-
-5. **Emergency Services** (#7)
+5. **Emergency Services** (#5)
    - Police stations, fire stations, emergency phones, defibrillators
 
-6. **Accommodation & Tourism** (#5)
+6. **Accommodation & Tourism** (#6)
    - Hotels, hostels, campsites, tourist attractions, museums
 
-7. **Entertainment & Culture** (#6)
+7. **Entertainment & Culture** (#7)
    - Cinemas, theaters, libraries, community centers, sports facilities
 
 ### Implementation Notes
