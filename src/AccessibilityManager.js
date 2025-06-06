@@ -22,8 +22,16 @@ export class AccessibilityManager {
             'post-offices': '.post-office',
             'currency-exchange': '.currency-exchange',
             'financial-services': '.bank, .atm, .post-office, .currency-exchange',
-            'commerce': '.shop, .bank, .atm, .post-office, .currency-exchange',
-            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange'
+            // Sustenance & Food
+            'restaurants': '.restaurant',
+            'cafes': '.cafe',
+            'fast-food': '.fast-food',
+            'bars': '.bar',
+            'pubs': '.pub',
+            'food-courts': '.food-court',
+            'sustenance': '.restaurant, .cafe, .fast-food, .bar, .pub, .food-court',
+            'commerce': '.shop, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court',
+            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court'
         };
         
         this.SVG_NS = 'http://www.w3.org/2000/svg';
@@ -127,7 +135,8 @@ export class AccessibilityManager {
                 'accessible-toilet', 'accessible-parking', 'drinking-water', 'bench', 'shelter',
                 'crossing', 'curb-cut', 'elevator', 'steps', 'tactile-paving', 'audio-signal',
                 'tactile-map', 'digital-clock', 'info-point', 'emergency-phone', 'defibrillator',
-                'accessible-medical', 'barrier'
+                'accessible-medical', 'barrier',
+                'restaurant', 'cafe', 'fast-food', 'bar', 'pub', 'food-court'
             ];
             return featureClasses.some(cls => element.classList.contains(cls));
         }
@@ -258,7 +267,7 @@ export class AccessibilityManager {
             'buildings': '.building-feature',
             'transportation': '.road-feature, .transit-feature',
             'education': '.school-feature',
-            'commerce': '.shop-feature',
+            'commerce': '.shop-feature, .bank-feature, .atm-feature, .post-office-feature, .currency-exchange-feature, .restaurant-feature, .cafe-feature, .fast-food-feature, .bar-feature, .pub-feature, .food-court-feature',
             'recreation': '.park-feature',
             'worship': '.worship-feature',
             'addresses': '.address-feature',
@@ -275,7 +284,7 @@ export class AccessibilityManager {
             'essential-navigation': '.crossing-feature, .curb-cut-feature, .elevator-feature, .tactile-paving-feature',
             'public-facilities': '.accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature',
             'emergency-features': '.emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature',
-            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature'
+            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature, .bank-feature, .atm-feature, .post-office-feature, .currency-exchange-feature, .restaurant-feature, .cafe-feature, .fast-food-feature, .bar-feature, .pub-feature, .food-court-feature'
         };
         
         const selector = featureSelectors[this.currentRotor];

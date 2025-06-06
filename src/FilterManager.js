@@ -44,7 +44,14 @@ export class FilterManager {
             'banks': false,
             'atms': false,
             'post-offices': false,
-            'currency-exchange': false
+            'currency-exchange': false,
+            // Sustenance & Food
+            'restaurants': false,
+            'cafes': false,
+            'fast-food': false,
+            'bars': false,
+            'pubs': false,
+            'food-courts': false
         };
         
         this.setupEventListeners();
@@ -123,7 +130,14 @@ export class FilterManager {
             'banks': '.bank',
             'atms': '.atm',
             'post-offices': '.post-office',
-            'currency-exchange': '.currency-exchange'
+            'currency-exchange': '.currency-exchange',
+            // Sustenance & Food
+            'restaurants': '.restaurant',
+            'cafes': '.cafe',
+            'fast-food': '.fast-food',
+            'bars': '.bar',
+            'pubs': '.pub',
+            'food-courts': '.food-court'
         };
         
         const selector = classMap[featureType];
@@ -181,7 +195,14 @@ export class FilterManager {
             'banks': 'Banks',
             'atms': 'ATMs',
             'post-offices': 'Post offices',
-            'currency-exchange': 'Currency exchange'
+            'currency-exchange': 'Currency exchange',
+            // Sustenance & Food
+            'restaurants': 'Restaurants',
+            'cafes': 'Cafes',
+            'fast-food': 'Fast food',
+            'bars': 'Bars',
+            'pubs': 'Pubs',
+            'food-courts': 'Food courts'
         };
         
         const featureName = featureNames[featureType] || featureType;

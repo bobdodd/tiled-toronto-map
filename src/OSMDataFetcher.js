@@ -139,6 +139,21 @@ export class OSMDataFetcher {
                 relation["amenity"="post_office"](${bbox});
                 node["amenity"="bureau_de_change"](${bbox});
                 way["amenity"="bureau_de_change"](${bbox});
+                
+                // Sustenance & Food
+                node["amenity"="restaurant"](${bbox});
+                way["amenity"="restaurant"](${bbox});
+                relation["amenity"="restaurant"](${bbox});
+                node["amenity"="cafe"](${bbox});
+                way["amenity"="cafe"](${bbox});
+                node["amenity"="fast_food"](${bbox});
+                way["amenity"="fast_food"](${bbox});
+                node["amenity"="bar"](${bbox});
+                way["amenity"="bar"](${bbox});
+                node["amenity"="pub"](${bbox});
+                way["amenity"="pub"](${bbox});
+                node["amenity"="food_court"](${bbox});
+                way["amenity"="food_court"](${bbox});
             );
             out body;
             >;
@@ -211,7 +226,14 @@ export class OSMDataFetcher {
                 banks: [],
                 atms: [],
                 postOffices: [],
-                currencyExchange: []
+                currencyExchange: [],
+                // Sustenance & Food
+                restaurants: [],
+                cafes: [],
+                fastFood: [],
+                bars: [],
+                pubs: [],
+                foodCourts: []
             };
         }
     }
@@ -261,7 +283,14 @@ export class OSMDataFetcher {
             banks: [],
             atms: [],
             postOffices: [],
-            currencyExchange: []
+            currencyExchange: [],
+            // Sustenance & Food
+            restaurants: [],
+            cafes: [],
+            fastFood: [],
+            bars: [],
+            pubs: [],
+            foodCourts: []
         };
         
         // Create a map of nodes for reference
@@ -681,6 +710,73 @@ export class OSMDataFetcher {
                 properties: tags
             });
         }
+        
+        // Sustenance & Food nodes
+        if (tags.amenity === 'restaurant') {
+            features.restaurants.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'cafe') {
+            features.cafes.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'fast_food') {
+            features.fastFood.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'bar') {
+            features.bars.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'pub') {
+            features.pubs.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'food_court') {
+            features.foodCourts.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
     }
     
     processWay(way, nodes, features) {
@@ -1091,6 +1187,75 @@ export class OSMDataFetcher {
                 });
             } else if (tags.amenity === 'bureau_de_change') {
                 features.currencyExchange.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            }
+        }
+        
+        // Sustenance & Food (ways)
+        if ((tags.amenity === 'restaurant' || tags.amenity === 'cafe' || 
+             tags.amenity === 'fast_food' || tags.amenity === 'bar' || 
+             tags.amenity === 'pub' || tags.amenity === 'food_court') && 
+            coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            // Determine which sustenance category to add to
+            if (tags.amenity === 'restaurant') {
+                features.restaurants.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'cafe') {
+                features.cafes.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'fast_food') {
+                features.fastFood.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'bar') {
+                features.bars.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'pub') {
+                features.pubs.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'food_court') {
+                features.foodCourts.push({
                     type: 'Feature',
                     geometry: {
                         type: 'Polygon',

@@ -61,7 +61,14 @@ export class FeatureRenderer {
             banks: this.createGroup('banks-group', 'Banks'),
             atms: this.createGroup('atms-group', 'ATMs'),
             postOffices: this.createGroup('post-offices-group', 'Post offices'),
-            currencyExchange: this.createGroup('currency-exchange-group', 'Currency exchange')
+            currencyExchange: this.createGroup('currency-exchange-group', 'Currency exchange'),
+            // Sustenance & Food
+            restaurants: this.createGroup('restaurants-group', 'Restaurants'),
+            cafes: this.createGroup('cafes-group', 'Cafes'),
+            fastFood: this.createGroup('fast-food-group', 'Fast food'),
+            bars: this.createGroup('bars-group', 'Bars'),
+            pubs: this.createGroup('pubs-group', 'Pubs'),
+            foodCourts: this.createGroup('food-courts-group', 'Food courts')
         };
         
         // Add groups to features container
@@ -116,6 +123,14 @@ export class FeatureRenderer {
         this.renderAtms(features.atms, groups.atms);
         this.renderPostOffices(features.postOffices, groups.postOffices);
         this.renderCurrencyExchange(features.currencyExchange, groups.currencyExchange);
+        
+        // Render sustenance & food
+        this.renderRestaurants(features.restaurants, groups.restaurants);
+        this.renderCafes(features.cafes, groups.cafes);
+        this.renderFastFood(features.fastFood, groups.fastFood);
+        this.renderBars(features.bars, groups.bars);
+        this.renderPubs(features.pubs, groups.pubs);
+        this.renderFoodCourts(features.foodCourts, groups.foodCourts);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -1708,6 +1723,214 @@ export class FeatureRenderer {
         
         if (props.wheelchair === 'yes') {
             label += ', wheelchair accessible';
+        }
+        
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        }
+        
+        return label;
+    }
+    
+    // Sustenance & Food rendering methods
+    renderRestaurants(restaurants, group) {
+        restaurants.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'restaurant-feature');
+            const label = this.generateSustenanceLabel(feature.properties, 'Restaurant');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'restaurant');
+                polygon.setAttribute('fill', '#ffebee');
+                polygon.setAttribute('stroke', '#d32f2f');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'restaurant');
+                circle.setAttribute('fill', '#d32f2f');
+                circle.setAttribute('stroke', '#b71c1c');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '8');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCafes(cafes, group) {
+        cafes.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'cafe-feature');
+            const label = this.generateSustenanceLabel(feature.properties, 'Cafe');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'cafe');
+                polygon.setAttribute('fill', '#f3e5f5');
+                polygon.setAttribute('stroke', '#7b1fa2');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'cafe');
+                circle.setAttribute('fill', '#7b1fa2');
+                circle.setAttribute('stroke', '#4a148c');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '7');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderFastFood(fastFood, group) {
+        fastFood.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'fast-food-feature');
+            const label = this.generateSustenanceLabel(feature.properties, 'Fast food');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'fast-food');
+                polygon.setAttribute('fill', '#fff3e0');
+                polygon.setAttribute('stroke', '#f57c00');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'fast-food', 10, 10);
+                rect.setAttribute('fill', '#f57c00');
+                rect.setAttribute('stroke', '#e65100');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderBars(bars, group) {
+        bars.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'bar-feature');
+            const label = this.generateSustenanceLabel(feature.properties, 'Bar');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'bar');
+                polygon.setAttribute('fill', '#e8eaf6');
+                polygon.setAttribute('stroke', '#3f51b5');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const triangle = this.createTriangle(feature, 'bar', 8);
+                triangle.setAttribute('fill', '#3f51b5');
+                triangle.setAttribute('stroke', '#1a237e');
+                triangle.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(triangle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderPubs(pubs, group) {
+        pubs.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'pub-feature');
+            const label = this.generateSustenanceLabel(feature.properties, 'Pub');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'pub');
+                polygon.setAttribute('fill', '#e0f2f1');
+                polygon.setAttribute('stroke', '#00695c');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const diamond = this.createDiamond(feature, 'pub', 8);
+                diamond.setAttribute('fill', '#00695c');
+                diamond.setAttribute('stroke', '#004d40');
+                diamond.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(diamond);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderFoodCourts(foodCourts, group) {
+        foodCourts.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'food-court-feature');
+            const label = this.generateSustenanceLabel(feature.properties, 'Food court');
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'food-court');
+                polygon.setAttribute('fill', '#fcf4ff');
+                polygon.setAttribute('stroke', '#6a1b9a');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'food-court', 12, 12);
+                rect.setAttribute('fill', '#6a1b9a');
+                rect.setAttribute('stroke', '#4a148c');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Label generation method for sustenance features
+    generateSustenanceLabel(props, baseType) {
+        let label = baseType;
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.cuisine) {
+            label += `, ${props.cuisine} cuisine`;
+        }
+        
+        if (props.operator || props.brand) {
+            label += ` (${props.operator || props.brand})`;
+        }
+        
+        if (props.diet_vegan === 'yes') {
+            label += ', vegan options';
+        } else if (props.diet_vegetarian === 'yes') {
+            label += ', vegetarian options';
+        }
+        
+        if (props.takeaway === 'yes') {
+            label += ', takeaway available';
+        }
+        
+        if (props.delivery === 'yes') {
+            label += ', delivery available';
+        }
+        
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        if (props.outdoor_seating === 'yes') {
+            label += ', outdoor seating';
+        }
+        
+        if (props.wifi === 'yes') {
+            label += ', WiFi available';
         }
         
         if (props.opening_hours) {
