@@ -128,6 +128,17 @@ export class OSMDataFetcher {
                 way["public_transport"="platform"](${bbox});
                 node["railway"="platform"](${bbox});
                 way["railway"="platform"](${bbox});
+                
+                // Financial Services
+                node["amenity"="bank"](${bbox});
+                way["amenity"="bank"](${bbox});
+                relation["amenity"="bank"](${bbox});
+                node["amenity"="atm"](${bbox});
+                node["amenity"="post_office"](${bbox});
+                way["amenity"="post_office"](${bbox});
+                relation["amenity"="post_office"](${bbox});
+                node["amenity"="bureau_de_change"](${bbox});
+                way["amenity"="bureau_de_change"](${bbox});
             );
             out body;
             >;
@@ -195,7 +206,12 @@ export class OSMDataFetcher {
                 railways: [],
                 airports: [],
                 enhancedHighways: [],
-                transitPlatforms: []
+                transitPlatforms: [],
+                // Financial Services
+                banks: [],
+                atms: [],
+                postOffices: [],
+                currencyExchange: []
             };
         }
     }
@@ -240,7 +256,12 @@ export class OSMDataFetcher {
             railways: [],
             airports: [],
             enhancedHighways: [],
-            transitPlatforms: []
+            transitPlatforms: [],
+            // Financial Services
+            banks: [],
+            atms: [],
+            postOffices: [],
+            currencyExchange: []
         };
         
         // Create a map of nodes for reference
@@ -607,6 +628,51 @@ export class OSMDataFetcher {
         
         if (tags.public_transport === 'platform' || tags.railway === 'platform') {
             features.transitPlatforms.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        // Financial Services nodes
+        if (tags.amenity === 'bank') {
+            features.banks.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'atm') {
+            features.atms.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'post_office') {
+            features.postOffices.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.amenity === 'bureau_de_change') {
+            features.currencyExchange.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Point',
@@ -989,6 +1055,46 @@ export class OSMDataFetcher {
                     geometry: {
                         type: 'LineString',
                         coordinates: coordinates
+                    },
+                    properties: tags
+                });
+            }
+        }
+        
+        // Financial Services (ways)
+        if ((tags.amenity === 'bank' || tags.amenity === 'post_office' || 
+             tags.amenity === 'bureau_de_change') && coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            // Determine which financial service category to add to
+            if (tags.amenity === 'bank') {
+                features.banks.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'post_office') {
+                features.postOffices.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.amenity === 'bureau_de_change') {
+                features.currencyExchange.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
                     },
                     properties: tags
                 });

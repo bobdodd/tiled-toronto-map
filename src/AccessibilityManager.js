@@ -16,7 +16,14 @@ export class AccessibilityManager {
             'enhanced-highways': '.highway-casing, .highway-surface',
             'transit-platforms': '.transit-platform',
             'transportation': '.road, .transit-stop, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform',
-            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform'
+            // Financial services
+            'banks': '.bank',
+            'atms': '.atm',
+            'post-offices': '.post-office',
+            'currency-exchange': '.currency-exchange',
+            'financial-services': '.bank, .atm, .post-office, .currency-exchange',
+            'commerce': '.shop, .bank, .atm, .post-office, .currency-exchange',
+            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange'
         };
         
         this.SVG_NS = 'http://www.w3.org/2000/svg';

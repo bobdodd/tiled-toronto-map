@@ -50,31 +50,45 @@
    - Includes hospitals, clinics, doctors, dentists, pharmacies, veterinary clinics
    - Comprehensive OSM healthcare amenity support
 
-6. **Shops** (purple circles)
+6. **Transportation Infrastructure**
+   - **Railway Systems** (colored dashed lines): Rail (brown), subway (orange), tram (cyan), light rail (green), monorail (purple)
+   - **Airport Facilities**: Runways (thick gray), taxiways (medium gray), terminals (blue polygons)
+   - **Enhanced Highways**: Motorways (red with casing), trunk roads (gold with casing)
+   - **Transit Platforms** (orange polygons/lines): Railway and public transport platforms
+
+7. **Financial Services**
+   - **Banks** (green squares/polygons): Full banking details and accessibility info
+   - **ATMs** (green diamonds): Network info, 24/7 access, cash deposit capabilities  
+   - **Post Offices** (orange circles/polygons): Service hours and operator information
+   - **Currency Exchange** (purple triangles/polygons): Bureau de change services
+
+8. **Shops** (purple circles)
    - Fill: #9c27b0 with 0.7 opacity
    - Stroke: #7b1fa2
    - All shop types as points and polygons
 
-7. **Schools** (blue squares)
+9. **Schools** (blue squares)
    - Fill: #2196f3 with 0.7 opacity
    - Stroke: #1976d2
    - Educational amenities as points and polygons
 
-8. **Places of Worship** (gold triangles)
-   - Fill: #ff9800 with 0.7 opacity
-   - Stroke: #f57c00
-   - Religious amenities as points and polygons
+10. **Places of Worship** (gold triangles)
+    - Fill: #ff9800 with 0.7 opacity
+    - Stroke: #f57c00
+    - Religious amenities as points and polygons
 
-9. **Addresses** (small gray circles)
-   - Fill: #757575 with 0.6 opacity
-   - Stroke: #424242
-   - Address points with house numbers
+11. **Addresses** (small gray circles)
+    - Fill: #757575 with 0.6 opacity
+    - Stroke: #424242
+    - Address points with house numbers
 
 ### Known Issues Fixed
 - ✓ Triangular artifacts (fixed projection math)
 - ✓ Road casings not hiding with filter (fixed selector)
 - ✓ Features misaligned during zoom (clear immediately)
 - ✓ Tiles showing through filtered features (hide after load)
+- ✓ createRect function missing (added helper method for transit platforms and financial services)
+- ✓ Filter visibility issues (changed from visibility:hidden to display:none for proper hiding)
 
 ### Technical Notes
 - Using Overpass API for OSM data
@@ -83,27 +97,24 @@
 - Features load 500ms after map movement stops
 - Debug mode: Add ?debug=true to URL for GPS spoofing
 
+### Completed High-Priority Features ✅
+1. **Healthcare** (#1) - Hospitals, clinics, doctors, dentists, pharmacies, veterinary
+2. **Transportation Infrastructure** (#2) - Railways, airports, enhanced highways, transit platforms  
+3. **Financial Services** (#3) - Banks, ATMs, post offices, currency exchange
+
 ### Next Priority Features to Implement
 Based on unimplemented_osm_features.md high-priority list:
 
-1. **Transportation Infrastructure** (#2)
-   - Railway tracks, subway lines, tram lines
-   - Airport facilities (runways, taxiways, terminals)
-   - Transit platforms, improved highway rendering
-
-2. **Financial Services** (#3) 
-   - Banks, ATMs, post offices, currency exchange
-
-3. **Sustenance & Food** (#4)
+4. **Sustenance & Food** (#4)
    - Restaurants, cafes, fast food, bars, pubs, food courts
 
-4. **Emergency Services** (#7)
+5. **Emergency Services** (#7)
    - Police stations, fire stations, emergency phones, defibrillators
 
-5. **Accommodation & Tourism** (#5)
+6. **Accommodation & Tourism** (#5)
    - Hotels, hostels, campsites, tourist attractions, museums
 
-6. **Entertainment & Culture** (#6)
+7. **Entertainment & Culture** (#6)
    - Cinemas, theaters, libraries, community centers, sports facilities
 
 ### Implementation Notes

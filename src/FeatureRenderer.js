@@ -56,7 +56,12 @@ export class FeatureRenderer {
             railways: this.createGroup('railways-group', 'Railway systems'),
             airports: this.createGroup('airports-group', 'Airport facilities'),
             enhancedHighways: this.createGroup('enhanced-highways-group', 'Major highways'),
-            transitPlatforms: this.createGroup('transit-platforms-group', 'Transit platforms')
+            transitPlatforms: this.createGroup('transit-platforms-group', 'Transit platforms'),
+            // Financial Services
+            banks: this.createGroup('banks-group', 'Banks'),
+            atms: this.createGroup('atms-group', 'ATMs'),
+            postOffices: this.createGroup('post-offices-group', 'Post offices'),
+            currencyExchange: this.createGroup('currency-exchange-group', 'Currency exchange')
         };
         
         // Add groups to features container
@@ -105,6 +110,12 @@ export class FeatureRenderer {
         this.renderAirports(features.airports, groups.airports);
         this.renderEnhancedHighways(features.enhancedHighways, groups.enhancedHighways);
         this.renderTransitPlatforms(features.transitPlatforms, groups.transitPlatforms);
+        
+        // Render financial services
+        this.renderBanks(features.banks, groups.banks);
+        this.renderAtms(features.atms, groups.atms);
+        this.renderPostOffices(features.postOffices, groups.postOffices);
+        this.renderCurrencyExchange(features.currencyExchange, groups.currencyExchange);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -336,6 +347,20 @@ export class FeatureRenderer {
         circle.setAttribute('cy', pos.y);
         circle.setAttribute('class', className);
         return circle;
+    }
+    
+    createRect(feature, className, width, height) {
+        const rect = document.createElementNS(this.SVG_NS, 'rect');
+        const pos = this.mapRenderer.project(
+            feature.geometry.coordinates[1],
+            feature.geometry.coordinates[0]
+        );
+        rect.setAttribute('x', pos.x - width/2);
+        rect.setAttribute('y', pos.y - height/2);
+        rect.setAttribute('width', width);
+        rect.setAttribute('height', height);
+        rect.setAttribute('class', className);
+        return rect;
     }
     
     coordinatesToPoints(coordinates) {
@@ -1457,6 +1482,236 @@ export class FeatureRenderer {
         
         if (props.wheelchair === 'yes') {
             label += ', wheelchair accessible';
+        }
+        
+        return label;
+    }
+    
+    // Financial Services rendering methods
+    renderBanks(banks, group) {
+        banks.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'bank-feature');
+            const label = this.generateBankLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'bank');
+                polygon.setAttribute('fill', '#e8f5e8');
+                polygon.setAttribute('stroke', '#2e7d32');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const rect = this.createRect(feature, 'bank', 14, 14);
+                rect.setAttribute('fill', '#2e7d32');
+                rect.setAttribute('stroke', '#1b5e20');
+                rect.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(rect);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderAtms(atms, group) {
+        atms.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'atm-feature');
+            const label = this.generateAtmLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            // ATMs are always points - render as distinctive diamond shape
+            const diamond = this.createDiamond(feature, 'atm', 8);
+            diamond.setAttribute('fill', '#4caf50');
+            diamond.setAttribute('stroke', '#2e7d32');
+            diamond.setAttribute('stroke-width', '2');
+            featureGroup.appendChild(diamond);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderPostOffices(postOffices, group) {
+        postOffices.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'post-office-feature');
+            const label = this.generatePostOfficeLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'post-office');
+                polygon.setAttribute('fill', '#fff3e0');
+                polygon.setAttribute('stroke', '#e65100');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const circle = this.createCircle(feature, 'post-office');
+                circle.setAttribute('fill', '#e65100');
+                circle.setAttribute('stroke', '#bf360c');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '8');
+                featureGroup.appendChild(circle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCurrencyExchange(exchanges, group) {
+        exchanges.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'currency-exchange-feature');
+            const label = this.generateCurrencyExchangeLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = this.createPolygon(feature, 'currency-exchange');
+                polygon.setAttribute('fill', '#f3e5f5');
+                polygon.setAttribute('stroke', '#7b1fa2');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'Point') {
+                const triangle = this.createTriangle(feature, 'currency-exchange', 10);
+                triangle.setAttribute('fill', '#7b1fa2');
+                triangle.setAttribute('stroke', '#4a148c');
+                triangle.setAttribute('stroke-width', '2');
+                featureGroup.appendChild(triangle);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Helper method to create diamond shape for ATMs
+    createDiamond(feature, className, size) {
+        const coords = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+        const diamond = document.createElementNS(this.SVG_NS, 'polygon');
+        diamond.setAttribute('class', className);
+        
+        // Create diamond points (rotated square)
+        const points = [
+            [coords.x, coords.y - size],     // top
+            [coords.x + size, coords.y],     // right
+            [coords.x, coords.y + size],     // bottom
+            [coords.x - size, coords.y]      // left
+        ].map(point => point.join(',')).join(' ');
+        
+        diamond.setAttribute('points', points);
+        return diamond;
+    }
+    
+    // Helper method to create triangle shape for currency exchange
+    createTriangle(feature, className, size) {
+        const coords = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+        const triangle = document.createElementNS(this.SVG_NS, 'polygon');
+        triangle.setAttribute('class', className);
+        
+        // Create triangle points (pointing up)
+        const points = [
+            [coords.x, coords.y - size],              // top
+            [coords.x - size * 0.866, coords.y + size * 0.5],  // bottom left
+            [coords.x + size * 0.866, coords.y + size * 0.5]   // bottom right
+        ].map(point => point.join(',')).join(' ');
+        
+        triangle.setAttribute('points', points);
+        return triangle;
+    }
+    
+    // Label generation methods for financial services
+    generateBankLabel(props) {
+        let label = 'Bank';
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.operator) {
+            label += ` (${props.operator})`;
+        }
+        
+        if (props.atm === 'yes') {
+            label += ', has ATM';
+        }
+        
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        }
+        
+        return label;
+    }
+    
+    generateAtmLabel(props) {
+        let label = 'ATM';
+        
+        if (props.operator) {
+            label += ` (${props.operator})`;
+        }
+        
+        if (props.network) {
+            label += `, network: ${props.network}`;
+        }
+        
+        if (props.cash_in === 'yes') {
+            label += ', cash deposits available';
+        }
+        
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        if (props['24/7'] === 'yes' || props.opening_hours === '24/7') {
+            label += ', 24/7 access';
+        }
+        
+        return label;
+    }
+    
+    generatePostOfficeLabel(props) {
+        let label = 'Post office';
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.operator) {
+            label += ` (${props.operator})`;
+        }
+        
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        }
+        
+        return label;
+    }
+    
+    generateCurrencyExchangeLabel(props) {
+        let label = 'Currency exchange';
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        if (props.operator) {
+            label += ` (${props.operator})`;
+        }
+        
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
         }
         
         return label;

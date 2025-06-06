@@ -39,7 +39,12 @@ export class FilterManager {
             'railways': true,
             'airports': true,
             'enhanced-highways': true,
-            'transit-platforms': true
+            'transit-platforms': true,
+            // Financial Services
+            'banks': true,
+            'atms': true,
+            'post-offices': true,
+            'currency-exchange': true
         };
         
         this.setupEventListeners();
@@ -104,7 +109,12 @@ export class FilterManager {
             'railways': '.railway',
             'airports': '.airport-way, .airport-terminal, .airport-point',
             'enhanced-highways': '.highway-casing, .highway-surface',
-            'transit-platforms': '.transit-platform'
+            'transit-platforms': '.transit-platform',
+            // Financial Services
+            'banks': '.bank',
+            'atms': '.atm',
+            'post-offices': '.post-office',
+            'currency-exchange': '.currency-exchange'
         };
         
         const selector = classMap[featureType];
@@ -112,7 +122,7 @@ export class FilterManager {
         
         const elements = document.querySelectorAll(selector);
         elements.forEach(element => {
-            element.style.visibility = visible ? 'visible' : 'hidden';
+            element.style.display = visible ? 'block' : 'none';
         });
     }
     
@@ -152,7 +162,17 @@ export class FilterManager {
             'emergency-phones': 'Emergency phones',
             'defibrillators': 'Defibrillators',
             'accessible-medical': 'Accessible medical facilities',
-            'barriers': 'Barriers and obstacles'
+            'barriers': 'Barriers and obstacles',
+            // Transportation Infrastructure
+            'railways': 'Railway systems',
+            'airports': 'Airport facilities', 
+            'enhanced-highways': 'Major highways',
+            'transit-platforms': 'Transit platforms',
+            // Financial Services
+            'banks': 'Banks',
+            'atms': 'ATMs',
+            'post-offices': 'Post offices',
+            'currency-exchange': 'Currency exchange'
         };
         
         const featureName = featureNames[featureType] || featureType;

@@ -66,6 +66,14 @@ coverage/
 .tmp/
 .temp/
 
+# Test files and screenshots
+test*.html
+minimal.html
+*.png
+*.jpg
+*.jpeg
+*.gif
+
 # Cache
 .cache/
 *.cache
