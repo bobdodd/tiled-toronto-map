@@ -466,6 +466,20 @@ export class FeatureRenderer {
         }).join(' ');
     }
     
+    // Additional coordinate conversion methods for consistency
+    polygonToSVG(coordinates) {
+        return this.coordinatesToPoints(coordinates);
+    }
+    
+    lineToSVG(coordinates) {
+        return this.coordinatesToPoints(coordinates);
+    }
+    
+    toSVGCoordinates(lat, lon) {
+        const pos = this.mapRenderer.project(lat, lon);
+        return { x: pos.x, y: pos.y };
+    }
+    
     // Label generation methods
     generateBuildingLabel(props) {
         let label = '';
