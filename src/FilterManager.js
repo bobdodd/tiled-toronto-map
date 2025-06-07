@@ -76,7 +76,13 @@ export class FilterManager {
             'police-stations': false,
             'fire-stations': false,
             'emergency-phones-civil': false,
-            'emergency-defibrillators': false
+            'emergency-defibrillators': false,
+            // Historic Features
+            'monuments': false,
+            'memorials': false,
+            'archaeological-sites': false,
+            'castles': false,
+            'ruins': false
         };
         
         this.setupEventListeners();
@@ -187,7 +193,13 @@ export class FilterManager {
             'police-stations': '.police-station',
             'fire-stations': '.fire-station',
             'emergency-phones-civil': '.emergency-phone',
-            'emergency-defibrillators': '.emergency-defibrillator'
+            'emergency-defibrillators': '.emergency-defibrillator',
+            // Historic Features
+            'monuments': '.monument',
+            'memorials': '.memorial',
+            'archaeological-sites': '.archaeological-site',
+            'castles': '.castle',
+            'ruins': '.ruins'
         };
         
         const selector = classMap[featureType];
@@ -277,7 +289,13 @@ export class FilterManager {
             'police-stations': 'Police stations',
             'fire-stations': 'Fire stations',
             'emergency-phones-civil': 'Emergency phones',
-            'emergency-defibrillators': 'Emergency defibrillators'
+            'emergency-defibrillators': 'Emergency defibrillators',
+            // Historic Features
+            'monuments': 'Monuments',
+            'memorials': 'Memorials',
+            'archaeological-sites': 'Archaeological sites',
+            'castles': 'Castles',
+            'ruins': 'Historic ruins'
         };
         
         const featureName = featureNames[featureType] || featureType;

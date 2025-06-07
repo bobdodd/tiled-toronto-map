@@ -93,7 +93,13 @@ export class FeatureRenderer {
             policeStations: this.createGroup('police-stations-group', 'Police stations'),
             fireStations: this.createGroup('fire-stations-group', 'Fire stations'),
             emergencyPhonesCivil: this.createGroup('emergency-phones-civil-group', 'Emergency phones (civil)'),
-            emergencyDefibrillators: this.createGroup('emergency-defibrillators-group', 'Emergency defibrillators')
+            emergencyDefibrillators: this.createGroup('emergency-defibrillators-group', 'Emergency defibrillators'),
+            // Historic Features
+            monuments: this.createGroup('monuments-group', 'Monuments'),
+            memorials: this.createGroup('memorials-group', 'Memorials'),
+            archaeologicalSites: this.createGroup('archaeological-sites-group', 'Archaeological sites'),
+            castles: this.createGroup('castles-group', 'Castles'),
+            ruins: this.createGroup('ruins-group', 'Historic ruins')
         };
         
         // Add groups to features container
@@ -184,6 +190,13 @@ export class FeatureRenderer {
         this.renderFireStations(features.fireStations, groups.fireStations);
         this.renderEmergencyPhonesCivil(features.emergencyPhones, groups.emergencyPhonesCivil);
         this.renderEmergencyDefibrillators(features.emergencyDefibrillators, groups.emergencyDefibrillators);
+        
+        // Render historic features
+        this.renderMonuments(features.monuments, groups.monuments);
+        this.renderMemorials(features.memorials, groups.memorials);
+        this.renderArchaeologicalSites(features.archaeologicalSites, groups.archaeologicalSites);
+        this.renderCastles(features.castles, groups.castles);
+        this.renderRuins(features.ruins, groups.ruins);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -2836,6 +2849,347 @@ export class FeatureRenderer {
         
         if (props.website) {
             label += ', has website';
+        }
+        
+        return label;
+    }
+    
+    // Historic Features Rendering Methods
+    renderMonuments(monuments, group) {
+        monuments.forEach((feature, index) => {
+            // Create individual group for each monument
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'monument-feature');
+            featureGroup.setAttribute('aria-label', this.generateHistoricLabel(feature.properties, 'Monument'));
+            
+            if (feature.geometry.type === 'Polygon') {
+                // Render as polygon (area)
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                const coords = feature.geometry.coordinates[0];
+                const projectedCoords = coords.map(coord => this.mapRenderer.project(coord[1], coord[0]));
+                const points = projectedCoords.map(p => `${p.x},${p.y}`).join(' ');
+                
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('fill', '#8d6e63');
+                polygon.setAttribute('stroke', '#5d4037');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('class', 'monument');
+                
+                featureGroup.appendChild(polygon);
+            } else {
+                // Render as point (obelisk symbol)
+                const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                
+                // Create obelisk shape
+                const obelisk = document.createElementNS(this.SVG_NS, 'path');
+                const obeliskPath = `M ${point.x} ${point.y - 10} 
+                                   L ${point.x - 3} ${point.y - 8} 
+                                   L ${point.x - 4} ${point.y + 8}
+                                   L ${point.x + 4} ${point.y + 8}
+                                   L ${point.x + 3} ${point.y - 8} Z`;
+                obelisk.setAttribute('d', obeliskPath);
+                obelisk.setAttribute('fill', '#8d6e63');
+                obelisk.setAttribute('stroke', '#5d4037');
+                obelisk.setAttribute('stroke-width', '2');
+                obelisk.setAttribute('class', 'monument');
+                
+                featureGroup.appendChild(obelisk);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderMemorials(memorials, group) {
+        memorials.forEach((feature, index) => {
+            // Create individual group for each memorial
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'memorial-feature');
+            featureGroup.setAttribute('aria-label', this.generateHistoricLabel(feature.properties, 'Memorial'));
+            
+            if (feature.geometry.type === 'Polygon') {
+                // Render as polygon (area)
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                const coords = feature.geometry.coordinates[0];
+                const projectedCoords = coords.map(coord => this.mapRenderer.project(coord[1], coord[0]));
+                const points = projectedCoords.map(p => `${p.x},${p.y}`).join(' ');
+                
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('fill', '#607d8b');
+                polygon.setAttribute('stroke', '#37474f');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('class', 'memorial');
+                
+                featureGroup.appendChild(polygon);
+            } else {
+                // Render as point (cross symbol)
+                const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                
+                // Create memorial cross
+                const crossV = document.createElementNS(this.SVG_NS, 'rect');
+                crossV.setAttribute('x', point.x - 2);
+                crossV.setAttribute('y', point.y - 8);
+                crossV.setAttribute('width', '4');
+                crossV.setAttribute('height', '16');
+                crossV.setAttribute('fill', '#607d8b');
+                crossV.setAttribute('stroke', '#37474f');
+                crossV.setAttribute('stroke-width', '1');
+                crossV.setAttribute('class', 'memorial');
+                
+                const crossH = document.createElementNS(this.SVG_NS, 'rect');
+                crossH.setAttribute('x', point.x - 6);
+                crossH.setAttribute('y', point.y - 4);
+                crossH.setAttribute('width', '12');
+                crossH.setAttribute('height', '4');
+                crossH.setAttribute('fill', '#607d8b');
+                crossH.setAttribute('stroke', '#37474f');
+                crossH.setAttribute('stroke-width', '1');
+                crossH.setAttribute('class', 'memorial');
+                
+                featureGroup.appendChild(crossV);
+                featureGroup.appendChild(crossH);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderArchaeologicalSites(archaeologicalSites, group) {
+        archaeologicalSites.forEach((feature, index) => {
+            // Create individual group for each archaeological site
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'archaeological-site-feature');
+            featureGroup.setAttribute('aria-label', this.generateHistoricLabel(feature.properties, 'Archaeological site'));
+            
+            if (feature.geometry.type === 'Polygon') {
+                // Render as polygon (area)
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                const coords = feature.geometry.coordinates[0];
+                const projectedCoords = coords.map(coord => this.mapRenderer.project(coord[1], coord[0]));
+                const points = projectedCoords.map(p => `${p.x},${p.y}`).join(' ');
+                
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('fill', '#8bc34a');
+                polygon.setAttribute('stroke', '#689f38');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('stroke-dasharray', '5,5');
+                polygon.setAttribute('class', 'archaeological-site');
+                
+                featureGroup.appendChild(polygon);
+            } else {
+                // Render as point (excavation symbol)
+                const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                
+                // Create excavation square with dashed border
+                const square = document.createElementNS(this.SVG_NS, 'rect');
+                square.setAttribute('x', point.x - 6);
+                square.setAttribute('y', point.y - 6);
+                square.setAttribute('width', '12');
+                square.setAttribute('height', '12');
+                square.setAttribute('fill', '#8bc34a');
+                square.setAttribute('stroke', '#689f38');
+                square.setAttribute('stroke-width', '2');
+                square.setAttribute('stroke-dasharray', '3,3');
+                square.setAttribute('class', 'archaeological-site');
+                
+                featureGroup.appendChild(square);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCastles(castles, group) {
+        castles.forEach((feature, index) => {
+            // Create individual group for each castle
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'castle-feature');
+            featureGroup.setAttribute('aria-label', this.generateHistoricLabel(feature.properties, 'Castle'));
+            
+            if (feature.geometry.type === 'Polygon') {
+                // Render as polygon (area)
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                const coords = feature.geometry.coordinates[0];
+                const projectedCoords = coords.map(coord => this.mapRenderer.project(coord[1], coord[0]));
+                const points = projectedCoords.map(p => `${p.x},${p.y}`).join(' ');
+                
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('fill', '#9c27b0');
+                polygon.setAttribute('stroke', '#6a1b9a');
+                polygon.setAttribute('stroke-width', '3');
+                polygon.setAttribute('class', 'castle');
+                
+                featureGroup.appendChild(polygon);
+            } else {
+                // Render as point (castle tower symbol)
+                const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                
+                // Create castle tower
+                const tower = document.createElementNS(this.SVG_NS, 'rect');
+                tower.setAttribute('x', point.x - 5);
+                tower.setAttribute('y', point.y - 8);
+                tower.setAttribute('width', '10');
+                tower.setAttribute('height', '16');
+                tower.setAttribute('fill', '#9c27b0');
+                tower.setAttribute('stroke', '#6a1b9a');
+                tower.setAttribute('stroke-width', '2');
+                tower.setAttribute('class', 'castle');
+                
+                // Add crenellations
+                const crens = document.createElementNS(this.SVG_NS, 'path');
+                const crensPath = `M ${point.x - 5} ${point.y - 8} 
+                                  L ${point.x - 3} ${point.y - 8} 
+                                  L ${point.x - 3} ${point.y - 10}
+                                  L ${point.x - 1} ${point.y - 10}
+                                  L ${point.x - 1} ${point.y - 8}
+                                  L ${point.x + 1} ${point.y - 8}
+                                  L ${point.x + 1} ${point.y - 10}
+                                  L ${point.x + 3} ${point.y - 10}
+                                  L ${point.x + 3} ${point.y - 8}
+                                  L ${point.x + 5} ${point.y - 8}`;
+                crens.setAttribute('d', crensPath);
+                crens.setAttribute('fill', 'none');
+                crens.setAttribute('stroke', '#6a1b9a');
+                crens.setAttribute('stroke-width', '2');
+                crens.setAttribute('class', 'castle');
+                
+                featureGroup.appendChild(tower);
+                featureGroup.appendChild(crens);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderRuins(ruins, group) {
+        ruins.forEach((feature, index) => {
+            // Create individual group for each ruin
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'ruins-feature');
+            featureGroup.setAttribute('aria-label', this.generateHistoricLabel(feature.properties, 'Historic ruins'));
+            
+            if (feature.geometry.type === 'Polygon') {
+                // Render as polygon (area)
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                const coords = feature.geometry.coordinates[0];
+                const projectedCoords = coords.map(coord => this.mapRenderer.project(coord[1], coord[0]));
+                const points = projectedCoords.map(p => `${p.x},${p.y}`).join(' ');
+                
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('fill', '#795548');
+                polygon.setAttribute('stroke', '#4e342e');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('fill-opacity', '0.7');
+                polygon.setAttribute('class', 'ruins');
+                
+                featureGroup.appendChild(polygon);
+            } else {
+                // Render as point (broken column symbol)
+                const point = this.mapRenderer.project(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                
+                // Create broken column segments
+                const segment1 = document.createElementNS(this.SVG_NS, 'rect');
+                segment1.setAttribute('x', point.x - 3);
+                segment1.setAttribute('y', point.y - 8);
+                segment1.setAttribute('width', '6');
+                segment1.setAttribute('height', '6');
+                segment1.setAttribute('fill', '#795548');
+                segment1.setAttribute('stroke', '#4e342e');
+                segment1.setAttribute('stroke-width', '1');
+                segment1.setAttribute('class', 'ruins');
+                
+                const segment2 = document.createElementNS(this.SVG_NS, 'rect');
+                segment2.setAttribute('x', point.x - 2);
+                segment2.setAttribute('y', point.y + 1);
+                segment2.setAttribute('width', '4');
+                segment2.setAttribute('height', '4');
+                segment2.setAttribute('fill', '#795548');
+                segment2.setAttribute('stroke', '#4e342e');
+                segment2.setAttribute('stroke-width', '1');
+                segment2.setAttribute('class', 'ruins');
+                
+                const segment3 = document.createElementNS(this.SVG_NS, 'rect');
+                segment3.setAttribute('x', point.x - 1);
+                segment3.setAttribute('y', point.y + 6);
+                segment3.setAttribute('width', '2');
+                segment3.setAttribute('height', '3');
+                segment3.setAttribute('fill', '#795548');
+                segment3.setAttribute('stroke', '#4e342e');
+                segment3.setAttribute('stroke-width', '1');
+                segment3.setAttribute('class', 'ruins');
+                
+                featureGroup.appendChild(segment1);
+                featureGroup.appendChild(segment2);
+                featureGroup.appendChild(segment3);
+            }
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Label generation method for historic features
+    generateHistoricLabel(props, baseType) {
+        let label = baseType;
+        
+        if (props.name) {
+            label += ` - ${props.name}`;
+        }
+        
+        // Historic-specific info
+        if (props.historic) {
+            label += `, type: ${props.historic}`;
+        }
+        
+        if (props.heritage) {
+            label += `, heritage status: ${props.heritage}`;
+        }
+        
+        if (props.start_date) {
+            label += `, dating from: ${props.start_date}`;
+        }
+        
+        if (props.civilization) {
+            label += `, civilization: ${props.civilization}`;
+        }
+        
+        if (props.archaeological_site) {
+            label += `, site type: ${props.archaeological_site}`;
+        }
+        
+        if (props.castle_type) {
+            label += `, castle type: ${props.castle_type}`;
+        }
+        
+        if (props.ruins) {
+            label += `, ruins type: ${props.ruins}`;
+        }
+        
+        // Accessibility
+        if (props.wheelchair === 'yes') {
+            label += ', wheelchair accessible';
+        }
+        
+        // Visitor information
+        if (props.opening_hours) {
+            label += `, hours: ${props.opening_hours}`;
+        }
+        
+        if (props.fee === 'yes') {
+            label += ', entrance fee required';
+        } else if (props.fee === 'no') {
+            label += ', free admission';
+        }
+        
+        if (props.website) {
+            label += ', has website';
+        }
+        
+        if (props.phone) {
+            label += `, phone: ${props.phone}`;
+        }
+        
+        if (props.wikipedia) {
+            label += ', has Wikipedia article';
         }
         
         return label;

@@ -216,6 +216,23 @@ export class OSMDataFetcher {
                 relation["amenity"="fire_station"](${bbox});
                 node["emergency"="phone"](${bbox});
                 node["emergency"="defibrillator"](${bbox});
+                
+                // Historic Features
+                node["historic"="monument"](${bbox});
+                way["historic"="monument"](${bbox});
+                relation["historic"="monument"](${bbox});
+                node["historic"="memorial"](${bbox});
+                way["historic"="memorial"](${bbox});
+                relation["historic"="memorial"](${bbox});
+                node["historic"="archaeological_site"](${bbox});
+                way["historic"="archaeological_site"](${bbox});
+                relation["historic"="archaeological_site"](${bbox});
+                node["historic"="castle"](${bbox});
+                way["historic"="castle"](${bbox});
+                relation["historic"="castle"](${bbox});
+                node["historic"="ruins"](${bbox});
+                way["historic"="ruins"](${bbox});
+                relation["historic"="ruins"](${bbox});
             );
             out body;
             >;
@@ -320,7 +337,13 @@ export class OSMDataFetcher {
                 policeStations: [],
                 fireStations: [],
                 emergencyPhones: [],
-                emergencyDefibrillators: []
+                emergencyDefibrillators: [],
+                // Historic Features
+                monuments: [],
+                memorials: [],
+                archaeologicalSites: [],
+                castles: [],
+                ruins: []
             };
         }
     }
@@ -402,7 +425,13 @@ export class OSMDataFetcher {
             policeStations: [],
             fireStations: [],
             emergencyPhones: [],
-            emergencyDefibrillators: []
+            emergencyDefibrillators: [],
+            // Historic Features
+            monuments: [],
+            memorials: [],
+            archaeologicalSites: [],
+            castles: [],
+            ruins: []
         };
         
         // Create a map of nodes for reference
@@ -1134,6 +1163,62 @@ export class OSMDataFetcher {
                 properties: tags
             });
         }
+        
+        // Historic Features
+        if (tags.historic === 'monument') {
+            features.monuments.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.historic === 'memorial') {
+            features.memorials.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.historic === 'archaeological_site') {
+            features.archaeologicalSites.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.historic === 'castle') {
+            features.castles.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.historic === 'ruins') {
+            features.ruins.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
     }
     
     processWay(way, nodes, features) {
@@ -1829,6 +1914,65 @@ export class OSMDataFetcher {
                 });
             } else if (tags.amenity === 'fire_station') {
                 features.fireStations.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            }
+        }
+        
+        // Historic Features (ways)
+        if ((tags.historic === 'monument' || tags.historic === 'memorial' || 
+             tags.historic === 'archaeological_site' || tags.historic === 'castle' || 
+             tags.historic === 'ruins') && 
+            coordinates.length >= 3) {
+            const closedCoords = [...coordinates];
+            if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                closedCoords.push(closedCoords[0]);
+            }
+            
+            if (tags.historic === 'monument') {
+                features.monuments.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.historic === 'memorial') {
+                features.memorials.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.historic === 'archaeological_site') {
+                features.archaeologicalSites.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.historic === 'castle') {
+                features.castles.push({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closedCoords]
+                    },
+                    properties: tags
+                });
+            } else if (tags.historic === 'ruins') {
+                features.ruins.push({
                     type: 'Feature',
                     geometry: {
                         type: 'Polygon',

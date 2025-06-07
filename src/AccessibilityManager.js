@@ -61,8 +61,15 @@ export class AccessibilityManager {
             'emergency-phones-civil': '.emergency-phone',
             'emergency-defibrillators': '.emergency-defibrillator',
             'emergency-services': '.police-station, .fire-station, .emergency-phone, .emergency-defibrillator',
+            // Historic Features
+            'monuments': '.monument',
+            'memorials': '.memorial',
+            'archaeological-sites': '.archaeological-site',
+            'castles': '.castle',
+            'ruins': '.ruins',
+            'historic-features': '.monument, .memorial, .archaeological-site, .castle, .ruins',
             'commerce': '.shop, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court',
-            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court, .hotel, .hostel, .guest-house, .campsite, .attraction, .museum, .gallery, .viewpoint, .tourist-info, .cinema, .theatre, .library, .community-centre, .arts-centre, .sports-centre, .swimming-pool, .golf-course, .stadium, .police-station, .fire-station, .emergency-phone, .emergency-defibrillator'
+            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court, .hotel, .hostel, .guest-house, .campsite, .attraction, .museum, .gallery, .viewpoint, .tourist-info, .cinema, .theatre, .library, .community-centre, .arts-centre, .sports-centre, .swimming-pool, .golf-course, .stadium, .police-station, .fire-station, .emergency-phone, .emergency-defibrillator, .monument, .memorial, .archaeological-site, .castle, .ruins'
         };
         
         this.SVG_NS = 'http://www.w3.org/2000/svg';
@@ -170,7 +177,8 @@ export class AccessibilityManager {
                 'restaurant', 'cafe', 'fast-food', 'bar', 'pub', 'food-court',
                 'hotel', 'hostel', 'guest-house', 'campsite', 'attraction', 'museum', 'gallery', 'viewpoint', 'tourist-info',
                 'cinema', 'theatre', 'library', 'community-centre', 'arts-centre', 'sports-centre', 'swimming-pool', 'golf-course', 'stadium',
-                'police-station', 'fire-station', 'emergency-phone', 'emergency-defibrillator'
+                'police-station', 'fire-station', 'emergency-phone', 'emergency-defibrillator',
+                'monument', 'memorial', 'archaeological-site', 'castle', 'ruins'
             ];
             return featureClasses.some(cls => element.classList.contains(cls));
         }
@@ -309,6 +317,7 @@ export class AccessibilityManager {
             'worship': '.worship-feature',
             'addresses': '.address-feature',
             'healthcare': '.hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature',
+            'historic-features': '.monument-feature, .memorial-feature, .archaeological-site-feature, .castle-feature, .ruins-feature',
             // Individual feature types
             'hospitals': '.hospital-feature',
             'pharmacies': '.pharmacy-feature',
@@ -321,7 +330,7 @@ export class AccessibilityManager {
             'essential-navigation': '.crossing-feature, .curb-cut-feature, .elevator-feature, .tactile-paving-feature',
             'public-facilities': '.accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature',
             'emergency-features': '.emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature',
-            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature, .bank-feature, .atm-feature, .post-office-feature, .currency-exchange-feature, .restaurant-feature, .cafe-feature, .fast-food-feature, .bar-feature, .pub-feature, .food-court-feature, .hotel-feature, .hostel-feature, .guest-house-feature, .campsite-feature, .attraction-feature, .museum-feature, .gallery-feature, .viewpoint-feature, .tourist-info-feature, .cinema-feature, .theatre-feature, .library-feature, .community-centre-feature, .arts-centre-feature, .sports-centre-feature, .swimming-pool-feature, .golf-course-feature, .stadium-feature, .police-station-feature, .fire-station-feature, .emergency-phone-feature, .emergency-defibrillator-feature'
+            'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature, .bank-feature, .atm-feature, .post-office-feature, .currency-exchange-feature, .restaurant-feature, .cafe-feature, .fast-food-feature, .bar-feature, .pub-feature, .food-court-feature, .hotel-feature, .hostel-feature, .guest-house-feature, .campsite-feature, .attraction-feature, .museum-feature, .gallery-feature, .viewpoint-feature, .tourist-info-feature, .cinema-feature, .theatre-feature, .library-feature, .community-centre-feature, .arts-centre-feature, .sports-centre-feature, .swimming-pool-feature, .golf-course-feature, .stadium-feature, .police-station-feature, .fire-station-feature, .emergency-phone-feature, .emergency-defibrillator-feature, .monument-feature, .memorial-feature, .archaeological-site-feature, .castle-feature, .ruins-feature'
         };
         
         const selector = featureSelectors[this.currentRotor];
@@ -378,6 +387,7 @@ export class AccessibilityManager {
             'recreation': 'Now navigating recreation and nature features',
             'worship': 'Now navigating places of worship',
             'addresses': 'Now navigating addresses and navigation points',
+            'historic-features': 'Now navigating historic features',
             // Individual feature types
             'transit': 'Now navigating transit stops only',
             'shops': 'Now navigating shops only',
