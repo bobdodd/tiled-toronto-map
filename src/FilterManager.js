@@ -82,7 +82,14 @@ export class FilterManager {
             'memorials': false,
             'archaeological-sites': false,
             'castles': false,
-            'ruins': false
+            'ruins': false,
+            // Man-made Structures
+            'bridges': false,
+            'tunnels': false,
+            'towers': false,
+            'masts': false,
+            'piers': false,
+            'breakwaters': false
         };
         
         this.setupEventListeners();
@@ -199,7 +206,14 @@ export class FilterManager {
             'memorials': '.memorial',
             'archaeological-sites': '.archaeological-site',
             'castles': '.castle',
-            'ruins': '.ruins'
+            'ruins': '.ruins',
+            // Man-made Structures
+            'bridges': '.bridge',
+            'tunnels': '.tunnel',
+            'towers': '.tower',
+            'masts': '.mast',
+            'piers': '.pier',
+            'breakwaters': '.breakwater'
         };
         
         const selector = classMap[featureType];
@@ -295,7 +309,14 @@ export class FilterManager {
             'memorials': 'Memorials',
             'archaeological-sites': 'Archaeological sites',
             'castles': 'Castles',
-            'ruins': 'Historic ruins'
+            'ruins': 'Historic ruins',
+            // Man-made Structures
+            'bridges': 'Bridges',
+            'tunnels': 'Tunnels',
+            'towers': 'Towers',
+            'masts': 'Masts and antennas',
+            'piers': 'Piers',
+            'breakwaters': 'Breakwaters'
         };
         
         const featureName = featureNames[featureType] || featureType;

@@ -99,7 +99,14 @@ export class FeatureRenderer {
             memorials: this.createGroup('memorials-group', 'Memorials'),
             archaeologicalSites: this.createGroup('archaeological-sites-group', 'Archaeological sites'),
             castles: this.createGroup('castles-group', 'Castles'),
-            ruins: this.createGroup('ruins-group', 'Historic ruins')
+            ruins: this.createGroup('ruins-group', 'Historic ruins'),
+            // Man-made Structures
+            bridges: this.createGroup('bridges-group', 'Bridges'),
+            tunnels: this.createGroup('tunnels-group', 'Tunnels'),
+            towers: this.createGroup('towers-group', 'Towers'),
+            masts: this.createGroup('masts-group', 'Masts and antennas'),
+            piers: this.createGroup('piers-group', 'Piers'),
+            breakwaters: this.createGroup('breakwaters-group', 'Breakwaters')
         };
         
         // Add groups to features container
@@ -197,6 +204,14 @@ export class FeatureRenderer {
         this.renderArchaeologicalSites(features.archaeologicalSites, groups.archaeologicalSites);
         this.renderCastles(features.castles, groups.castles);
         this.renderRuins(features.ruins, groups.ruins);
+        
+        // Render man-made structures
+        this.renderBridges(features.bridges, groups.bridges);
+        this.renderTunnels(features.tunnels, groups.tunnels);
+        this.renderTowers(features.towers, groups.towers);
+        this.renderMasts(features.masts, groups.masts);
+        this.renderPiers(features.piers, groups.piers);
+        this.renderBreakwaters(features.breakwaters, groups.breakwaters);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -3190,6 +3205,388 @@ export class FeatureRenderer {
         
         if (props.wikipedia) {
             label += ', has Wikipedia article';
+        }
+        
+        return label;
+    }
+    
+    // Man-made Structures rendering methods
+    renderBridges(bridges, group) {
+        bridges.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'bridge-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'bridge');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#8e9aaf');
+                polygon.setAttribute('stroke', '#5d6674');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'bridge');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#8e9aaf');
+                polyline.setAttribute('stroke-width', '6');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - bridge marker
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'bridge');
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[0], feature.geometry.coordinates[1]);
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '8');
+                circle.setAttribute('fill', '#8e9aaf');
+                circle.setAttribute('stroke', '#5d6674');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(circle);
+                
+                // Bridge icon
+                const text = document.createElementNS(this.SVG_NS, 'text');
+                text.setAttribute('x', coords.x);
+                text.setAttribute('y', coords.y + 4);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-family', 'Arial, sans-serif');
+                text.setAttribute('font-size', '12');
+                text.setAttribute('fill', 'white');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = '🌉';
+                featureGroup.appendChild(text);
+            }
+            
+            const label = this.generateManmadeLabel(feature.properties, 'Bridge');
+            featureGroup.setAttribute('aria-label', label);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderTunnels(tunnels, group) {
+        tunnels.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'tunnel-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'tunnel');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#3e3e3e');
+                polygon.setAttribute('stroke', '#1a1a1a');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('opacity', '0.7');
+                polygon.setAttribute('stroke-dasharray', '5,5');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'tunnel');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#3e3e3e');
+                polyline.setAttribute('stroke-width', '6');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('opacity', '0.7');
+                polyline.setAttribute('stroke-dasharray', '10,5');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - tunnel entrance
+                const rect = document.createElementNS(this.SVG_NS, 'rect');
+                rect.setAttribute('class', 'tunnel');
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[0], feature.geometry.coordinates[1]);
+                rect.setAttribute('x', coords.x - 8);
+                rect.setAttribute('y', coords.y - 6);
+                rect.setAttribute('width', '16');
+                rect.setAttribute('height', '12');
+                rect.setAttribute('fill', '#3e3e3e');
+                rect.setAttribute('stroke', '#1a1a1a');
+                rect.setAttribute('stroke-width', '2');
+                rect.setAttribute('opacity', '0.8');
+                rect.setAttribute('rx', '6');
+                featureGroup.appendChild(rect);
+                
+                // Tunnel entrance icon
+                const text = document.createElementNS(this.SVG_NS, 'text');
+                text.setAttribute('x', coords.x);
+                text.setAttribute('y', coords.y + 3);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-family', 'Arial, sans-serif');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('fill', 'white');
+                text.setAttribute('font-weight', 'bold');
+                text.textContent = '⚫';
+                featureGroup.appendChild(text);
+            }
+            
+            const label = this.generateManmadeLabel(feature.properties, 'Tunnel');
+            featureGroup.setAttribute('aria-label', label);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderTowers(towers, group) {
+        towers.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'tower-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'tower');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#9e9e9e');
+                polygon.setAttribute('stroke', '#424242');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else {
+                // Point geometry - tower shape
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[0], feature.geometry.coordinates[1]);
+                
+                // Tower base (rectangle)
+                const base = document.createElementNS(this.SVG_NS, 'rect');
+                base.setAttribute('class', 'tower');
+                base.setAttribute('x', coords.x - 6);
+                base.setAttribute('y', coords.y - 4);
+                base.setAttribute('width', '12');
+                base.setAttribute('height', '8');
+                base.setAttribute('fill', '#9e9e9e');
+                base.setAttribute('stroke', '#424242');
+                base.setAttribute('stroke-width', '2');
+                base.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(base);
+                
+                // Tower spire (triangle)
+                const spire = document.createElementNS(this.SVG_NS, 'polygon');
+                spire.setAttribute('class', 'tower');
+                spire.setAttribute('points', `${coords.x},${coords.y-4} ${coords.x-4},${coords.y+4} ${coords.x+4},${coords.y+4}`);
+                spire.setAttribute('fill', '#757575');
+                spire.setAttribute('stroke', '#424242');
+                spire.setAttribute('stroke-width', '1');
+                spire.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(spire);
+            }
+            
+            const label = this.generateManmadeLabel(feature.properties, 'Tower');
+            featureGroup.setAttribute('aria-label', label);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderMasts(masts, group) {
+        masts.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'mast-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            const coords = this.toSVGCoordinates(feature.geometry.coordinates[0], feature.geometry.coordinates[1]);
+            
+            // Mast pole (line)
+            const pole = document.createElementNS(this.SVG_NS, 'line');
+            pole.setAttribute('class', 'mast');
+            pole.setAttribute('x1', coords.x);
+            pole.setAttribute('y1', coords.y + 8);
+            pole.setAttribute('x2', coords.x);
+            pole.setAttribute('y2', coords.y - 12);
+            pole.setAttribute('stroke', '#ff5722');
+            pole.setAttribute('stroke-width', '3');
+            pole.setAttribute('opacity', '0.8');
+            featureGroup.appendChild(pole);
+            
+            // Antenna elements (horizontal lines)
+            for (let i = 0; i < 3; i++) {
+                const antenna = document.createElementNS(this.SVG_NS, 'line');
+                antenna.setAttribute('class', 'mast');
+                const y = coords.y - 8 + (i * 4);
+                antenna.setAttribute('x1', coords.x - 4);
+                antenna.setAttribute('y1', y);
+                antenna.setAttribute('x2', coords.x + 4);
+                antenna.setAttribute('y2', y);
+                antenna.setAttribute('stroke', '#ff5722');
+                antenna.setAttribute('stroke-width', '2');
+                antenna.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(antenna);
+            }
+            
+            // Base circle
+            const base = document.createElementNS(this.SVG_NS, 'circle');
+            base.setAttribute('class', 'mast');
+            base.setAttribute('cx', coords.x);
+            base.setAttribute('cy', coords.y + 8);
+            base.setAttribute('r', '4');
+            base.setAttribute('fill', '#d84315');
+            base.setAttribute('stroke', '#bf360c');
+            base.setAttribute('stroke-width', '1');
+            base.setAttribute('opacity', '0.8');
+            featureGroup.appendChild(base);
+            
+            const label = this.generateManmadeLabel(feature.properties, 'Mast/Antenna');
+            featureGroup.setAttribute('aria-label', label);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderPiers(piers, group) {
+        piers.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'pier-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'pier');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#8d6e63');
+                polygon.setAttribute('stroke', '#5d4037');
+                polygon.setAttribute('stroke-width', '2');
+                polygon.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'pier');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#8d6e63');
+                polyline.setAttribute('stroke-width', '8');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - pier dock
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[0], feature.geometry.coordinates[1]);
+                
+                // Pier platform (rectangle)
+                const platform = document.createElementNS(this.SVG_NS, 'rect');
+                platform.setAttribute('class', 'pier');
+                platform.setAttribute('x', coords.x - 10);
+                platform.setAttribute('y', coords.y - 4);
+                platform.setAttribute('width', '20');
+                platform.setAttribute('height', '8');
+                platform.setAttribute('fill', '#8d6e63');
+                platform.setAttribute('stroke', '#5d4037');
+                platform.setAttribute('stroke-width', '2');
+                platform.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(platform);
+                
+                // Pier posts
+                for (let i = 0; i < 3; i++) {
+                    const post = document.createElementNS(this.SVG_NS, 'line');
+                    post.setAttribute('class', 'pier');
+                    const x = coords.x - 6 + (i * 6);
+                    post.setAttribute('x1', x);
+                    post.setAttribute('y1', coords.y + 4);
+                    post.setAttribute('x2', x);
+                    post.setAttribute('y2', coords.y + 12);
+                    post.setAttribute('stroke', '#5d4037');
+                    post.setAttribute('stroke-width', '2');
+                    post.setAttribute('opacity', '0.8');
+                    featureGroup.appendChild(post);
+                }
+            }
+            
+            const label = this.generateManmadeLabel(feature.properties, 'Pier');
+            featureGroup.setAttribute('aria-label', label);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderBreakwaters(breakwaters, group) {
+        breakwaters.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'breakwater-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'breakwater');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#546e7a');
+                polygon.setAttribute('stroke', '#37474f');
+                polygon.setAttribute('stroke-width', '3');
+                polygon.setAttribute('opacity', '0.8');
+                polygon.setAttribute('stroke-dasharray', '8,4');
+                featureGroup.appendChild(polygon);
+            } else if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'breakwater');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#546e7a');
+                polyline.setAttribute('stroke-width', '10');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('opacity', '0.8');
+                polyline.setAttribute('stroke-dasharray', '12,6');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - breakwater section
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[0], feature.geometry.coordinates[1]);
+                
+                // Breakwater rocks (irregular shape)
+                const path = document.createElementNS(this.SVG_NS, 'path');
+                path.setAttribute('class', 'breakwater');
+                path.setAttribute('d', `M${coords.x-8},${coords.y} L${coords.x-4},${coords.y-6} L${coords.x+2},${coords.y-4} L${coords.x+8},${coords.y-2} L${coords.x+6},${coords.y+4} L${coords.x-2},${coords.y+6} Z`);
+                path.setAttribute('fill', '#546e7a');
+                path.setAttribute('stroke', '#37474f');
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(path);
+            }
+            
+            const label = this.generateManmadeLabel(feature.properties, 'Breakwater');
+            featureGroup.setAttribute('aria-label', label);
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    generateManmadeLabel(props, type) {
+        let label = `${type}`;
+        
+        if (props.name) {
+            label += `: ${props.name}`;
+        }
+        
+        if (props.operator) {
+            label += `, operated by ${props.operator}`;
+        }
+        
+        if (props.height) {
+            label += `, height: ${props.height}`;
+        }
+        
+        if (props.material) {
+            label += `, material: ${props.material}`;
+        }
+        
+        if (props.construction_date || props.start_date) {
+            const date = props.construction_date || props.start_date;
+            label += `, built: ${date}`;
+        }
+        
+        if (props.layer) {
+            label += `, layer: ${props.layer}`;
+        }
+        
+        if (props.bridge && props.bridge !== 'yes') {
+            label += `, bridge type: ${props.bridge}`;
+        }
+        
+        if (props.tunnel && props.tunnel !== 'yes') {
+            label += `, tunnel type: ${props.tunnel}`;
+        }
+        
+        if (props['tower:type']) {
+            label += `, tower type: ${props['tower:type']}`;
+        }
+        
+        if (props.access) {
+            label += `, access: ${props.access}`;
+        }
+        
+        if (props._relation) {
+            label += ' (complex structure)';
         }
         
         return label;

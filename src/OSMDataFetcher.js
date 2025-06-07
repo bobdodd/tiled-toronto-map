@@ -233,6 +233,26 @@ export class OSMDataFetcher {
                 node["historic"="ruins"](${bbox});
                 way["historic"="ruins"](${bbox});
                 relation["historic"="ruins"](${bbox});
+                
+                // Man-made Structures
+                node["man_made"="bridge"](${bbox});
+                way["man_made"="bridge"](${bbox});
+                relation["man_made"="bridge"](${bbox});
+                node["man_made"="tunnel"](${bbox});
+                way["man_made"="tunnel"](${bbox});
+                relation["man_made"="tunnel"](${bbox});
+                node["man_made"="tower"](${bbox});
+                way["man_made"="tower"](${bbox});
+                relation["man_made"="tower"](${bbox});
+                node["man_made"="mast"](${bbox});
+                way["man_made"="mast"](${bbox});
+                relation["man_made"="mast"](${bbox});
+                node["man_made"="pier"](${bbox});
+                way["man_made"="pier"](${bbox});
+                relation["man_made"="pier"](${bbox});
+                node["man_made"="breakwater"](${bbox});
+                way["man_made"="breakwater"](${bbox});
+                relation["man_made"="breakwater"](${bbox});
             );
             out body;
             >;
@@ -343,7 +363,14 @@ export class OSMDataFetcher {
                 memorials: [],
                 archaeologicalSites: [],
                 castles: [],
-                ruins: []
+                ruins: [],
+                // Man-made Structures
+                bridges: [],
+                tunnels: [],
+                towers: [],
+                masts: [],
+                piers: [],
+                breakwaters: []
             };
         }
     }
@@ -431,7 +458,14 @@ export class OSMDataFetcher {
             memorials: [],
             archaeologicalSites: [],
             castles: [],
-            ruins: []
+            ruins: [],
+            // Man-made Structures
+            bridges: [],
+            tunnels: [],
+            towers: [],
+            masts: [],
+            piers: [],
+            breakwaters: []
         };
         
         // Create a map of nodes for reference
@@ -447,7 +481,7 @@ export class OSMDataFetcher {
             } else if (element.type === 'way') {
                 this.processWay(element, nodes, features);
             } else if (element.type === 'relation') {
-                // Handle relations if needed
+                this.processRelation(element, nodes, features);
             }
         });
         
@@ -1219,6 +1253,73 @@ export class OSMDataFetcher {
                 properties: tags
             });
         }
+        
+        // Man-made Structures
+        if (tags.man_made === 'bridge') {
+            features.bridges.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.man_made === 'tunnel') {
+            features.tunnels.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.man_made === 'tower') {
+            features.towers.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.man_made === 'mast') {
+            features.masts.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.man_made === 'pier') {
+            features.piers.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.man_made === 'breakwater') {
+            features.breakwaters.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
     }
     
     processWay(way, nodes, features) {
@@ -1980,6 +2081,166 @@ export class OSMDataFetcher {
                     },
                     properties: tags
                 });
+            }
+        }
+        
+        // Man-made Structures (ways)
+        if ((tags.man_made === 'bridge' || tags.man_made === 'tunnel' || 
+             tags.man_made === 'tower' || tags.man_made === 'mast' || 
+             tags.man_made === 'pier' || tags.man_made === 'breakwater') && 
+            coordinates.length >= 2) {
+            
+            // Handle different geometry types for man-made structures
+            let geometry;
+            if (coordinates.length >= 3 && 
+                (tags.man_made === 'bridge' || tags.man_made === 'tower' || 
+                 tags.man_made === 'pier' || tags.man_made === 'breakwater')) {
+                // Polygon for larger structures
+                const closedCoords = [...coordinates];
+                if (closedCoords[0][0] !== closedCoords[closedCoords.length - 1][0] ||
+                    closedCoords[0][1] !== closedCoords[closedCoords.length - 1][1]) {
+                    closedCoords.push(closedCoords[0]);
+                }
+                geometry = {
+                    type: 'Polygon',
+                    coordinates: [closedCoords]
+                };
+            } else {
+                // LineString for linear structures
+                geometry = {
+                    type: 'LineString',
+                    coordinates: coordinates
+                };
+            }
+            
+            if (tags.man_made === 'bridge') {
+                features.bridges.push({
+                    type: 'Feature',
+                    geometry: geometry,
+                    properties: tags
+                });
+            } else if (tags.man_made === 'tunnel') {
+                features.tunnels.push({
+                    type: 'Feature',
+                    geometry: geometry,
+                    properties: tags
+                });
+            } else if (tags.man_made === 'tower') {
+                features.towers.push({
+                    type: 'Feature',
+                    geometry: geometry,
+                    properties: tags
+                });
+            } else if (tags.man_made === 'mast') {
+                features.masts.push({
+                    type: 'Feature',
+                    geometry: geometry,
+                    properties: tags
+                });
+            } else if (tags.man_made === 'pier') {
+                features.piers.push({
+                    type: 'Feature',
+                    geometry: geometry,
+                    properties: tags
+                });
+            } else if (tags.man_made === 'breakwater') {
+                features.breakwaters.push({
+                    type: 'Feature',
+                    geometry: geometry,
+                    properties: tags
+                });
+            }
+        }
+    }
+    
+    processRelation(relation, nodes, features) {
+        const tags = relation.tags || {};
+        
+        // Handle man-made structure relations
+        if (tags.man_made === 'bridge' || tags.man_made === 'tunnel') {
+            // For now, create a representative point from the first member
+            if (relation.members && relation.members.length > 0) {
+                const firstMember = relation.members[0];
+                if (firstMember.type === 'node' && nodes.has(firstMember.ref)) {
+                    const node = nodes.get(firstMember.ref);
+                    
+                    if (tags.man_made === 'bridge') {
+                        features.bridges.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [node.lon, node.lat]
+                            },
+                            properties: { ...tags, _relation: true }
+                        });
+                    } else if (tags.man_made === 'tunnel') {
+                        features.tunnels.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [node.lon, node.lat]
+                            },
+                            properties: { ...tags, _relation: true }
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Handle other relation types for historic features that might have complex geometries
+        if (tags.historic) {
+            if (relation.members && relation.members.length > 0) {
+                const firstMember = relation.members[0];
+                if (firstMember.type === 'node' && nodes.has(firstMember.ref)) {
+                    const node = nodes.get(firstMember.ref);
+                    
+                    if (tags.historic === 'monument') {
+                        features.monuments.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [node.lon, node.lat]
+                            },
+                            properties: { ...tags, _relation: true }
+                        });
+                    } else if (tags.historic === 'memorial') {
+                        features.memorials.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [node.lon, node.lat]
+                            },
+                            properties: { ...tags, _relation: true }
+                        });
+                    } else if (tags.historic === 'archaeological_site') {
+                        features.archaeologicalSites.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [node.lon, node.lat]
+                            },
+                            properties: { ...tags, _relation: true }
+                        });
+                    } else if (tags.historic === 'castle') {
+                        features.castles.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [node.lon, node.lat]
+                            },
+                            properties: { ...tags, _relation: true }
+                        });
+                    } else if (tags.historic === 'ruins') {
+                        features.ruins.push({
+                            type: 'Feature',
+                            geometry: {
+                                type: 'Point',
+                                coordinates: [node.lon, node.lat]
+                            },
+                            properties: { ...tags, _relation: true }
+                        });
+                    }
+                }
             }
         }
     }
