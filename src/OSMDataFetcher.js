@@ -1,14 +1,29 @@
 export class OSMDataFetcher {
     constructor() {
         this.overpassUrl = 'https://overpass-api.de/api/interpreter';
+        this.staticDataUrl = null; // Set to your SiteGround URL when ready
         this.cache = new Map();
+        this.maxCacheSize = 10; // Limit cache size
+        this.currentRequest = null;
+        this.useStaticData = false; // Toggle for static vs dynamic
+    }
+    
+    cancelCurrentRequest() {
+        if (this.currentRequest) {
+            this.currentRequest.abort();
+            this.currentRequest = null;
+        }
     }
     
     async fetchArea(bounds) {
+        // Cancel any in-flight request
+        this.cancelCurrentRequest();
+        
         const cacheKey = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`;
         
         // Check cache first
         if (this.cache.has(cacheKey)) {
+            console.log('Using cached data for bounds:', cacheKey);
             return this.cache.get(cacheKey);
         }
         
@@ -16,14 +31,11 @@ export class OSMDataFetcher {
         
         // Overpass QL query
         const query = `
-            [out:json][timeout:25];
+            [out:json][timeout:30];
             (
-                // Buildings
+                // Core features only to reduce load
                 way["building"](${bbox});
-                relation["building"](${bbox});
-                
-                // Roads
-                way["highway"~"^(primary|secondary|tertiary|residential|service|unclassified|pedestrian|footway)$"](${bbox});
+                way["highway"~"^(primary|secondary|tertiary|residential|service|unclassified)$"](${bbox});
                 
                 // Transit stops
                 node["highway"="bus_stop"](${bbox});
@@ -303,12 +315,18 @@ export class OSMDataFetcher {
         `;
         
         try {
+            // Create new AbortController for this request
+            this.currentRequest = new AbortController();
+            
+            console.log('Fetching OSM data for bbox:', bbox);
+            
             const response = await fetch(this.overpassUrl, {
                 method: 'POST',
                 body: `data=${encodeURIComponent(query)}`,
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
-                }
+                },
+                signal: this.currentRequest.signal
             });
             
             if (!response.ok) {
@@ -316,13 +334,28 @@ export class OSMDataFetcher {
             }
             
             const data = await response.json();
+            console.log(`OSM returned ${data.elements?.length || 0} elements`);
+            
             const features = this.convertToGeoJSON(data);
             
-            // Cache the result
+            // Cache the result with size limit
             this.cache.set(cacheKey, features);
+            if (this.cache.size > this.maxCacheSize) {
+                const firstKey = this.cache.keys().next().value;
+                this.cache.delete(firstKey);
+            }
             
+            this.currentRequest = null;
             return features;
         } catch (error) {
+            this.currentRequest = null;
+            
+            // Don't log abort errors
+            if (error.name === 'AbortError') {
+                console.log('OSM request cancelled');
+                return null;
+            }
+            
             console.error('Error fetching OSM data:', error);
             return {
                 buildings: [],
@@ -2572,18 +2605,51 @@ export class OSMDataFetcher {
     }
     
     getBoundsFromView(center, zoom, width, height) {
-        // Calculate bounds from center, zoom, and viewport size
+        // Calculate bounds using proper Mercator projection
+        const tileSize = 256;
         const scale = Math.pow(2, zoom);
-        const worldWidth = 256 * scale;
+        const worldSize = tileSize * scale;
         
-        const dx = width / 2 / worldWidth * 360;
-        const dy = height / 2 / worldWidth * 180;
+        // Add padding to ensure we fetch beyond visible area
+        const padding = 1.2; // 20% padding
         
-        return {
-            north: Math.min(85, center.lat + dy),
-            south: Math.max(-85, center.lat - dy),
-            east: center.lng + dx,
-            west: center.lng - dx
+        // Calculate longitude bounds (simple linear)
+        const lngPerPixel = 360 / worldSize;
+        const lngDelta = (width / 2) * lngPerPixel * padding;
+        
+        // Calculate latitude bounds (Mercator projection)
+        const centerY = this.latToMercatorY(center.lat);
+        const pixelDelta = (height / 2) * padding;
+        const topY = centerY - (pixelDelta / worldSize);
+        const bottomY = centerY + (pixelDelta / worldSize);
+        
+        const north = this.mercatorYToLat(topY);
+        const south = this.mercatorYToLat(bottomY);
+        
+        const bounds = {
+            north: Math.min(85, north),
+            south: Math.max(-85, south),
+            east: center.lng + lngDelta,
+            west: center.lng - lngDelta
         };
+        
+        console.log('Calculated bounds:', {
+            center: { lat: center.lat, lng: center.lng },
+            viewport: { width, height },
+            zoom,
+            bounds
+        });
+        
+        return bounds;
+    }
+    
+    latToMercatorY(lat) {
+        const latRad = lat * Math.PI / 180;
+        return 0.5 - Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / (2 * Math.PI);
+    }
+    
+    mercatorYToLat(y) {
+        const latRad = 2 * Math.atan(Math.exp((0.5 - y) * 2 * Math.PI)) - Math.PI / 2;
+        return latRad * 180 / Math.PI;
     }
 }

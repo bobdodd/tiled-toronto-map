@@ -104,7 +104,13 @@ export class FilterManager {
             'beaches': false,
             'cliffs': false,
             'peaks': false,
-            'trees': false
+            'trees': false,
+            // Waterways
+            'rivers': false,
+            'streams': false,
+            'canals': false,
+            'ditches': false,
+            'coastlines': false
         };
         
         this.setupEventListeners();
@@ -243,7 +249,13 @@ export class FilterManager {
             'beaches': '.beach',
             'cliffs': '.cliff',
             'peaks': '.peak',
-            'trees': '.tree'
+            'trees': '.tree',
+            // Waterways
+            'rivers': '.river',
+            'streams': '.stream',
+            'canals': '.canal',
+            'ditches': '.ditch',
+            'coastlines': '.coastline'
         };
         
         const selector = classMap[featureType];
@@ -361,7 +373,13 @@ export class FilterManager {
             'beaches': 'Beaches',
             'cliffs': 'Cliffs',
             'peaks': 'Mountain peaks',
-            'trees': 'Trees'
+            'trees': 'Trees',
+            // Waterways
+            'rivers': 'Rivers',
+            'streams': 'Streams',
+            'canals': 'Canals',
+            'ditches': 'Ditches',
+            'coastlines': 'Coastlines'
         };
         
         const featureName = featureNames[featureType] || featureType;

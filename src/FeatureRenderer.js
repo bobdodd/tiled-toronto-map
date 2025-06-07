@@ -121,7 +121,13 @@ export class FeatureRenderer {
             beaches: this.createGroup('beaches-group', 'Beaches'),
             cliffs: this.createGroup('cliffs-group', 'Cliffs'),
             peaks: this.createGroup('peaks-group', 'Mountain peaks'),
-            trees: this.createGroup('trees-group', 'Individual trees')
+            trees: this.createGroup('trees-group', 'Individual trees'),
+            // Waterways
+            rivers: this.createGroup('rivers-group', 'Rivers'),
+            streams: this.createGroup('streams-group', 'Streams'),
+            canals: this.createGroup('canals-group', 'Canals'),
+            ditches: this.createGroup('ditches-group', 'Ditches'),
+            coastlines: this.createGroup('coastlines-group', 'Coastlines')
         };
         
         // Add groups to features container
@@ -244,6 +250,21 @@ export class FeatureRenderer {
         this.renderCliffs(features.cliffs, groups.cliffs);
         this.renderPeaks(features.peaks, groups.peaks);
         this.renderTrees(features.trees, groups.trees);
+        
+        // Render waterways
+        console.log('Waterway data:', {
+            rivers: features.rivers?.length || 0,
+            streams: features.streams?.length || 0,
+            canals: features.canals?.length || 0,
+            ditches: features.ditches?.length || 0,
+            coastlines: features.coastlines?.length || 0,
+            waterBodies: features.waterBodies?.length || 0
+        });
+        this.renderRivers(features.rivers, groups.rivers);
+        this.renderStreams(features.streams, groups.streams);
+        this.renderCanals(features.canals, groups.canals);
+        this.renderDitches(features.ditches, groups.ditches);
+        this.renderCoastlines(features.coastlines, groups.coastlines);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -3950,7 +3971,19 @@ export class FeatureRenderer {
                 polygon.setAttribute('stroke-width', '1');
                 polygon.setAttribute('opacity', '0.7');
                 featureGroup.appendChild(polygon);
-            } else {
+            } else if (feature.geometry.type === 'MultiPolygon') {
+                // Handle multipolygon water bodies
+                feature.geometry.coordinates.forEach(polygonCoords => {
+                    const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                    polygon.setAttribute('class', 'water-body');
+                    polygon.setAttribute('points', this.polygonToSVG(polygonCoords[0]));
+                    polygon.setAttribute('fill', '#4FC3F7');
+                    polygon.setAttribute('stroke', '#2196F3');
+                    polygon.setAttribute('stroke-width', '1');
+                    polygon.setAttribute('opacity', '0.7');
+                    featureGroup.appendChild(polygon);
+                });
+            } else if (feature.geometry.type === 'Point') {
                 // Point geometry - water source marker
                 const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
                 const circle = document.createElementNS(this.SVG_NS, 'circle');
@@ -4342,6 +4375,306 @@ export class FeatureRenderer {
         
         if (props.height) {
             label += `, height: ${props.height}`;
+        }
+        
+        return label;
+    }
+    
+    // Waterway rendering methods
+    renderRivers(rivers, group) {
+        if (!rivers) return;
+        
+        rivers.forEach((river, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'river-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (river.geometry.type === 'LineString') {
+                const coordinates = river.geometry.coordinates;
+                const points = this.lineToSVG(coordinates);
+                
+                const line = document.createElementNS(this.SVG_NS, 'polyline');
+                line.setAttribute('points', points);
+                line.setAttribute('class', 'river');
+                line.setAttribute('fill', 'none');
+                line.setAttribute('stroke', '#4fc3f7');
+                line.setAttribute('stroke-width', '4');
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('stroke-linejoin', 'round');
+                
+                featureGroup.appendChild(line);
+            } else if (river.geometry.type === 'Polygon') {
+                const coordinates = river.geometry.coordinates[0];
+                const points = this.polygonToSVG(coordinates);
+                
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('class', 'river');
+                polygon.setAttribute('fill', '#4fc3f7');
+                polygon.setAttribute('fill-opacity', '0.7');
+                polygon.setAttribute('stroke', '#0288d1');
+                polygon.setAttribute('stroke-width', '2');
+                
+                featureGroup.appendChild(polygon);
+            } else if (river.geometry.type === 'MultiPolygon') {
+                // Handle multipolygon rivers (like the Hudson)
+                river.geometry.coordinates.forEach(polygonCoords => {
+                    const coordinates = polygonCoords[0]; // Outer ring
+                    const points = this.polygonToSVG(coordinates);
+                    
+                    const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                    polygon.setAttribute('points', points);
+                    polygon.setAttribute('class', 'river');
+                    polygon.setAttribute('fill', '#4fc3f7');
+                    polygon.setAttribute('fill-opacity', '0.7');
+                    polygon.setAttribute('stroke', '#0288d1');
+                    polygon.setAttribute('stroke-width', '2');
+                    
+                    featureGroup.appendChild(polygon);
+                });
+            }
+            
+            const label = this.generateRiverLabel(river.properties || {});
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderStreams(streams, group) {
+        if (!streams) return;
+        
+        streams.forEach((stream, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'stream-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (stream.geometry.type === 'LineString') {
+                const coordinates = stream.geometry.coordinates;
+                const points = this.lineToSVG(coordinates);
+                
+                const line = document.createElementNS(this.SVG_NS, 'polyline');
+                line.setAttribute('points', points);
+                line.setAttribute('class', 'stream');
+                line.setAttribute('fill', 'none');
+                line.setAttribute('stroke', '#81d4fa');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('stroke-linejoin', 'round');
+                
+                featureGroup.appendChild(line);
+            } else if (stream.geometry.type === 'Polygon') {
+                const coordinates = stream.geometry.coordinates[0];
+                const points = this.polygonToSVG(coordinates);
+                
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('class', 'stream');
+                polygon.setAttribute('fill', '#81d4fa');
+                polygon.setAttribute('fill-opacity', '0.6');
+                polygon.setAttribute('stroke', '#0288d1');
+                polygon.setAttribute('stroke-width', '1');
+                
+                featureGroup.appendChild(polygon);
+            }
+            
+            const label = this.generateStreamLabel(stream.properties || {});
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCanals(canals, group) {
+        if (!canals) return;
+        
+        canals.forEach((canal, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'canal-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (canal.geometry.type === 'LineString') {
+                const coordinates = canal.geometry.coordinates;
+                const points = this.lineToSVG(coordinates);
+                
+                const line = document.createElementNS(this.SVG_NS, 'polyline');
+                line.setAttribute('points', points);
+                line.setAttribute('class', 'canal');
+                line.setAttribute('fill', 'none');
+                line.setAttribute('stroke', '#00bcd4');
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('stroke-linecap', 'square');
+                line.setAttribute('stroke-dasharray', '10,5');
+                
+                featureGroup.appendChild(line);
+            } else if (canal.geometry.type === 'Polygon') {
+                const coordinates = canal.geometry.coordinates[0];
+                const points = this.polygonToSVG(coordinates);
+                
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('class', 'canal');
+                polygon.setAttribute('fill', '#00bcd4');
+                polygon.setAttribute('fill-opacity', '0.6');
+                polygon.setAttribute('stroke', '#00838f');
+                polygon.setAttribute('stroke-width', '2');
+                
+                featureGroup.appendChild(polygon);
+            }
+            
+            const label = this.generateCanalLabel(canal.properties || {});
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderDitches(ditches, group) {
+        if (!ditches) return;
+        
+        ditches.forEach((ditch, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'ditch-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (ditch.geometry.type === 'LineString') {
+                const coordinates = ditch.geometry.coordinates;
+                const points = this.lineToSVG(coordinates);
+                
+                const line = document.createElementNS(this.SVG_NS, 'polyline');
+                line.setAttribute('points', points);
+                line.setAttribute('class', 'ditch');
+                line.setAttribute('fill', 'none');
+                line.setAttribute('stroke', '#8bc34a');
+                line.setAttribute('stroke-width', '1.5');
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('stroke-dasharray', '3,2');
+                
+                featureGroup.appendChild(line);
+            } else if (ditch.geometry.type === 'Polygon') {
+                const coordinates = ditch.geometry.coordinates[0];
+                const points = this.polygonToSVG(coordinates);
+                
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('class', 'ditch');
+                polygon.setAttribute('fill', '#8bc34a');
+                polygon.setAttribute('fill-opacity', '0.4');
+                polygon.setAttribute('stroke', '#689f38');
+                polygon.setAttribute('stroke-width', '1');
+                
+                featureGroup.appendChild(polygon);
+            }
+            
+            const label = this.generateDitchLabel(ditch.properties || {});
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCoastlines(coastlines, group) {
+        if (!coastlines) return;
+        
+        coastlines.forEach((coastline, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'coastline-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (coastline.geometry.type === 'LineString') {
+                const coordinates = coastline.geometry.coordinates;
+                const points = this.lineToSVG(coordinates);
+                
+                const line = document.createElementNS(this.SVG_NS, 'polyline');
+                line.setAttribute('points', points);
+                line.setAttribute('class', 'coastline');
+                line.setAttribute('fill', 'none');
+                line.setAttribute('stroke', '#2196f3');
+                line.setAttribute('stroke-width', '8');
+                line.setAttribute('stroke-linecap', 'round');
+                line.setAttribute('stroke-linejoin', 'round');
+                
+                featureGroup.appendChild(line);
+            } else if (coastline.geometry.type === 'Polygon') {
+                const coordinates = coastline.geometry.coordinates[0];
+                const points = this.polygonToSVG(coordinates);
+                
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('points', points);
+                polygon.setAttribute('class', 'coastline');
+                polygon.setAttribute('fill', '#f57c00');
+                polygon.setAttribute('fill-opacity', '0.3');
+                polygon.setAttribute('stroke', '#e65100');
+                polygon.setAttribute('stroke-width', '2');
+                
+                featureGroup.appendChild(polygon);
+            }
+            
+            const label = this.generateCoastlineLabel(coastline.properties || {});
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Label generation methods for waterways
+    generateRiverLabel(props) {
+        let label = 'River';
+        
+        if (props.name) {
+            label = `River: ${props.name}`;
+        }
+        
+        if (props.width) {
+            label += `, width: ${props.width}m`;
+        }
+        
+        return label;
+    }
+    
+    generateStreamLabel(props) {
+        let label = 'Stream';
+        
+        if (props.name) {
+            label = `Stream: ${props.name}`;
+        }
+        
+        if (props.width) {
+            label += `, width: ${props.width}m`;
+        }
+        
+        return label;
+    }
+    
+    generateCanalLabel(props) {
+        let label = 'Canal';
+        
+        if (props.name) {
+            label = `Canal: ${props.name}`;
+        }
+        
+        if (props.usage) {
+            label += `, usage: ${props.usage}`;
+        }
+        
+        return label;
+    }
+    
+    generateDitchLabel(props) {
+        let label = 'Ditch';
+        
+        if (props.name) {
+            label = `Ditch: ${props.name}`;
+        }
+        
+        return label;
+    }
+    
+    generateCoastlineLabel(props) {
+        let label = 'Coastline';
+        
+        if (props.name) {
+            label = `Coastline: ${props.name}`;
         }
         
         return label;

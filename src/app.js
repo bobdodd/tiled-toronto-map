@@ -382,6 +382,23 @@ class MapApplication {
             // Fetch OSM data
             const features = await this.osmDataFetcher.fetchArea(bounds);
             
+            // If request was cancelled, features will be null
+            if (!features) {
+                console.log('Request was cancelled, skipping render');
+                return;
+            }
+            
+            // Check if we got valid features
+            const totalFeatures = Object.values(features).reduce((sum, arr) => sum + (arr ? arr.length : 0), 0);
+            if (totalFeatures === 0) {
+                console.warn('No features returned for current view');
+                // Keep existing features visible
+                return;
+            }
+            
+            // Clear old features only when we have new ones
+            this.clearMapFeatures();
+            
             // Render features
             this.featureRenderer.renderFeatures(features);
             
@@ -436,31 +453,62 @@ class MapApplication {
     
     setupMapChangeListeners() {
         let loadTimeout;
+        let lastRequestBounds = null;
         
         // Create a debounced version of loadMapFeatures
         const debouncedLoad = () => {
             clearTimeout(loadTimeout);
+            
+            // Cancel any pending load
+            if (this.osmDataFetcher) {
+                this.osmDataFetcher.cancelCurrentRequest();
+            }
+            
             loadTimeout = setTimeout(() => {
-                this.loadMapFeatures();
-            }, 500); // Wait 500ms after movement stops
+                // Update viewport dimensions to ensure they're current
+                const container = this.mapRenderer.svg.parentElement;
+                const rect = container.getBoundingClientRect();
+                this.mapRenderer.viewBox.width = rect.width;
+                this.mapRenderer.viewBox.height = rect.height;
+                
+                // Get current bounds
+                const bounds = this.osmDataFetcher.getBoundsFromView(
+                    this.mapRenderer.center,
+                    this.mapRenderer.zoom,
+                    this.mapRenderer.viewBox.width,
+                    this.mapRenderer.viewBox.height
+                );
+                
+                // Check if bounds have changed significantly
+                if (this.boundsHaveChanged(bounds, lastRequestBounds)) {
+                    lastRequestBounds = bounds;
+                    this.loadMapFeatures();
+                }
+            }, 300); // Wait 300ms after movement stops
         };
         
         // Override MapRenderer methods to add feature loading
         const originalSetCenter = this.mapRenderer.setCenter.bind(this.mapRenderer);
         this.mapRenderer.setCenter = (lat, lng) => {
-            // Clear features immediately
-            this.clearMapFeatures();
             originalSetCenter(lat, lng);
             debouncedLoad();
         };
         
         const originalSetZoom = this.mapRenderer.setZoom.bind(this.mapRenderer);
         this.mapRenderer.setZoom = (zoom) => {
-            // Clear features immediately
-            this.clearMapFeatures();
             originalSetZoom(zoom);
             debouncedLoad();
         };
+    }
+    
+    boundsHaveChanged(bounds1, bounds2) {
+        if (!bounds1 || !bounds2) return true;
+        
+        const threshold = 0.0001; // Small threshold for floating point comparison
+        return Math.abs(bounds1.north - bounds2.north) > threshold ||
+               Math.abs(bounds1.south - bounds2.south) > threshold ||
+               Math.abs(bounds1.east - bounds2.east) > threshold ||
+               Math.abs(bounds1.west - bounds2.west) > threshold;
     }
 }
 
