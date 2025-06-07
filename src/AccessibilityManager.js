@@ -13,6 +13,13 @@ export class AccessibilityManager {
             // Transportation infrastructure
             'railways': '.railway',
             'airports': '.airport-way, .airport-terminal, .airport-point',
+            // Barriers (alphabetical order within barriers)
+            'barriers': '.fence, .wall, .hedge, .gate, .bollard',
+            'bollards': '.bollard',
+            'fences': '.fence',
+            'gates': '.gate',
+            'hedges': '.hedge',
+            'walls': '.wall',
             'enhanced-highways': '.highway-casing, .highway-surface',
             'transit-platforms': '.transit-platform',
             'transportation': '.road, .transit-stop, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform',
@@ -77,7 +84,7 @@ export class AccessibilityManager {
             'breakwaters': '.breakwater',
             'manmade-structures': '.bridge, .tunnel, .tower, .mast, .pier, .breakwater',
             'commerce': '.shop, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court',
-            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court, .hotel, .hostel, .guest-house, .campsite, .attraction, .museum, .gallery, .viewpoint, .tourist-info, .cinema, .theatre, .library, .community-centre, .arts-centre, .sports-centre, .swimming-pool, .golf-course, .stadium, .police-station, .fire-station, .emergency-phone, .emergency-defibrillator, .monument, .memorial, .archaeological-site, .castle, .ruins, .bridge, .tunnel, .tower, .mast, .pier, .breakwater'
+            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court, .hotel, .hostel, .guest-house, .campsite, .attraction, .museum, .gallery, .viewpoint, .tourist-info, .cinema, .theatre, .library, .community-centre, .arts-centre, .sports-centre, .swimming-pool, .golf-course, .stadium, .police-station, .fire-station, .emergency-phone, .emergency-defibrillator, .monument, .memorial, .archaeological-site, .castle, .ruins, .bridge, .tunnel, .tower, .mast, .pier, .breakwater, .fence, .wall, .hedge, .gate, .bollard'
         };
         
         this.SVG_NS = 'http://www.w3.org/2000/svg';

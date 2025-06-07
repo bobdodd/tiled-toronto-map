@@ -89,7 +89,13 @@ export class FilterManager {
             'towers': false,
             'masts': false,
             'piers': false,
-            'breakwaters': false
+            'breakwaters': false,
+            // Barriers
+            'fences': false,
+            'walls': false,
+            'hedges': false,
+            'gates': false,
+            'bollards': false
         };
         
         this.setupEventListeners();
@@ -213,7 +219,13 @@ export class FilterManager {
             'towers': '.tower',
             'masts': '.mast',
             'piers': '.pier',
-            'breakwaters': '.breakwater'
+            'breakwaters': '.breakwater',
+            // Barriers
+            'fences': '.fence',
+            'walls': '.wall',
+            'hedges': '.hedge',
+            'gates': '.gate',
+            'bollards': '.bollard'
         };
         
         const selector = classMap[featureType];
@@ -316,7 +328,13 @@ export class FilterManager {
             'towers': 'Towers',
             'masts': 'Masts and antennas',
             'piers': 'Piers',
-            'breakwaters': 'Breakwaters'
+            'breakwaters': 'Breakwaters',
+            // Barriers
+            'fences': 'Fences',
+            'walls': 'Walls',
+            'hedges': 'Hedges',
+            'gates': 'Gates',
+            'bollards': 'Bollards'
         };
         
         const featureName = featureNames[featureType] || featureType;

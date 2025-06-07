@@ -253,6 +253,23 @@ export class OSMDataFetcher {
                 node["man_made"="breakwater"](${bbox});
                 way["man_made"="breakwater"](${bbox});
                 relation["man_made"="breakwater"](${bbox});
+                
+                // Barriers
+                node["barrier"="fence"](${bbox});
+                way["barrier"="fence"](${bbox});
+                relation["barrier"="fence"](${bbox});
+                node["barrier"="wall"](${bbox});
+                way["barrier"="wall"](${bbox});
+                relation["barrier"="wall"](${bbox});
+                node["barrier"="hedge"](${bbox});
+                way["barrier"="hedge"](${bbox});
+                relation["barrier"="hedge"](${bbox});
+                node["barrier"="gate"](${bbox});
+                way["barrier"="gate"](${bbox});
+                relation["barrier"="gate"](${bbox});
+                node["barrier"="bollard"](${bbox});
+                way["barrier"="bollard"](${bbox});
+                relation["barrier"="bollard"](${bbox});
             );
             out body;
             >;
@@ -465,7 +482,13 @@ export class OSMDataFetcher {
             towers: [],
             masts: [],
             piers: [],
-            breakwaters: []
+            breakwaters: [],
+            // Barriers
+            fences: [],
+            walls: [],
+            hedges: [],
+            gates: [],
+            bollards: []
         };
         
         // Create a map of nodes for reference
@@ -807,8 +830,53 @@ export class OSMDataFetcher {
             });
         }
         
+        // Barriers
+        if (tags.barrier === 'fence') {
+            features.fences.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'wall') {
+            features.walls.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'hedge') {
+            features.hedges.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'gate') {
+            features.gates.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
         if (tags.barrier === 'bollard') {
-            features.barriers.push({
+            features.bollards.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Point',
@@ -1606,8 +1674,53 @@ export class OSMDataFetcher {
             });
         }
         
-        if (tags.barrier === 'fence' || tags.barrier === 'wall') {
-            features.barriers.push({
+        // Barriers
+        if (tags.barrier === 'fence') {
+            features.fences.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'wall') {
+            features.walls.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'hedge') {
+            features.hedges.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'gate') {
+            features.gates.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.barrier === 'bollard') {
+            features.bollards.push({
                 type: 'Feature',
                 geometry: {
                     type: 'LineString',

@@ -106,7 +106,13 @@ export class FeatureRenderer {
             towers: this.createGroup('towers-group', 'Towers'),
             masts: this.createGroup('masts-group', 'Masts and antennas'),
             piers: this.createGroup('piers-group', 'Piers'),
-            breakwaters: this.createGroup('breakwaters-group', 'Breakwaters')
+            breakwaters: this.createGroup('breakwaters-group', 'Breakwaters'),
+            // Barriers
+            fences: this.createGroup('fences-group', 'Fences'),
+            walls: this.createGroup('walls-group', 'Walls'),
+            hedges: this.createGroup('hedges-group', 'Hedges'),
+            gates: this.createGroup('gates-group', 'Gates'),
+            bollards: this.createGroup('bollards-group', 'Bollards')
         };
         
         // Add groups to features container
@@ -212,6 +218,13 @@ export class FeatureRenderer {
         this.renderMasts(features.masts, groups.masts);
         this.renderPiers(features.piers, groups.piers);
         this.renderBreakwaters(features.breakwaters, groups.breakwaters);
+        
+        // Render barriers
+        this.renderFences(features.fences, groups.fences);
+        this.renderWalls(features.walls, groups.walls);
+        this.renderHedges(features.hedges, groups.hedges);
+        this.renderGates(features.gates, groups.gates);
+        this.renderBollards(features.bollards, groups.bollards);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -3601,6 +3614,302 @@ export class FeatureRenderer {
         
         if (props._relation) {
             label += ' (complex structure)';
+        }
+        
+        return label;
+    }
+    
+    // Barriers rendering methods
+    renderFences(fences, group) {
+        fences.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'fence-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'fence');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#8B4513');
+                polyline.setAttribute('stroke-width', '2');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke-dasharray', '3,2');
+                polyline.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - fence post marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const rect = document.createElementNS(this.SVG_NS, 'rect');
+                rect.setAttribute('class', 'fence');
+                rect.setAttribute('x', coords.x - 2);
+                rect.setAttribute('y', coords.y - 2);
+                rect.setAttribute('width', '4');
+                rect.setAttribute('height', '4');
+                rect.setAttribute('fill', '#8B4513');
+                rect.setAttribute('stroke', '#654321');
+                rect.setAttribute('stroke-width', '1');
+                rect.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(rect);
+            }
+            
+            // Add label
+            const label = this.generateFenceLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderWalls(walls, group) {
+        walls.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'wall-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'wall');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#696969');
+                polyline.setAttribute('stroke-width', '4');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('opacity', '0.9');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - wall section marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const rect = document.createElementNS(this.SVG_NS, 'rect');
+                rect.setAttribute('class', 'wall');
+                rect.setAttribute('x', coords.x - 3);
+                rect.setAttribute('y', coords.y - 3);
+                rect.setAttribute('width', '6');
+                rect.setAttribute('height', '6');
+                rect.setAttribute('fill', '#696969');
+                rect.setAttribute('stroke', '#404040');
+                rect.setAttribute('stroke-width', '1');
+                rect.setAttribute('opacity', '0.9');
+                featureGroup.appendChild(rect);
+            }
+            
+            // Add label
+            const label = this.generateWallLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderHedges(hedges, group) {
+        hedges.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'hedge-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'hedge');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#228B22');
+                polyline.setAttribute('stroke-width', '3');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke-dasharray', '2,1');
+                polyline.setAttribute('opacity', '0.7');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - hedge section marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'hedge');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '3');
+                circle.setAttribute('fill', '#228B22');
+                circle.setAttribute('stroke', '#006400');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.7');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateHedgeLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderGates(gates, group) {
+        gates.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'gate-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'gate');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#FFD700');
+                polyline.setAttribute('stroke-width', '2');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke-dasharray', '5,3');
+                polyline.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - gate marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'gate');
+                polygon.setAttribute('points', `${coords.x-3},${coords.y+3} ${coords.x+3},${coords.y+3} ${coords.x},${coords.y-3}`);
+                polygon.setAttribute('fill', '#FFD700');
+                polygon.setAttribute('stroke', '#DAA520');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            }
+            
+            // Add label
+            const label = this.generateGateLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderBollards(bollards, group) {
+        bollards.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'bollard-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                // Line of bollards
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'bollard');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#DC143C');
+                polyline.setAttribute('stroke-width', '2');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke-dasharray', '1,3');
+                polyline.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - individual bollard
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'bollard');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '2');
+                circle.setAttribute('fill', '#DC143C');
+                circle.setAttribute('stroke', '#B22222');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateBollardLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Barrier label generation methods
+    generateFenceLabel(props) {
+        let label = 'Fence';
+        
+        if (props.material) {
+            label += `, ${props.material}`;
+        }
+        
+        if (props.height) {
+            label += `, height: ${props.height}`;
+        }
+        
+        if (props.access) {
+            label += `, access: ${props.access}`;
+        }
+        
+        return label;
+    }
+    
+    generateWallLabel(props) {
+        let label = 'Wall';
+        
+        if (props.material) {
+            label += `, ${props.material}`;
+        }
+        
+        if (props.height) {
+            label += `, height: ${props.height}`;
+        }
+        
+        if (props.access) {
+            label += `, access: ${props.access}`;
+        }
+        
+        return label;
+    }
+    
+    generateHedgeLabel(props) {
+        let label = 'Hedge';
+        
+        if (props.species) {
+            label += `, ${props.species}`;
+        }
+        
+        if (props.height) {
+            label += `, height: ${props.height}`;
+        }
+        
+        if (props.access) {
+            label += `, access: ${props.access}`;
+        }
+        
+        return label;
+    }
+    
+    generateGateLabel(props) {
+        let label = 'Gate';
+        
+        if (props.access) {
+            label += `, access: ${props.access}`;
+        }
+        
+        if (props.material) {
+            label += `, ${props.material}`;
+        }
+        
+        if (props.width) {
+            label += `, width: ${props.width}`;
+        }
+        
+        if (props.locked && props.locked === 'yes') {
+            label += ', locked';
+        }
+        
+        return label;
+    }
+    
+    generateBollardLabel(props) {
+        let label = 'Bollard';
+        
+        if (props.material) {
+            label += `, ${props.material}`;
+        }
+        
+        if (props.height) {
+            label += `, height: ${props.height}`;
+        }
+        
+        if (props.colour || props.color) {
+            const color = props.colour || props.color;
+            label += `, ${color}`;
+        }
+        
+        if (props.removable && props.removable === 'yes') {
+            label += ', removable';
         }
         
         return label;
