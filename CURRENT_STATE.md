@@ -127,6 +127,23 @@
     - Stroke: #424242
     - Address points with house numbers
 
+17. **Barriers**
+    - **Fences** (brown dashed lines): Rectangular posts for point features, material and height info
+    - **Walls** (gray thick lines): Square markers for point features, material and height info
+    - **Hedges** (green dashed lines): Circular markers for point features, species and height info
+    - **Gates** (gold dashed lines): Triangular markers for point features, access and material info
+    - **Bollards** (red circles): Individual posts, material, height, color, and removable status
+
+18. **Natural Features**
+    - **Water Bodies** (light blue polygons/circles): Lakes, rivers, ponds with waterway information
+    - **Forests** (dark green polygons/circles): Large forested areas with leaf type information
+    - **Woods** (medium green polygons/circles): Smaller wooded areas with leaf type information
+    - **Grasslands** (light green polygons/circles): Open grass areas
+    - **Beaches** (yellow polygons/circles): Sandy coastal areas with surface information
+    - **Cliffs** (brown dashed lines/rectangles): Cliff faces with height information
+    - **Mountain Peaks** (brown triangles): Summit points with elevation information
+    - **Trees** (green circles): Individual trees with species and height information
+
 ### Known Issues Fixed
 - ✓ Triangular artifacts (fixed projection math)
 - ✓ Road casings not hiding with filter (fixed selector)
@@ -151,14 +168,16 @@
 6. **Accommodation & Tourism** (#6) - Hotels, hostels, guest houses, campsites, attractions, museums, galleries, viewpoints, tourist info ✅ DEPLOYED
 7. **Entertainment & Culture** (#7) - Cinemas, theatres, libraries, community centres, arts centres, sports centres, swimming pools, golf courses, stadiums ✅ DEPLOYED
 8. **Historic Features** (#14) - Monuments, memorials, archaeological sites, castles, historic ruins ✅ DEPLOYED TO GITHUB
+9. **Barriers** (#13) - Fences, walls, hedges, gates, bollards ✅ DEPLOYED TO GITHUB
+10. **Natural Features** (#8) - Water bodies, forests, woods, grasslands, beaches, cliffs, mountain peaks, trees ✅ DEPLOYED TO GITHUB
 
 ### Next Priority Features to Implement
 Based on unimplemented_osm_features.md high-priority list:
 
-9. **Utilities & Infrastructure** (#8)
+11. **Utilities & Infrastructure** (#9)
    - Waste disposal, recycling centers, post boxes, utility poles
 
-10. **Shopping & Commerce** (#9)
+12. **Shopping & Commerce** (#10)
    - Enhanced shopping centers, markets, specific shop categories
 
 ### Implementation Notes
