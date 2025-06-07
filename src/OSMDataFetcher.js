@@ -270,6 +270,32 @@ export class OSMDataFetcher {
                 node["barrier"="bollard"](${bbox});
                 way["barrier"="bollard"](${bbox});
                 relation["barrier"="bollard"](${bbox});
+                
+                // Natural Features
+                node["natural"="water"](${bbox});
+                way["natural"="water"](${bbox});
+                relation["natural"="water"](${bbox});
+                node["natural"="forest"](${bbox});
+                way["natural"="forest"](${bbox});
+                relation["natural"="forest"](${bbox});
+                node["natural"="wood"](${bbox});
+                way["natural"="wood"](${bbox});
+                relation["natural"="wood"](${bbox});
+                node["natural"="grassland"](${bbox});
+                way["natural"="grassland"](${bbox});
+                relation["natural"="grassland"](${bbox});
+                node["natural"="beach"](${bbox});
+                way["natural"="beach"](${bbox});
+                relation["natural"="beach"](${bbox});
+                node["natural"="cliff"](${bbox});
+                way["natural"="cliff"](${bbox});
+                relation["natural"="cliff"](${bbox});
+                node["natural"="peak"](${bbox});
+                way["natural"="peak"](${bbox});
+                relation["natural"="peak"](${bbox});
+                node["natural"="tree"](${bbox});
+                way["natural"="tree"](${bbox});
+                relation["natural"="tree"](${bbox});
             );
             out body;
             >;
@@ -488,7 +514,16 @@ export class OSMDataFetcher {
             walls: [],
             hedges: [],
             gates: [],
-            bollards: []
+            bollards: [],
+            // Natural Features
+            waterBodies: [],
+            forests: [],
+            woods: [],
+            grasslands: [],
+            beaches: [],
+            cliffs: [],
+            peaks: [],
+            trees: []
         };
         
         // Create a map of nodes for reference
@@ -877,6 +912,95 @@ export class OSMDataFetcher {
         
         if (tags.barrier === 'bollard') {
             features.bollards.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        // Natural Features
+        if (tags.natural === 'water') {
+            features.waterBodies.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'forest') {
+            features.forests.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'wood') {
+            features.woods.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'grassland') {
+            features.grasslands.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'beach') {
+            features.beaches.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'cliff') {
+            features.cliffs.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'peak') {
+            features.peaks.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [node.lon, node.lat]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'tree') {
+            features.trees.push({
                 type: 'Feature',
                 geometry: {
                     type: 'Point',
@@ -1721,6 +1845,95 @@ export class OSMDataFetcher {
         
         if (tags.barrier === 'bollard') {
             features.bollards.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        // Natural Features (ways)
+        if (tags.natural === 'water') {
+            features.waterBodies.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates.length > 3 && coordinates[0][0] === coordinates[coordinates.length - 1][0] && coordinates[0][1] === coordinates[coordinates.length - 1][1] ? coordinates : [...coordinates, coordinates[0]]]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'forest') {
+            features.forests.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates.length > 3 && coordinates[0][0] === coordinates[coordinates.length - 1][0] && coordinates[0][1] === coordinates[coordinates.length - 1][1] ? coordinates : [...coordinates, coordinates[0]]]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'wood') {
+            features.woods.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates.length > 3 && coordinates[0][0] === coordinates[coordinates.length - 1][0] && coordinates[0][1] === coordinates[coordinates.length - 1][1] ? coordinates : [...coordinates, coordinates[0]]]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'grassland') {
+            features.grasslands.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates.length > 3 && coordinates[0][0] === coordinates[coordinates.length - 1][0] && coordinates[0][1] === coordinates[coordinates.length - 1][1] ? coordinates : [...coordinates, coordinates[0]]]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'beach') {
+            features.beaches.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [coordinates.length > 3 && coordinates[0][0] === coordinates[coordinates.length - 1][0] && coordinates[0][1] === coordinates[coordinates.length - 1][1] ? coordinates : [...coordinates, coordinates[0]]]
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'cliff') {
+            features.cliffs.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'peak') {
+            features.peaks.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: coordinates
+                },
+                properties: tags
+            });
+        }
+        
+        if (tags.natural === 'tree') {
+            features.trees.push({
                 type: 'Feature',
                 geometry: {
                     type: 'LineString',

@@ -95,7 +95,16 @@ export class FilterManager {
             'walls': false,
             'hedges': false,
             'gates': false,
-            'bollards': false
+            'bollards': false,
+            // Natural Features
+            'water-bodies': false,
+            'forests': false,
+            'woods': false,
+            'grasslands': false,
+            'beaches': false,
+            'cliffs': false,
+            'peaks': false,
+            'trees': false
         };
         
         this.setupEventListeners();
@@ -225,7 +234,16 @@ export class FilterManager {
             'walls': '.wall',
             'hedges': '.hedge',
             'gates': '.gate',
-            'bollards': '.bollard'
+            'bollards': '.bollard',
+            // Natural Features
+            'water-bodies': '.water-body',
+            'forests': '.forest',
+            'woods': '.wood',
+            'grasslands': '.grassland',
+            'beaches': '.beach',
+            'cliffs': '.cliff',
+            'peaks': '.peak',
+            'trees': '.tree'
         };
         
         const selector = classMap[featureType];
@@ -334,7 +352,16 @@ export class FilterManager {
             'walls': 'Walls',
             'hedges': 'Hedges',
             'gates': 'Gates',
-            'bollards': 'Bollards'
+            'bollards': 'Bollards',
+            // Natural Features
+            'water-bodies': 'Water bodies',
+            'forests': 'Forests',
+            'woods': 'Woods',
+            'grasslands': 'Grasslands',
+            'beaches': 'Beaches',
+            'cliffs': 'Cliffs',
+            'peaks': 'Mountain peaks',
+            'trees': 'Trees'
         };
         
         const featureName = featureNames[featureType] || featureType;

@@ -83,8 +83,18 @@ export class AccessibilityManager {
             'piers': '.pier',
             'breakwaters': '.breakwater',
             'manmade-structures': '.bridge, .tunnel, .tower, .mast, .pier, .breakwater',
+            // Natural Features
+            'water-bodies': '.water-body',
+            'forests': '.forest',
+            'woods': '.wood',
+            'grasslands': '.grassland',
+            'beaches': '.beach',
+            'cliffs': '.cliff',
+            'peaks': '.peak',
+            'trees': '.tree',
+            'natural-features': '.water-body, .forest, .wood, .grassland, .beach, .cliff, .peak, .tree',
             'commerce': '.shop, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court',
-            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court, .hotel, .hostel, .guest-house, .campsite, .attraction, .museum, .gallery, .viewpoint, .tourist-info, .cinema, .theatre, .library, .community-centre, .arts-centre, .sports-centre, .swimming-pool, .golf-course, .stadium, .police-station, .fire-station, .emergency-phone, .emergency-defibrillator, .monument, .memorial, .archaeological-site, .castle, .ruins, .bridge, .tunnel, .tower, .mast, .pier, .breakwater, .fence, .wall, .hedge, .gate, .bollard'
+            'everything': '.building, .road, .transit-stop, .shop, .school, .worship, .park, .address, .hospital, .clinic, .doctor, .dentist, .pharmacy, .veterinary, .railway, .airport-way, .airport-terminal, .airport-point, .highway-casing, .highway-surface, .transit-platform, .bank, .atm, .post-office, .currency-exchange, .restaurant, .cafe, .fast-food, .bar, .pub, .food-court, .hotel, .hostel, .guest-house, .campsite, .attraction, .museum, .gallery, .viewpoint, .tourist-info, .cinema, .theatre, .library, .community-centre, .arts-centre, .sports-centre, .swimming-pool, .golf-course, .stadium, .police-station, .fire-station, .emergency-phone, .emergency-defibrillator, .monument, .memorial, .archaeological-site, .castle, .ruins, .bridge, .tunnel, .tower, .mast, .pier, .breakwater, .fence, .wall, .hedge, .gate, .bollard, .water-body, .forest, .wood, .grassland, .beach, .cliff, .peak, .tree'
         };
         
         this.SVG_NS = 'http://www.w3.org/2000/svg';

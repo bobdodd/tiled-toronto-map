@@ -112,7 +112,16 @@ export class FeatureRenderer {
             walls: this.createGroup('walls-group', 'Walls'),
             hedges: this.createGroup('hedges-group', 'Hedges'),
             gates: this.createGroup('gates-group', 'Gates'),
-            bollards: this.createGroup('bollards-group', 'Bollards')
+            bollards: this.createGroup('bollards-group', 'Bollards'),
+            // Natural Features
+            waterBodies: this.createGroup('water-bodies-group', 'Water bodies'),
+            forests: this.createGroup('forests-group', 'Forests'),
+            woods: this.createGroup('woods-group', 'Woods'),
+            grasslands: this.createGroup('grasslands-group', 'Grasslands'),
+            beaches: this.createGroup('beaches-group', 'Beaches'),
+            cliffs: this.createGroup('cliffs-group', 'Cliffs'),
+            peaks: this.createGroup('peaks-group', 'Mountain peaks'),
+            trees: this.createGroup('trees-group', 'Individual trees')
         };
         
         // Add groups to features container
@@ -225,6 +234,16 @@ export class FeatureRenderer {
         this.renderHedges(features.hedges, groups.hedges);
         this.renderGates(features.gates, groups.gates);
         this.renderBollards(features.bollards, groups.bollards);
+        
+        // Render natural features
+        this.renderWaterBodies(features.waterBodies, groups.waterBodies);
+        this.renderForests(features.forests, groups.forests);
+        this.renderWoods(features.woods, groups.woods);
+        this.renderGrasslands(features.grasslands, groups.grasslands);
+        this.renderBeaches(features.beaches, groups.beaches);
+        this.renderCliffs(features.cliffs, groups.cliffs);
+        this.renderPeaks(features.peaks, groups.peaks);
+        this.renderTrees(features.trees, groups.trees);
         
         // Re-add focus outline if it existed
         if (focusOutline) {
@@ -3910,6 +3929,419 @@ export class FeatureRenderer {
         
         if (props.removable && props.removable === 'yes') {
             label += ', removable';
+        }
+        
+        return label;
+    }
+    
+    // Natural Features rendering methods
+    renderWaterBodies(waterBodies, group) {
+        waterBodies.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'water-body-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'water-body');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#4FC3F7');
+                polygon.setAttribute('stroke', '#2196F3');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.7');
+                featureGroup.appendChild(polygon);
+            } else {
+                // Point geometry - water source marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'water-body');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '4');
+                circle.setAttribute('fill', '#4FC3F7');
+                circle.setAttribute('stroke', '#2196F3');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.7');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateWaterBodyLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderForests(forests, group) {
+        forests.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'forest-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'forest');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#388E3C');
+                polygon.setAttribute('stroke', '#2E7D32');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.6');
+                featureGroup.appendChild(polygon);
+            } else {
+                // Point geometry - forest marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'forest');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '6');
+                circle.setAttribute('fill', '#388E3C');
+                circle.setAttribute('stroke', '#2E7D32');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.6');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateForestLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderWoods(woods, group) {
+        woods.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'wood-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'wood');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#66BB6A');
+                polygon.setAttribute('stroke', '#4CAF50');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.6');
+                featureGroup.appendChild(polygon);
+            } else {
+                // Point geometry - wood marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'wood');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '5');
+                circle.setAttribute('fill', '#66BB6A');
+                circle.setAttribute('stroke', '#4CAF50');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.6');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateWoodLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderGrasslands(grasslands, group) {
+        grasslands.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'grassland-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'grassland');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#8BC34A');
+                polygon.setAttribute('stroke', '#689F38');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.5');
+                featureGroup.appendChild(polygon);
+            } else {
+                // Point geometry - grassland marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'grassland');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '4');
+                circle.setAttribute('fill', '#8BC34A');
+                circle.setAttribute('stroke', '#689F38');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.5');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateGrasslandLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderBeaches(beaches, group) {
+        beaches.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'beach-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'Polygon') {
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'beach');
+                polygon.setAttribute('points', this.polygonToSVG(feature.geometry.coordinates[0]));
+                polygon.setAttribute('fill', '#FFCC02');
+                polygon.setAttribute('stroke', '#FFA000');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.6');
+                featureGroup.appendChild(polygon);
+            } else {
+                // Point geometry - beach marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'beach');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '4');
+                circle.setAttribute('fill', '#FFCC02');
+                circle.setAttribute('stroke', '#FFA000');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.6');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateBeachLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderCliffs(cliffs, group) {
+        cliffs.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'cliff-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'cliff');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#8D6E63');
+                polyline.setAttribute('stroke-width', '3');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('stroke-dasharray', '2,2');
+                polyline.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - cliff marker
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'cliff');
+                polygon.setAttribute('points', `${coords.x-3},${coords.y+3} ${coords.x+3},${coords.y+3} ${coords.x+3},${coords.y-1} ${coords.x-3},${coords.y-1}`);
+                polygon.setAttribute('fill', '#8D6E63');
+                polygon.setAttribute('stroke', '#5D4037');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            }
+            
+            // Add label
+            const label = this.generateCliffLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderPeaks(peaks, group) {
+        peaks.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'peak-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'peak');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#795548');
+                polyline.setAttribute('stroke-width', '2');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - peak marker (triangle)
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const polygon = document.createElementNS(this.SVG_NS, 'polygon');
+                polygon.setAttribute('class', 'peak');
+                polygon.setAttribute('points', `${coords.x},${coords.y-4} ${coords.x-3},${coords.y+2} ${coords.x+3},${coords.y+2}`);
+                polygon.setAttribute('fill', '#795548');
+                polygon.setAttribute('stroke', '#5D4037');
+                polygon.setAttribute('stroke-width', '1');
+                polygon.setAttribute('opacity', '0.8');
+                featureGroup.appendChild(polygon);
+            }
+            
+            // Add label
+            const label = this.generatePeakLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    renderTrees(trees, group) {
+        trees.forEach((feature, index) => {
+            const featureGroup = document.createElementNS(this.SVG_NS, 'g');
+            featureGroup.setAttribute('class', 'tree-feature');
+            featureGroup.setAttribute('tabindex', '-1');
+            
+            if (feature.geometry.type === 'LineString') {
+                const polyline = document.createElementNS(this.SVG_NS, 'polyline');
+                polyline.setAttribute('class', 'tree');
+                polyline.setAttribute('points', this.lineToSVG(feature.geometry.coordinates));
+                polyline.setAttribute('stroke', '#4CAF50');
+                polyline.setAttribute('stroke-width', '2');
+                polyline.setAttribute('fill', 'none');
+                polyline.setAttribute('opacity', '0.7');
+                featureGroup.appendChild(polyline);
+            } else {
+                // Point geometry - tree marker (circle)
+                const coords = this.toSVGCoordinates(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const circle = document.createElementNS(this.SVG_NS, 'circle');
+                circle.setAttribute('class', 'tree');
+                circle.setAttribute('cx', coords.x);
+                circle.setAttribute('cy', coords.y);
+                circle.setAttribute('r', '3');
+                circle.setAttribute('fill', '#4CAF50');
+                circle.setAttribute('stroke', '#388E3C');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('opacity', '0.7');
+                featureGroup.appendChild(circle);
+            }
+            
+            // Add label
+            const label = this.generateTreeLabel(feature.properties);
+            featureGroup.setAttribute('aria-label', label);
+            
+            group.appendChild(featureGroup);
+        });
+    }
+    
+    // Natural Features label generation methods
+    generateWaterBodyLabel(props) {
+        let label = 'Water body';
+        
+        if (props.name) {
+            label = props.name;
+        } else if (props.water) {
+            label = `${props.water} water body`;
+        }
+        
+        if (props.natural === 'water' && props.waterway) {
+            label = `${props.waterway}`;
+        }
+        
+        return label;
+    }
+    
+    generateForestLabel(props) {
+        let label = 'Forest';
+        
+        if (props.name) {
+            label = props.name;
+        }
+        
+        if (props.leaf_type) {
+            label += `, ${props.leaf_type}`;
+        }
+        
+        return label;
+    }
+    
+    generateWoodLabel(props) {
+        let label = 'Wood';
+        
+        if (props.name) {
+            label = props.name;
+        }
+        
+        if (props.leaf_type) {
+            label += `, ${props.leaf_type}`;
+        }
+        
+        return label;
+    }
+    
+    generateGrasslandLabel(props) {
+        let label = 'Grassland';
+        
+        if (props.name) {
+            label = props.name;
+        }
+        
+        return label;
+    }
+    
+    generateBeachLabel(props) {
+        let label = 'Beach';
+        
+        if (props.name) {
+            label = props.name;
+        }
+        
+        if (props.surface) {
+            label += `, ${props.surface}`;
+        }
+        
+        return label;
+    }
+    
+    generateCliffLabel(props) {
+        let label = 'Cliff';
+        
+        if (props.name) {
+            label = props.name;
+        }
+        
+        if (props.height) {
+            label += `, height: ${props.height}`;
+        }
+        
+        return label;
+    }
+    
+    generatePeakLabel(props) {
+        let label = 'Mountain peak';
+        
+        if (props.name) {
+            label = props.name;
+        }
+        
+        if (props.ele) {
+            label += `, elevation: ${props.ele}m`;
+        }
+        
+        return label;
+    }
+    
+    generateTreeLabel(props) {
+        let label = 'Tree';
+        
+        if (props.species) {
+            label = props.species;
+        }
+        
+        if (props.height) {
+            label += `, height: ${props.height}`;
         }
         
         return label;
