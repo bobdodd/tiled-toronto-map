@@ -1,0 +1,11 @@
+# Force proper headers for gzipped SVG tiles
+<Files "*.svg.gz">
+    Header set Content-Type "image/svg+xml"
+    Header set Content-Encoding "gzip"
+    Header set Cache-Control "public, max-age=3600"
+</Files>
+
+# Enable CORS
+Header always set Access-Control-Allow-Origin "*"
+Header always set Access-Control-Allow-Methods "GET, OPTIONS"
+Header always set Access-Control-Allow-Headers "Content-Type"

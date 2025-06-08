@@ -1,0 +1,40 @@
+# Enable gzip compression for SVG files
+<IfModule mod_deflate.c>
+    # Compress SVG files
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# Serve pre-compressed .svg.gz files
+<IfModule mod_headers.c>
+    # For .svg.gz files, set proper content type and encoding
+    <FilesMatch "\.svg\.gz$">
+        # Force the content type to SVG
+        ForceType image/svg+xml
+        
+        # Set the content encoding header
+        Header set Content-Encoding gzip
+        
+        # Vary header for caching
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+</IfModule>
+
+# Alternative approach using mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Check if browser accepts gzip
+    RewriteCond %{HTTP:Accept-Encoding} gzip
+    
+    # Check if .svg.gz version exists
+    RewriteCond %{REQUEST_FILENAME}.gz -f
+    
+    # Serve the .gz version
+    RewriteRule ^(.*)\.svg$ $1.svg.gz [L]
+    
+    # Set headers for rewritten requests
+    <FilesMatch "\.svg\.gz$">
+        Header set Content-Type "image/svg+xml"
+        Header set Content-Encoding gzip
+    </FilesMatch>
+</IfModule>

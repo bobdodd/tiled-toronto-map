@@ -1,5 +1,10 @@
-# Reference folders
-mapping webinar/
+# Large OSM data files - CRITICAL: exclude these
+*.osm.pbf
+*.osm
+toronto-svg-tiles/data/
+
+# Archive folders
+archive/
 
 # macOS
 .DS_Store

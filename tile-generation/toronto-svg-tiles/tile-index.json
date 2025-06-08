@@ -1,0 +1,169 @@
+{
+  "bounds": {
+    "north": 43.66,
+    "south": 43.63,
+    "east": -79.36,
+    "west": -79.39
+  },
+  "tile_size": 0.01,
+  "svg_size": 1000,
+  "total_tiles": 13,
+  "tiles": [
+    {
+      "file": "43.630_-79.400.svg.gz",
+      "lat": 43.63,
+      "lng": -79.4,
+      "bounds": {
+        "north": 43.64,
+        "south": 43.63,
+        "east": -79.39,
+        "west": -79.4
+      },
+      "size_bytes": 24946
+    },
+    {
+      "file": "43.650_-79.380.svg.gz",
+      "lat": 43.65,
+      "lng": -79.38,
+      "bounds": {
+        "north": 43.66,
+        "south": 43.65,
+        "east": -79.36999999999999,
+        "west": -79.38
+      },
+      "size_bytes": 124052
+    },
+    {
+      "file": "43.650_-79.390.svg.gz",
+      "lat": 43.65,
+      "lng": -79.39,
+      "bounds": {
+        "north": 43.66,
+        "south": 43.65,
+        "east": -79.38,
+        "west": -79.39
+      },
+      "size_bytes": 139119
+    },
+    {
+      "file": "43.640_-79.400.svg.gz",
+      "lat": 43.64,
+      "lng": -79.4,
+      "bounds": {
+        "north": 43.65,
+        "south": 43.64,
+        "east": -79.39,
+        "west": -79.4
+      },
+      "size_bytes": 46301
+    },
+    {
+      "file": "43.640_-79.390.svg.gz",
+      "lat": 43.64,
+      "lng": -79.39,
+      "bounds": {
+        "north": 43.65,
+        "south": 43.64,
+        "east": -79.38,
+        "west": -79.39
+      },
+      "size_bytes": 143409
+    },
+    {
+      "file": "43.630_-79.380.svg.gz",
+      "lat": 43.63,
+      "lng": -79.38,
+      "bounds": {
+        "north": 43.64,
+        "south": 43.63,
+        "east": -79.36999999999999,
+        "west": -79.38
+      },
+      "size_bytes": 7020
+    },
+    {
+      "file": "43.650_-79.400.svg.gz",
+      "lat": 43.65,
+      "lng": -79.4,
+      "bounds": {
+        "north": 43.66,
+        "south": 43.65,
+        "east": -79.39,
+        "west": -79.4
+      },
+      "size_bytes": 63746
+    },
+    {
+      "file": "43.640_-79.380.svg.gz",
+      "lat": 43.64,
+      "lng": -79.38,
+      "bounds": {
+        "north": 43.65,
+        "south": 43.64,
+        "east": -79.36999999999999,
+        "west": -79.38
+      },
+      "size_bytes": 116314
+    },
+    {
+      "file": "43.630_-79.390.svg.gz",
+      "lat": 43.63,
+      "lng": -79.39,
+      "bounds": {
+        "north": 43.64,
+        "south": 43.63,
+        "east": -79.38,
+        "west": -79.39
+      },
+      "size_bytes": 31944
+    },
+    {
+      "file": "43.650_-79.370.svg.gz",
+      "lat": 43.65,
+      "lng": -79.37,
+      "bounds": {
+        "north": 43.66,
+        "south": 43.65,
+        "east": -79.36,
+        "west": -79.37
+      },
+      "size_bytes": 115662
+    },
+    {
+      "file": "43.630_-79.360.svg.gz",
+      "lat": 43.63,
+      "lng": -79.36,
+      "bounds": {
+        "north": 43.64,
+        "south": 43.63,
+        "east": -79.35,
+        "west": -79.36
+      },
+      "size_bytes": 8712
+    },
+    {
+      "file": "43.640_-79.370.svg.gz",
+      "lat": 43.64,
+      "lng": -79.37,
+      "bounds": {
+        "north": 43.65,
+        "south": 43.64,
+        "east": -79.36,
+        "west": -79.37
+      },
+      "size_bytes": 59265
+    },
+    {
+      "file": "43.640_-79.360.svg.gz",
+      "lat": 43.64,
+      "lng": -79.36,
+      "bounds": {
+        "north": 43.65,
+        "south": 43.64,
+        "east": -79.35,
+        "west": -79.36
+      },
+      "size_bytes": 9041
+    }
+  ]
+}

@@ -57,8 +57,59 @@ class TorontoTileBuilder:
         self.feature_types = {
             'buildings': {
                 'tags': {'building': True},
-                'color': '#8e9aaf',
-                'stroke': '#5d6674'
+                'styles': {
+                    # Residential buildings
+                    'house': {'fill': '#d4c5b9', 'stroke': '#a69b8c', 'stroke_width': 1},
+                    'residential': {'fill': '#d4c5b9', 'stroke': '#a69b8c', 'stroke_width': 1},
+                    'apartments': {'fill': '#d4c5b9', 'stroke': '#a69b8c', 'stroke_width': 1},
+                    'detached': {'fill': '#d4c5b9', 'stroke': '#a69b8c', 'stroke_width': 1},
+                    'semidetached_house': {'fill': '#d4c5b9', 'stroke': '#a69b8c', 'stroke_width': 1},
+                    'terrace': {'fill': '#d4c5b9', 'stroke': '#a69b8c', 'stroke_width': 1},
+                    'dormitory': {'fill': '#dcc5b9', 'stroke': '#b3a08c', 'stroke_width': 1},
+                    'bungalow': {'fill': '#d4c5b9', 'stroke': '#a69b8c', 'stroke_width': 1},
+                    'cabin': {'fill': '#c4b5a9', 'stroke': '#96897c', 'stroke_width': 1},
+                    
+                    # Commercial buildings
+                    'commercial': {'fill': '#e6cccc', 'stroke': '#cc9999', 'stroke_width': 1},
+                    'office': {'fill': '#d9d0c9', 'stroke': '#b3a69c', 'stroke_width': 1},
+                    'industrial': {'fill': '#dcd5cc', 'stroke': '#b3a999', 'stroke_width': 1},
+                    'retail': {'fill': '#e6cccc', 'stroke': '#cc9999', 'stroke_width': 1},
+                    'warehouse': {'fill': '#e5ddd5', 'stroke': '#ccbbaa', 'stroke_width': 1},
+                    'supermarket': {'fill': '#ffcccc', 'stroke': '#ff9999', 'stroke_width': 1.5},
+                    'hotel': {'fill': '#e6d5cc', 'stroke': '#ccaa99', 'stroke_width': 1.5},
+                    'kiosk': {'fill': '#dcc5b9', 'stroke': '#b3a08c', 'stroke_width': 1},
+                    
+                    # Public buildings
+                    'civic': {'fill': '#d4d5e8', 'stroke': '#a9aac4', 'stroke_width': 2},
+                    'government': {'fill': '#d4d5e8', 'stroke': '#a9aac4', 'stroke_width': 2},
+                    'hospital': {'fill': '#fdd', 'stroke': '#da8', 'stroke_width': 2},
+                    'school': {'fill': '#f0e5d8', 'stroke': '#ccb399', 'stroke_width': 2},
+                    'university': {'fill': '#f0e5d8', 'stroke': '#ccb399', 'stroke_width': 2},
+                    'college': {'fill': '#f0e5d8', 'stroke': '#ccb399', 'stroke_width': 2},
+                    'kindergarten': {'fill': '#ffe5cc', 'stroke': '#ffcc99', 'stroke_width': 1.5},
+                    'public': {'fill': '#d4d5e8', 'stroke': '#a9aac4', 'stroke_width': 1.5},
+                    'train_station': {'fill': '#d4c5e8', 'stroke': '#a99bc4', 'stroke_width': 2},
+                    'transportation': {'fill': '#d4c5e8', 'stroke': '#a99bc4', 'stroke_width': 1.5},
+                    
+                    # Special structures (some already in religious)
+                    'barn': {'fill': '#d4a76a', 'stroke': '#b58652', 'stroke_width': 1},
+                    'bridge': {'fill': '#b8b8b8', 'stroke': '#888', 'stroke_width': 2},
+                    'bunker': {'fill': '#999', 'stroke': '#666', 'stroke_width': 2},
+                    'carport': {'fill': '#ddd', 'stroke': '#aaa', 'stroke_width': 1},
+                    'conservatory': {'fill': '#eeffee', 'stroke': '#aaccaa', 'stroke_width': 1},
+                    'construction': {'fill': '#ffcc99', 'stroke': '#ff9966', 'stroke_width': 1, 'dasharray': '5,3'},
+                    'garage': {'fill': '#ddd', 'stroke': '#aaa', 'stroke_width': 1},
+                    'garages': {'fill': '#ddd', 'stroke': '#aaa', 'stroke_width': 1},
+                    'greenhouse': {'fill': '#eeffee', 'stroke': '#aaccaa', 'stroke_width': 1},
+                    'hangar': {'fill': '#d5d5e8', 'stroke': '#aaaac4', 'stroke_width': 1.5},
+                    'hut': {'fill': '#c4b5a9', 'stroke': '#96897c', 'stroke_width': 1},
+                    'roof': {'fill': '#ddd', 'stroke': '#aaa', 'stroke_width': 0.5},
+                    'shed': {'fill': '#c4b5a9', 'stroke': '#96897c', 'stroke_width': 1},
+                    
+                    # Default building style
+                    'yes': {'fill': '#8e9aaf', 'stroke': '#5d6674', 'stroke_width': 1},
+                    'default': {'fill': '#8e9aaf', 'stroke': '#5d6674', 'stroke_width': 1}
+                }
             },
             'landuse': {
                 'tags': {
@@ -347,6 +398,54 @@ class TorontoTileBuilder:
                     # Default
                     'default': {'fill': '#e6d9ff', 'stroke': '#ccb3ff', 'stroke_width': 1}
                 }
+            },
+            'parking': {
+                'tags': {
+                    'amenity': ['parking', 'bicycle_parking', 'motorcycle_parking'],
+                    'parking': ['surface', 'underground', 'multi-storey', 'rooftop', 'lane', 
+                               'street_side', 'carports', 'garage_boxes', 'layby', 'sheds']
+                },
+                'styles': {
+                    # General parking
+                    'surface': {'fill': '#e6e6e6', 'stroke': '#999999', 'stroke_width': 1},
+                    'underground': {'fill': '#d0d0d0', 'stroke': '#808080', 'stroke_width': 1, 'dasharray': '3,2'},
+                    'multi-storey': {'fill': '#cccccc', 'stroke': '#666666', 'stroke_width': 1.5},
+                    'rooftop': {'fill': '#e0e0e0', 'stroke': '#999999', 'stroke_width': 1, 'dasharray': '5,3'},
+                    'street_side': {'fill': '#f0f0f0', 'stroke': '#a0a0a0', 'stroke_width': 0.5},
+                    'garage_boxes': {'fill': '#d9d9d9', 'stroke': '#808080', 'stroke_width': 1},
+                    # Bicycle parking
+                    'bicycle_parking': {'fill': '#b3d9ff', 'stroke': '#4d94ff', 'stroke_width': 1},
+                    # Motorcycle parking
+                    'motorcycle_parking': {'fill': '#ffccb3', 'stroke': '#ff8c4d', 'stroke_width': 1},
+                    # Default parking style
+                    'default': {'fill': '#e6e6e6', 'stroke': '#999999', 'stroke_width': 1}
+                }
+            },
+            'sensory_accessibility': {
+                'tags': {
+                    'tactile_paving': ['yes', 'no'],
+                    'traffic_signals:sound': ['yes'],
+                    'traffic_signals:vibration': ['yes'],
+                    'acoustic': ['voice_description'],
+                    'braille': ['yes'],
+                    'audio_loop': ['yes'],
+                    'sign_language': ['yes']
+                },
+                'styles': {
+                    # Tactile paving
+                    'tactile_paving': {'fill': '#ffeb3b', 'stroke': '#f57f17', 'stroke_width': 2},
+                    'no_tactile_paving': {'fill': '#ffccbc', 'stroke': '#ff5722', 'stroke_width': 1, 'dasharray': '2,2'},
+                    # Audio signals
+                    'audio_signals': {'fill': '#4fc3f7', 'stroke': '#0288d1', 'stroke_width': 2},
+                    'vibration_signals': {'fill': '#ce93d8', 'stroke': '#7b1fa2', 'stroke_width': 2},
+                    # Communication aids
+                    'voice_description': {'fill': '#a5d6a7', 'stroke': '#388e3c', 'stroke_width': 2},
+                    'braille': {'fill': '#90caf9', 'stroke': '#1565c0', 'stroke_width': 2},
+                    'audio_loop': {'fill': '#ffcc80', 'stroke': '#ef6c00', 'stroke_width': 2},
+                    'sign_language': {'fill': '#f48fb1', 'stroke': '#c2185b', 'stroke_width': 2},
+                    # Default
+                    'default': {'fill': '#81c784', 'stroke': '#388e3c', 'stroke_width': 1.5}
+                }
             }
         }
 
@@ -501,6 +600,45 @@ class TorontoTileBuilder:
                     stroke=style['stroke'],
                     stroke_width=style.get('stroke_width', 1)
                 )
+            elif feature_type == 'parking':
+                parking_type = self.determine_parking_type(properties)
+                style = self.feature_types['parking']['styles'].get(parking_type, 
+                        self.feature_types['parking']['styles']['default'])
+                # Different sizes for different parking types
+                radius = 4 if parking_type in ['bicycle_parking', 'motorcycle_parking'] else 6
+                element = self.create_svg_element(
+                    'circle',
+                    cx=x, cy=y, r=radius,
+                    class_=f'parking parking-{parking_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1)
+                )
+            elif feature_type == 'sensory_accessibility':
+                sensory_type = self.determine_sensory_accessibility_type(properties)
+                style = self.feature_types['sensory_accessibility']['styles'].get(sensory_type, 
+                        self.feature_types['sensory_accessibility']['styles']['default'])
+                # Use different shapes for different sensory features
+                if sensory_type in ['tactile_paving', 'no_tactile_paving']:
+                    # Square for tactile paving
+                    element = self.create_svg_element(
+                        'rect',
+                        x=x-5, y=y-5, width=10, height=10,
+                        class_=f'sensory-accessibility sensory-{sensory_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                else:
+                    # Circle for other sensory features
+                    element = self.create_svg_element(
+                        'circle',
+                        cx=x, cy=y, r=6,
+                        class_=f'sensory-accessibility sensory-{sensory_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
             else:
                 element = self.create_svg_element(
                     'circle',
@@ -612,6 +750,25 @@ class TorontoTileBuilder:
                 
                 if 'dasharray' in style:
                     element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'sensory_accessibility':
+                # Linear sensory features (tactile paving along paths)
+                sensory_type = self.determine_sensory_accessibility_type(properties)
+                style = self.feature_types['sensory_accessibility']['styles'].get(sensory_type, 
+                        self.feature_types['sensory_accessibility']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polyline',
+                    points=" ".join(points),
+                    class_=f'sensory-accessibility sensory-{sensory_type}',
+                    fill="none",
+                    stroke=style.get('stroke', '#388e3c'),
+                    stroke_width=style.get('stroke_width', 2),
+                    stroke_linecap="round",
+                    stroke_linejoin="round"
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
             else:
                 # Default line rendering for non-roads
                 element = self.create_svg_element(
@@ -701,6 +858,55 @@ class TorontoTileBuilder:
                     stroke=style['stroke'],
                     stroke_width=style.get('stroke_width', 1)
                 )
+            elif feature_type == 'parking':
+                parking_type = self.determine_parking_type(properties)
+                style = self.feature_types['parking']['styles'].get(parking_type, 
+                        self.feature_types['parking']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'parking parking-{parking_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'sensory_accessibility':
+                # Areas with sensory accessibility features
+                sensory_type = self.determine_sensory_accessibility_type(properties)
+                style = self.feature_types['sensory_accessibility']['styles'].get(sensory_type, 
+                        self.feature_types['sensory_accessibility']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'sensory-accessibility sensory-{sensory_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1.5)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'buildings':
+                building_type = self.determine_building_type(properties)
+                style = self.feature_types['buildings']['styles'].get(building_type, 
+                        self.feature_types['buildings']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'building building-{building_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
             else:
                 element = self.create_svg_element(
                     'polygon',
@@ -875,6 +1081,106 @@ class TorontoTileBuilder:
             
         return 'default'  # Generic place of worship
     
+    def determine_building_type(self, properties):
+        """Determine specific building type from tags"""
+        # Check building tag
+        if 'building' in properties:
+            building_type = properties['building']
+            # Return the building type if it's in our styles
+            if building_type in self.feature_types['buildings']['styles']:
+                return building_type
+        
+        # Check if it's a hospital, school, etc. from amenity tags
+        amenity = properties.get('amenity')
+        if amenity == 'hospital':
+            return 'hospital'
+        elif amenity == 'school':
+            return 'school'
+        elif amenity == 'university':
+            return 'university'
+        elif amenity == 'college':
+            return 'college'
+        elif amenity == 'kindergarten':
+            return 'kindergarten'
+        
+        # Check office tag for government buildings
+        if properties.get('office') == 'government':
+            return 'government'
+            
+        # Check if it's a train station
+        if properties.get('railway') == 'station':
+            return 'train_station'
+            
+        # Default to 'yes' for generic buildings
+        return properties.get('building', 'yes')
+    
+    def determine_parking_type(self, properties):
+        """Determine specific parking type from tags"""
+        # Check amenity tag first
+        amenity = properties.get('amenity')
+        if amenity == 'bicycle_parking':
+            return 'bicycle_parking'
+        elif amenity == 'motorcycle_parking':
+            return 'motorcycle_parking'
+        
+        # Check parking tag for specific type
+        parking_type = properties.get('parking')
+        if parking_type in ['surface', 'underground', 'multi-storey', 'rooftop', 
+                           'street_side', 'garage_boxes']:
+            return parking_type
+        
+        # Check if it's accessible parking
+        if properties.get('wheelchair') == 'yes' or properties.get('access') == 'disabled':
+            return 'surface'  # Default to surface for accessible parking
+            
+        # Check capacity to infer type
+        capacity = properties.get('capacity')
+        if capacity:
+            try:
+                if int(capacity) > 100:
+                    return 'multi-storey'
+                elif int(capacity) < 10:
+                    return 'street_side'
+            except:
+                pass
+                
+        return 'surface'  # Default to surface parking
+    
+    def determine_sensory_accessibility_type(self, properties):
+        """Determine specific sensory accessibility type from tags"""
+        # Check for tactile paving
+        if 'tactile_paving' in properties:
+            if properties['tactile_paving'] == 'yes':
+                return 'tactile_paving'
+            elif properties['tactile_paving'] == 'no':
+                return 'no_tactile_paving'
+        
+        # Check for audio signals at crossings
+        if properties.get('traffic_signals:sound') == 'yes':
+            return 'audio_signals'
+        
+        # Check for vibration signals
+        if properties.get('traffic_signals:vibration') == 'yes':
+            return 'vibration_signals'
+        
+        # Check for voice descriptions
+        if properties.get('acoustic') == 'voice_description':
+            return 'voice_description'
+        
+        # Check for braille
+        if properties.get('braille') == 'yes':
+            return 'braille'
+        
+        # Check for audio loop systems
+        if properties.get('audio_loop') == 'yes':
+            return 'audio_loop'
+        
+        # Check for sign language support
+        if properties.get('sign_language') == 'yes':
+            return 'sign_language'
+            
+        return 'default'  # Generic sensory accessibility feature
+    
     def generate_aria_label(self, feature_type, properties):
         """Generate accessible label for feature"""
         
@@ -882,11 +1188,52 @@ class TorontoTileBuilder:
         
         # Feature type
         if feature_type == 'buildings':
-            building_type = properties.get('building', 'building')
-            if building_type == 'yes':
-                label_parts.append('Building')
-            else:
-                label_parts.append(f"{building_type.replace('_', ' ').title()} building")
+            building_type = self.determine_building_type(properties)
+            building_labels = {
+                'house': 'House',
+                'residential': 'Residential building',
+                'apartments': 'Apartment building',
+                'detached': 'Detached house',
+                'semidetached_house': 'Semi-detached house',
+                'terrace': 'Row house',
+                'dormitory': 'Dormitory',
+                'bungalow': 'Bungalow',
+                'cabin': 'Cabin',
+                'commercial': 'Commercial building',
+                'office': 'Office building',
+                'industrial': 'Industrial building',
+                'retail': 'Retail building',
+                'warehouse': 'Warehouse',
+                'supermarket': 'Supermarket',
+                'hotel': 'Hotel',
+                'kiosk': 'Kiosk',
+                'civic': 'Civic building',
+                'government': 'Government building',
+                'hospital': 'Hospital',
+                'school': 'School',
+                'university': 'University',
+                'college': 'College',
+                'kindergarten': 'Kindergarten',
+                'public': 'Public building',
+                'train_station': 'Train station',
+                'transportation': 'Transportation building',
+                'barn': 'Barn',
+                'bridge': 'Bridge structure',
+                'bunker': 'Bunker',
+                'carport': 'Carport',
+                'conservatory': 'Conservatory',
+                'construction': 'Building under construction',
+                'garage': 'Garage',
+                'garages': 'Garages',
+                'greenhouse': 'Greenhouse',
+                'hangar': 'Hangar',
+                'hut': 'Hut',
+                'roof': 'Roofed area',
+                'shed': 'Shed',
+                'yes': 'Building',
+                'default': 'Building'
+            }
+            label_parts.append(building_labels.get(building_type, 'Building'))
             
             # Add levels if available
             levels = properties.get('building:levels')
@@ -1081,6 +1428,70 @@ class TorontoTileBuilder:
                 'default': 'Place of worship'
             }
             label_parts.append(religious_labels.get(religious_type, 'Place of worship'))
+            
+        elif feature_type == 'parking':
+            parking_type = self.determine_parking_type(properties)
+            parking_labels = {
+                'surface': 'Surface parking',
+                'underground': 'Underground parking',
+                'multi-storey': 'Multi-storey parking',
+                'rooftop': 'Rooftop parking',
+                'street_side': 'Street-side parking',
+                'garage_boxes': 'Garage boxes',
+                'bicycle_parking': 'Bicycle parking',
+                'motorcycle_parking': 'Motorcycle parking',
+                'default': 'Parking'
+            }
+            label_parts.append(parking_labels.get(parking_type, 'Parking'))
+            
+            # Add capacity if available
+            capacity = properties.get('capacity')
+            if capacity:
+                label_parts.append(f"{capacity} spaces")
+            
+            # Add fee information if available
+            fee = properties.get('fee')
+            if fee == 'yes':
+                label_parts.append('paid')
+            elif fee == 'no':
+                label_parts.append('free')
+            
+            # Add access restrictions if available
+            if properties.get('wheelchair') == 'yes':
+                label_parts.append('wheelchair accessible')
+            if properties.get('access') == 'disabled':
+                label_parts.append('disabled parking only')
+        
+        elif feature_type == 'sensory_accessibility':
+            sensory_type = self.determine_sensory_accessibility_type(properties)
+            sensory_labels = {
+                'tactile_paving': 'Tactile paving',
+                'no_tactile_paving': 'No tactile paving',
+                'audio_signals': 'Audio crossing signals',
+                'vibration_signals': 'Vibrating crossing signals',
+                'voice_description': 'Voice description available',
+                'braille': 'Braille signage',
+                'audio_loop': 'Hearing loop system',
+                'sign_language': 'Sign language support',
+                'default': 'Sensory accessibility feature'
+            }
+            label_parts.append(sensory_labels.get(sensory_type, 'Sensory accessibility feature'))
+            
+            # Add location context if available
+            if properties.get('highway') == 'crossing':
+                label_parts.append('at pedestrian crossing')
+            elif properties.get('railway') == 'platform':
+                label_parts.append('at platform')
+            elif properties.get('building'):
+                label_parts.append('at building entrance')
+            
+            # Add specific details
+            if sensory_type == 'tactile_paving':
+                if properties.get('surface'):
+                    label_parts.append(f"surface: {properties['surface']}")
+            elif sensory_type == 'audio_signals':
+                if properties.get('button_operated') == 'yes':
+                    label_parts.append('button operated')
         
         # Add name if available
         name = properties.get('name')

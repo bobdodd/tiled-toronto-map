@@ -155,9 +155,9 @@ export class AccessibilityManager {
             }
         }, true);
         
-        // Listen for mouse events
-        mapSvg.addEventListener('mouseover', (e) => this.handleMouseOver(e));
-        mapSvg.addEventListener('mouseout', (e) => this.handleMouseOut(e));
+        // Listen for mouse events - disabled for performance with large datasets
+        // mapSvg.addEventListener('mouseover', (e) => this.handleMouseOver(e));
+        // mapSvg.addEventListener('mouseout', (e) => this.handleMouseOut(e));
     }
     
     handleFocusIn(event) {

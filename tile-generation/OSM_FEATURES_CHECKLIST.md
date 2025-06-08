@@ -71,61 +71,61 @@ This document lists all OSM features to be included in the map tiles. Features a
 
 ### General Buildings
 51. ✅ building=yes - Generic buildings
-52. ❌ building=house - Houses
-53. ❌ building=residential - Residential buildings
-54. ❌ building=apartments - Apartment buildings
-55. ❌ building=detached - Detached houses
-56. ❌ building=semidetached_house - Semi-detached houses
-57. ❌ building=terrace - Row houses
-58. ❌ building=dormitory - Dormitories
-59. ❌ building=bungalow - Bungalows
-60. ❌ building=cabin - Cabins
+52. ✅ building=house - Houses
+53. ✅ building=residential - Residential buildings
+54. ✅ building=apartments - Apartment buildings
+55. ✅ building=detached - Detached houses
+56. ✅ building=semidetached_house - Semi-detached houses
+57. ✅ building=terrace - Row houses
+58. ✅ building=dormitory - Dormitories
+59. ✅ building=bungalow - Bungalows
+60. ✅ building=cabin - Cabins
 
 ### Commercial Buildings
-61. ❌ building=commercial - Commercial buildings
-62. ❌ building=office - Office buildings
-63. ❌ building=industrial - Industrial buildings
-64. ❌ building=retail - Retail buildings
-65. ❌ building=warehouse - Warehouses
-66. ❌ building=supermarket - Supermarkets
-67. ❌ building=hotel - Hotels
-68. ❌ building=kiosk - Kiosks
+61. ✅ building=commercial - Commercial buildings
+62. ✅ building=office - Office buildings
+63. ✅ building=industrial - Industrial buildings
+64. ✅ building=retail - Retail buildings
+65. ✅ building=warehouse - Warehouses
+66. ✅ building=supermarket - Supermarkets
+67. ✅ building=hotel - Hotels
+68. ✅ building=kiosk - Kiosks
 
 ### Public Buildings
-69. ❌ building=civic - Civic buildings
-70. ❌ building=government - Government buildings
-71. ❌ building=hospital - Hospitals
-72. ❌ building=school - Schools
-73. ❌ building=university - Universities
-74. ❌ building=college - Colleges
-75. ❌ building=kindergarten - Kindergartens
-76. ❌ building=public - Public buildings
-77. ❌ building=train_station - Train stations
-78. ❌ building=transportation - Transportation buildings
-79. ❌ building=cathedral - Cathedrals
-80. ❌ building=chapel - Chapels
-81. ❌ building=church - Churches
-82. ❌ building=mosque - Mosques
-83. ❌ building=temple - Temples
-84. ❌ building=synagogue - Synagogues
-85. ❌ building=shrine - Shrines
+69. ✅ building=civic - Civic buildings
+70. ✅ building=government - Government buildings
+71. ✅ building=hospital - Hospitals
+72. ✅ building=school - Schools
+73. ✅ building=university - Universities
+74. ✅ building=college - Colleges
+75. ✅ building=kindergarten - Kindergartens
+76. ✅ building=public - Public buildings
+77. ✅ building=train_station - Train stations
+78. ✅ building=transportation - Transportation buildings
+79. ✅ building=cathedral - Cathedrals
+80. ✅ building=chapel - Chapels
+81. ✅ building=church - Churches
+82. ✅ building=mosque - Mosques
+83. ✅ building=temple - Temples
+84. ✅ building=synagogue - Synagogues
+85. ✅ building=shrine - Shrines
 
 ### Special Structures
-86. ❌ building=barn - Barns
-87. ❌ building=bridge - Bridge structures
-88. ❌ building=bunker - Bunkers
-89. ❌ building=carport - Carports
-90. ❌ building=conservatory - Conservatories
-91. ❌ building=construction - Buildings under construction
+86. ✅ building=barn - Barns
+87. ✅ building=bridge - Bridge structures
+88. ✅ building=bunker - Bunkers
+89. ✅ building=carport - Carports
+90. ✅ building=conservatory - Conservatories
+91. ✅ building=construction - Buildings under construction
 92. ❌ building=cowshed - Cow sheds
 93. ❌ building=farm_auxiliary - Farm buildings
-94. ❌ building=garage - Garages
-95. ❌ building=garages - Garage blocks
-96. ❌ building=greenhouse - Greenhouses
-97. ❌ building=hangar - Hangars
-98. ❌ building=hut - Huts
-99. ❌ building=roof - Roofed areas
-100. ❌ building=shed - Sheds
+94. ✅ building=garage - Garages
+95. ✅ building=garages - Garage blocks
+96. ✅ building=greenhouse - Greenhouses
+97. ✅ building=hangar - Hangars
+98. ✅ building=hut - Huts
+99. ✅ building=roof - Roofed areas
+100. ✅ building=shed - Sheds
 
 ## Amenities (101-200)
 
@@ -187,9 +187,9 @@ This document lists all OSM features to be included in the map tiles. Features a
 145. ❌ amenity=ranger_station - Ranger stations
 
 ### Transportation
-146. 🚧 amenity=parking - Parking lots (partially for accessible)
-147. ❌ amenity=bicycle_parking - Bike parking
-148. ❌ amenity=motorcycle_parking - Motorcycle parking
+146. ✅ amenity=parking - Parking lots
+147. ✅ amenity=bicycle_parking - Bike parking
+148. ✅ amenity=motorcycle_parking - Motorcycle parking
 149. ❌ amenity=taxi - Taxi stands
 150. ❌ amenity=car_rental - Car rental
 151. ❌ amenity=car_sharing - Car sharing
@@ -697,14 +697,14 @@ This document lists all OSM features to be included in the map tiles. Features a
 546. ❌ handrail:right=yes - Right handrail
 
 ### Sensory Accessibility
-547. ❌ tactile_paving=yes - Tactile paving
-548. ❌ tactile_paving=no - No tactile paving
-549. ❌ traffic_signals:sound=yes - Audible signals
-550. ❌ traffic_signals:vibration=yes - Vibrating signals
-551. ❌ acoustic=voice_description - Voice descriptions
-552. ❌ braille=yes - Braille available
-553. ❌ audio_loop=yes - Hearing loops
-554. ❌ sign_language=yes - Sign language
+547. ✅ tactile_paving=yes - Tactile paving
+548. ✅ tactile_paving=no - No tactile paving
+549. ✅ traffic_signals:sound=yes - Audible signals
+550. ✅ traffic_signals:vibration=yes - Vibrating signals
+551. ✅ acoustic=voice_description - Voice descriptions
+552. ✅ braille=yes - Braille available
+553. ✅ audio_loop=yes - Hearing loops
+554. ✅ sign_language=yes - Sign language
 
 ### Accessible Facilities
 555. ❌ toilets:wheelchair=yes - Accessible toilets
@@ -882,10 +882,10 @@ This document lists all OSM features to be included in the map tiles. Features a
 ## Summary Statistics
 
 - **Total Features**: 700
-- **Implemented**: 115 (✅)
-- **Partially Implemented**: 3 (🚧)
-- **Not Implemented**: 582 (❌)
-- **Completion**: 16.4%
+- **Implemented**: 172 (✅)
+- **Partially Implemented**: 2 (🚧)
+- **Not Implemented**: 526 (❌)
+- **Completion**: 24.6%
 
 ## Next Priority Features
 
@@ -893,14 +893,32 @@ Based on typical map usage, the next features to implement should be:
 
 1. ~~**Water features** (rivers, lakes) - Essential for navigation~~ ✅ COMPLETED
 2. ~~**Parks and green spaces** - Important landmarks~~ ✅ COMPLETED
-3. **Major landmarks** (hospitals, schools, shopping)
-4. **Parking areas** - Frequently searched
-5. **Restaurant and shops** - Common destinations
+3. ~~**Major landmarks** (hospitals, schools, shopping)~~ 🚧 PARTIALLY COMPLETED
+   - ✅ Hospitals (building=hospital)
+   - ✅ Schools (building=school, university, college, kindergarten)
+   - ❌ Shopping centers and major stores (shop=*)
+4. ~~**Parking areas** - Frequently searched~~ ✅ COMPLETED
+   - ✅ General parking (amenity=parking)
+   - ✅ Bicycle parking (amenity=bicycle_parking)
+   - ✅ Motorcycle parking (amenity=motorcycle_parking)
+   - 🚧 Accessible parking handled separately in accessibility features
+5. **Restaurants and shops** - Common destinations
+   - ❌ Restaurants (amenity=restaurant)
+   - ❌ Cafes (amenity=cafe)
+   - ❌ Fast food (amenity=fast_food)
+   - ❌ Shops (shop=*)
 6. ~~**Pedestrian paths and sidewalks** - Accessibility~~ ✅ COMPLETED
 7. **Building names and addresses** - Navigation
+   - ✅ Building names shown in tooltips
+   - ✅ Addresses shown in tooltips (addr:housenumber, addr:street)
+   - ❌ Dedicated address nodes (addr:*)
 8. **Public toilets** - Essential facilities
+   - ❌ Public toilets (amenity=toilets)
+   - ❌ Accessible toilets (amenity=toilets + wheelchair=yes)
 9. **Banks and ATMs** - Common needs
-10. **Places of worship** - Important landmarks
+   - ❌ Banks (amenity=bank)
+   - ❌ ATMs (amenity=atm)
+10. ~~**Places of worship** - Important landmarks~~ ✅ COMPLETED
 
 ## Implementation Notes
 

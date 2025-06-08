@@ -1,0 +1,31 @@
+# Enable gzip compression for SVG files
+<Files "*.svg.gz">
+    Header set Content-Type "image/svg+xml"
+    Header set Content-Encoding "gzip"
+    Header set Cache-Control "public, max-age=3600"
+</Files>
+
+# Enable CORS for all origins (for development)
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type"
+</IfModule>
+
+# Set proper MIME types
+AddType image/svg+xml .svg
+AddType application/json .json
+
+# Compress other text files
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>

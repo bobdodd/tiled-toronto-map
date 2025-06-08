@@ -8,8 +8,10 @@ export class MapRenderer {
         this.routeGroup = svgElement.querySelector('#navigation-route');
         
         this.tileSize = 256;
-        this.zoom = 15;
-        this.center = { lat: 40.7128, lng: -74.0060 }; // Default NYC
+        this.zoom = 17;
+        // Center on the middle of tile 43.640_-79.380
+        // Tile covers 43.640-43.650 lat, -79.380--79.370 lng
+        this.center = { lat: 43.645, lng: -79.375 }; // Center of the tile
         
         // Get initial container size
         const container = svgElement.parentElement;

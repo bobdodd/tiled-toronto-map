@@ -1,69 +1,66 @@
-# Accessible Interactive Map
+# Accessible Maps with SVG Tiles
 
-A fully accessible web-based interactive map application built with SVG rendering, GPS tracking, and keyboard navigation support.
+An accessible web mapping application using pre-rendered SVG tiles from OpenStreetMap data, optimized for screen readers and low-end devices.
 
-## Features
+## Project Structure
 
-- **SVG-based rendering** for full accessibility
-- **OpenStreetMap tiles** for map display
-- **Real-time GPS tracking** with location updates
-- **GPS spoofing** for testing
-- **Keyboard navigation** (arrow keys, +/-, H to center)
-- **Screen reader support** with ARIA labels and live regions
-- **High contrast mode** for visual accessibility
-- **Responsive design** for mobile devices
+```
+/
+├── web-app/              # Web application
+│   ├── src/             # JavaScript modules
+│   ├── styles/          # CSS stylesheets  
+│   ├── index.html       # Main application
+│   └── server.py        # Development server
+├── tile-generation/     # SVG tile generation pipeline
+│   ├── build-toronto-tiles.py  # Main tile builder
+│   ├── upload-tiles.sh         # Upload script for SiteGround
+│   ├── setup-tile-builder.sh   # Environment setup
+│   └── requirements.txt        # Python dependencies
+├── toronto-svg-tiles/   # Generated SVG tiles (large - see .gitignore)
+│   ├── tiles/          # Compressed SVG tile files
+│   ├── styles/         # Shared CSS for tiles
+│   └── tile-index.json # Tile metadata
+├── docs/               # Documentation
+├── archive/            # Old files and demos
+└── tests/             # Test files
+```
 
-## Getting Started
+## Quick Start
 
-1. Start the local server:
-   ```bash
-   python3 server.py
-   ```
+### Web Application
+```bash
+cd web-app
+python server.py
+```
 
-2. Open your web browser to:
-   - Regular mode: http://localhost:8000
-   - Debug mode: http://localhost:8000?debug=true
+### Generate Tiles
+```bash
+cd tile-generation
+pip install -r requirements.txt
+python build-toronto-tiles.py
+```
 
-## Controls
+### Upload to SiteGround
+```bash
+cd tile-generation
+./upload-tiles.sh
+```
 
-### Mouse/Touch Controls
-- **Zoom In/Out**: Click the +/- buttons
-- **Center on Location**: Click the ⊙ button
-- **Track Location**: Toggle GPS tracking
-- **High Contrast**: Toggle high contrast mode
+## Architecture
 
-### Keyboard Controls
-- **Arrow Keys**: Pan the map
-- **Shift + Arrow Keys**: Pan faster
-- **+ or =**: Zoom in
-- **- or _**: Zoom out
-- **H**: Center on current location
-- **Tab**: Navigate through controls
+This project uses a **pre-rendered SVG tile approach** instead of real-time API queries for:
+- Better performance on low-end devices
+- Improved accessibility with pre-built ARIA labels
+- Reduced server dependency
+- Faster filter operations using CSS
 
-## Testing with GPS Spoofing
+See `docs/SVG_TILE_ARCHITECTURE.md` for detailed technical information.
 
-1. Open the map with `?debug=true` parameter
-2. The debug panel will appear in the bottom right
-3. Enter latitude and longitude values
-4. Click "Set Location" to simulate GPS position
+## Key Features
 
-## Accessibility Features
-
-- Skip link for keyboard navigation
-- ARIA labels on all interactive elements
-- Live region announcements for status updates
-- High contrast mode for users with visual impairments
-- Keyboard-navigable map with clear focus indicators
-- Screen reader compatible SVG structure
-
-## Browser Requirements
-
-- Modern browser with JavaScript enabled
-- Location services permission (for GPS tracking)
-- Internet connection (for map tiles)
-
-## Notes
-
-- The map uses OpenStreetMap tiles (usage policy applies)
-- GPS accuracy depends on device capabilities
-- Debug mode allows testing without actual GPS
+- ♿ Screen reader optimized
+- 🚀 Fast performance on older devices  
+- 🗺️ SVG-based rendering for crisp graphics
+- 🎯 Advanced filtering system
+- 📱 Mobile-friendly interface
+- 🔌 Works offline after initial load

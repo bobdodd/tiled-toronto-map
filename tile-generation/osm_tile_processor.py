@@ -21,7 +21,9 @@ class OSMHandler(osmium.SimpleHandler):
             'parks': [],
             'landuse': [],
             'vegetation': [],
-            'religious': []
+            'religious': [],
+            'parking': [],
+            'sensory_accessibility': []
         }
         
     def is_in_bounds(self, lat, lon):
@@ -74,6 +76,28 @@ class OSMHandler(osmium.SimpleHandler):
         # Religious places (nodes)
         if tags.get('amenity') == 'place_of_worship':
             self.features['religious'].append({
+                'geometry': Point(n.location.lon, n.location.lat),
+                'properties': {**tags, 'osm_id': n.id}
+            })
+            
+        # Parking (nodes - bicycle/motorcycle parking stands)
+        if tags.get('amenity') in ['parking', 'bicycle_parking', 'motorcycle_parking']:
+            # Skip if it's wheelchair parking (handled by accessibility)
+            if not (tags.get('amenity') == 'parking' and tags.get('wheelchair') == 'yes'):
+                self.features['parking'].append({
+                    'geometry': Point(n.location.lon, n.location.lat),
+                    'properties': {**tags, 'osm_id': n.id}
+                })
+        
+        # Sensory accessibility features
+        if (tags.get('tactile_paving') in ['yes', 'no'] or
+            tags.get('traffic_signals:sound') == 'yes' or
+            tags.get('traffic_signals:vibration') == 'yes' or
+            tags.get('acoustic') == 'voice_description' or
+            tags.get('braille') == 'yes' or
+            tags.get('audio_loop') == 'yes' or
+            tags.get('sign_language') == 'yes'):
+            self.features['sensory_accessibility'].append({
                 'geometry': Point(n.location.lon, n.location.lat),
                 'properties': {**tags, 'osm_id': n.id}
             })
@@ -256,6 +280,49 @@ class OSMHandler(osmium.SimpleHandler):
                     })
                 except Exception:
                     pass
+                    
+        # Parking areas (ways)
+        elif (tags.get('amenity') in ['parking', 'bicycle_parking', 'motorcycle_parking'] or
+              'parking' in tags):
+            # Skip if it's wheelchair parking (handled by accessibility)
+            if not (tags.get('amenity') == 'parking' and tags.get('wheelchair') == 'yes'):
+                # Parking areas (closed ways forming polygons)
+                if w.is_closed():
+                    try:
+                        geom = wkb.create_polygon(w)
+                        poly = loads(geom, hex=True)
+                        self.features['parking'].append({
+                            'geometry': poly,
+                            'properties': {**tags, 'osm_id': w.id}
+                        })
+                    except Exception:
+                        pass
+                        
+        # Sensory accessibility features (ways - tactile paving along paths)
+        elif (tags.get('tactile_paving') in ['yes', 'no'] or
+              tags.get('traffic_signals:sound') == 'yes' or
+              tags.get('traffic_signals:vibration') == 'yes' or
+              tags.get('acoustic') == 'voice_description' or
+              tags.get('braille') == 'yes' or
+              tags.get('audio_loop') == 'yes' or
+              tags.get('sign_language') == 'yes'):
+            # Can be lines (tactile paving along a path) or areas
+            if w.is_closed():
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['sensory_accessibility'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+            else:
+                # Linear feature (tactile paving along path)
+                self.features['sensory_accessibility'].append({
+                    'geometry': line,
+                    'properties': {**tags, 'osm_id': w.id}
+                })
     
     def area(self, a):
         """Process area features (multipolygons)"""
@@ -493,3 +560,42 @@ class OSMHandler(osmium.SimpleHandler):
                         })
             except Exception:
                 pass
+                
+        # Parking areas from relations
+        elif (tags.get('amenity') in ['parking', 'bicycle_parking', 'motorcycle_parking'] or
+              'parking' in tags):
+            # Skip if it's wheelchair parking (handled by accessibility)
+            if not (tags.get('amenity') == 'parking' and tags.get('wheelchair') == 'yes'):
+                try:
+                    wkb = osmium.geom.WKBFactory()
+                    geom = wkb.create_multipolygon(a)
+                    multipoly = loads(geom, hex=True)
+                    
+                    # Check if any polygon intersects with tile bounds
+                    bounds_check = False
+                    tile_bounds = (self.bounds['west'], self.bounds['south'], 
+                                  self.bounds['east'], self.bounds['north'])
+                    
+                    for poly in multipoly.geoms if hasattr(multipoly, 'geoms') else [multipoly]:
+                        poly_bounds = poly.bounds
+                        # Check if bounding boxes overlap
+                        if (poly_bounds[0] <= tile_bounds[2] and poly_bounds[2] >= tile_bounds[0] and
+                            poly_bounds[1] <= tile_bounds[3] and poly_bounds[3] >= tile_bounds[1]):
+                            bounds_check = True
+                            break
+                    
+                    if bounds_check:
+                        # Convert multipolygon to individual polygons
+                        if hasattr(multipoly, 'geoms'):
+                            for poly in multipoly.geoms:
+                                self.features['parking'].append({
+                                    'geometry': poly,
+                                    'properties': {**tags, 'osm_id': a.id}
+                                })
+                        else:
+                            self.features['parking'].append({
+                                'geometry': multipoly,
+                                'properties': {**tags, 'osm_id': a.id}
+                            })
+                except Exception:
+                    pass

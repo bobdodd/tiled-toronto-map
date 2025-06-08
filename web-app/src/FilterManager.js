@@ -3,11 +3,11 @@ export class FilterManager {
         this.filters = {
             buildings: true,
             roads: true,
-            transit: false,
+            transit: true,
             shops: false,
             schools: false,
             worship: false,
-            parks: false,
+            parks: true,
             addresses: false,
             // Healthcare features
             hospitals: false,
@@ -97,7 +97,7 @@ export class FilterManager {
             'gates': false,
             'bollards': false,
             // Natural Features
-            'water-bodies': false,
+            'water-bodies': true,
             'forests': false,
             'woods': false,
             'grasslands': false,
