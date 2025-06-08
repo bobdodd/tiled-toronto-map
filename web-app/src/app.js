@@ -710,6 +710,20 @@ class MapApplication {
                 sensoryAccessibilityLayer.style.display = showSensoryAccessibility ? '' : 'none';
             }
             
+            // Handle mobility access layer
+            const mobilityAccessLayer = tile.querySelector('[id$="-mobility_access"]');
+            if (mobilityAccessLayer) {
+                // Show if any mobility access filter is enabled
+                const showMobilityAccess = 
+                    this.filterManager.filters['wheelchair-yes'] ||
+                    this.filterManager.filters['wheelchair-no'] ||
+                    this.filterManager.filters['wheelchair-limited'] ||
+                    this.filterManager.filters['ramps'] ||
+                    this.filterManager.filters['handrails'] ||
+                    this.filterManager.filters['steps'];
+                mobilityAccessLayer.style.display = showMobilityAccess ? '' : 'none';
+            }
+            
             // Handle water layer
             const waterLayer = tile.querySelector('[id$="-water"]');
             if (waterLayer) {
@@ -753,7 +767,7 @@ class MapApplication {
         const visibleFeatures = [];
         document.querySelectorAll('.tile').forEach(tile => {
             // Check each layer group
-            ['buildings', 'roads', 'transit', 'accessibility', 'accessible_facilities', 'sensory_accessibility', 'water', 'parks'].forEach(layerId => {
+            ['buildings', 'roads', 'transit', 'accessibility', 'accessible_facilities', 'sensory_accessibility', 'mobility_access', 'water', 'parks'].forEach(layerId => {
                 const layerGroup = tile.querySelector(`[id$="-${layerId}"]`);
                 if (layerGroup && layerGroup.style.display !== 'none') {
                     // Get features from this layer

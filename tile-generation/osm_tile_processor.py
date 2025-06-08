@@ -24,7 +24,8 @@ class OSMHandler(osmium.SimpleHandler):
             'religious': [],
             'parking': [],
             'sensory_accessibility': [],
-            'accessible_facilities': []
+            'accessible_facilities': [],
+            'mobility_access': []
         }
         
     def is_in_bounds(self, lat, lon):
@@ -116,6 +117,22 @@ class OSMHandler(osmium.SimpleHandler):
             tags.get('highway') == 'elevator' or
             tags.get('highway') == 'escalator'):
             self.features['accessible_facilities'].append({
+                'geometry': Point(n.location.lon, n.location.lat),
+                'properties': {**tags, 'osm_id': n.id}
+            })
+            
+        # Mobility access features
+        if ('wheelchair' in tags or
+            tags.get('ramp') == 'yes' or
+            tags.get('ramp:wheelchair') == 'yes' or
+            tags.get('ramp:stroller') == 'yes' or
+            tags.get('ramp:bicycle') == 'yes' or
+            'step_count' in tags or
+            tags.get('handrail') == 'yes' or
+            tags.get('handrail:center') == 'yes' or
+            tags.get('handrail:left') == 'yes' or
+            tags.get('handrail:right') == 'yes'):
+            self.features['mobility_access'].append({
                 'geometry': Point(n.location.lon, n.location.lat),
                 'properties': {**tags, 'osm_id': n.id}
             })
@@ -368,6 +385,36 @@ class OSMHandler(osmium.SimpleHandler):
             else:
                 # Linear feature (inclined path, kerb)
                 self.features['accessible_facilities'].append({
+                    'geometry': line,
+                    'properties': {**tags, 'osm_id': w.id}
+                })
+                
+        # Mobility access features (ways)
+        elif ('wheelchair' in tags or
+              tags.get('ramp') == 'yes' or
+              tags.get('ramp:wheelchair') == 'yes' or
+              tags.get('ramp:stroller') == 'yes' or
+              tags.get('ramp:bicycle') == 'yes' or
+              'step_count' in tags or
+              tags.get('handrail') == 'yes' or
+              tags.get('handrail:center') == 'yes' or
+              tags.get('handrail:left') == 'yes' or
+              tags.get('handrail:right') == 'yes' or
+              tags.get('highway') == 'steps'):  # Steps are often ways
+            # Can be lines (ramps, handrails) or areas
+            if w.is_closed():
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['mobility_access'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+            else:
+                # Linear feature (ramp, handrail)
+                self.features['mobility_access'].append({
                     'geometry': line,
                     'properties': {**tags, 'osm_id': w.id}
                 })
@@ -686,6 +733,51 @@ class OSMHandler(osmium.SimpleHandler):
                             })
                     else:
                         self.features['accessible_facilities'].append({
+                            'geometry': multipoly,
+                            'properties': {**tags, 'osm_id': a.id}
+                        })
+            except Exception:
+                pass
+                
+        # Mobility access from relations
+        elif ('wheelchair' in tags or
+              tags.get('ramp') == 'yes' or
+              tags.get('ramp:wheelchair') == 'yes' or
+              tags.get('ramp:stroller') == 'yes' or
+              tags.get('ramp:bicycle') == 'yes' or
+              'step_count' in tags or
+              tags.get('handrail') == 'yes' or
+              tags.get('handrail:center') == 'yes' or
+              tags.get('handrail:left') == 'yes' or
+              tags.get('handrail:right') == 'yes'):
+            try:
+                wkb = osmium.geom.WKBFactory()
+                geom = wkb.create_multipolygon(a)
+                multipoly = loads(geom, hex=True)
+                
+                # Check if any polygon intersects with tile bounds
+                bounds_check = False
+                tile_bounds = (self.bounds['west'], self.bounds['south'], 
+                              self.bounds['east'], self.bounds['north'])
+                
+                for poly in multipoly.geoms if hasattr(multipoly, 'geoms') else [multipoly]:
+                    poly_bounds = poly.bounds
+                    # Check if bounding boxes overlap
+                    if (poly_bounds[0] <= tile_bounds[2] and poly_bounds[2] >= tile_bounds[0] and
+                        poly_bounds[1] <= tile_bounds[3] and poly_bounds[3] >= tile_bounds[1]):
+                        bounds_check = True
+                        break
+                
+                if bounds_check:
+                    # Convert multipolygon to individual polygons
+                    if hasattr(multipoly, 'geoms'):
+                        for poly in multipoly.geoms:
+                            self.features['mobility_access'].append({
+                                'geometry': poly,
+                                'properties': {**tags, 'osm_id': a.id}
+                            })
+                    else:
+                        self.features['mobility_access'].append({
                             'geometry': multipoly,
                             'properties': {**tags, 'osm_id': a.id}
                         })

@@ -682,19 +682,19 @@ This document lists all OSM features to be included in the map tiles. Features a
 ## Accessibility Features (534-600)
 
 ### Mobility Access
-534. 🚧 wheelchair=yes - Wheelchair accessible
-535. ❌ wheelchair=no - Not wheelchair accessible
-536. ❌ wheelchair=limited - Limited accessibility
-537. ❌ wheelchair=designated - Designated accessible
-538. ❌ ramp=yes - Has ramp
-539. ❌ ramp:wheelchair=yes - Wheelchair ramp
-540. ❌ ramp:stroller=yes - Stroller ramp
-541. ❌ ramp:bicycle=yes - Bicycle ramp
-542. ❌ step_count=* - Number of steps
-543. ❌ handrail=yes - Has handrail
-544. ❌ handrail:center=yes - Center handrail
-545. ❌ handrail:left=yes - Left handrail
-546. ❌ handrail:right=yes - Right handrail
+534. ✅ wheelchair=yes - Wheelchair accessible
+535. ✅ wheelchair=no - Not wheelchair accessible
+536. ✅ wheelchair=limited - Limited accessibility
+537. ✅ wheelchair=designated - Designated accessible
+538. ✅ ramp=yes - Has ramp
+539. ✅ ramp:wheelchair=yes - Wheelchair ramp
+540. ✅ ramp:stroller=yes - Stroller ramp
+541. ✅ ramp:bicycle=yes - Bicycle ramp
+542. ✅ step_count=* - Number of steps
+543. ✅ handrail=yes - Has handrail
+544. ✅ handrail:center=yes - Center handrail
+545. ✅ handrail:left=yes - Left handrail
+546. ✅ handrail:right=yes - Right handrail
 
 ### Sensory Accessibility
 547. ✅ tactile_paving=yes - Tactile paving
@@ -882,10 +882,10 @@ This document lists all OSM features to be included in the map tiles. Features a
 ## Summary Statistics
 
 - **Total Features**: 700
-- **Implemented**: 182 (✅)
-- **Partially Implemented**: 2 (🚧)
-- **Not Implemented**: 516 (❌)
-- **Completion**: 26.0%
+- **Implemented**: 195 (✅)
+- **Partially Implemented**: 1 (🚧)
+- **Not Implemented**: 504 (❌)
+- **Completion**: 27.9%
 
 ## Next Priority Features
 

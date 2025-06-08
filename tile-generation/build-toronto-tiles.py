@@ -447,6 +447,35 @@ class TorontoTileBuilder:
                     'default': {'fill': '#81c784', 'stroke': '#388e3c', 'stroke_width': 1.5}
                 }
             },
+            'mobility_access': {
+                'tags': {
+                    'wheelchair': ['yes', 'no', 'limited', 'designated'],
+                    'ramp': ['yes'],
+                    'ramp:wheelchair': ['yes'],
+                    'ramp:stroller': ['yes'],
+                    'ramp:bicycle': ['yes'],
+                    'step_count': True,  # Any value
+                    'handrail': ['yes'],
+                    'handrail:center': ['yes'],
+                    'handrail:left': ['yes'],
+                    'handrail:right': ['yes']
+                },
+                'styles': {
+                    'wheelchair_yes': {'fill': '#4CAF50', 'stroke': '#2E7D32', 'stroke_width': 2},
+                    'wheelchair_no': {'fill': '#F44336', 'stroke': '#B71C1C', 'stroke_width': 2},
+                    'wheelchair_limited': {'fill': '#FF9800', 'stroke': '#E65100', 'stroke_width': 2},
+                    'wheelchair_designated': {'fill': '#2196F3', 'stroke': '#0D47A1', 'stroke_width': 2},
+                    'ramp': {'fill': '#00BCD4', 'stroke': '#006064', 'stroke_width': 2},
+                    'wheelchair_ramp': {'fill': '#00ACC1', 'stroke': '#006064', 'stroke_width': 2},
+                    'stroller_ramp': {'fill': '#26C6DA', 'stroke': '#00838F', 'stroke_width': 2},
+                    'bicycle_ramp': {'fill': '#4DD0E1', 'stroke': '#0097A7', 'stroke_width': 2},
+                    'steps': {'fill': '#795548', 'stroke': '#3E2723', 'stroke_width': 2},
+                    'handrail': {'fill': '#9E9E9E', 'stroke': '#424242', 'stroke_width': 2},
+                    'handrail_center': {'fill': '#757575', 'stroke': '#212121', 'stroke_width': 2},
+                    'handrail_left': {'fill': '#BDBDBD', 'stroke': '#616161', 'stroke_width': 2},
+                    'handrail_right': {'fill': '#E0E0E0', 'stroke': '#757575', 'stroke_width': 2}
+                }
+            },
             'accessible_facilities': {
                 'tags': {
                     'toilets:wheelchair': ['yes'],
@@ -707,6 +736,52 @@ class TorontoTileBuilder:
                         stroke=style['stroke'],
                         stroke_width=style.get('stroke_width', 1)
                     )
+            elif feature_type == 'mobility_access':
+                mobility_type = self.determine_mobility_access_type(properties)
+                style = self.feature_types['mobility_access']['styles'].get(mobility_type, 
+                        self.feature_types['mobility_access']['styles']['wheelchair_yes'])
+                # Use different shapes for different mobility features
+                if mobility_type.startswith('wheelchair'):
+                    # Diamond for wheelchair access levels
+                    element = self.create_svg_element(
+                        'polygon',
+                        points=f"{x},{y-8} {x+8},{y} {x},{y+8} {x-8},{y}",
+                        class_=f'mobility-access mobility-{mobility_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                elif mobility_type.endswith('_ramp') or mobility_type == 'ramp':
+                    # Triangle pointing up for ramps
+                    points = f"{x},{y-8} {x-7},{y+6} {x+7},{y+6}"
+                    element = self.create_svg_element(
+                        'polygon',
+                        points=points,
+                        class_=f'mobility-access mobility-{mobility_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                elif mobility_type == 'steps':
+                    # Rectangle for steps
+                    element = self.create_svg_element(
+                        'rect',
+                        x=x-6, y=y-6, width=12, height=12,
+                        class_=f'mobility-access mobility-{mobility_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                else:
+                    # Circle for handrails and other
+                    element = self.create_svg_element(
+                        'circle',
+                        cx=x, cy=y, r=6,
+                        class_=f'mobility-access mobility-{mobility_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
             else:
                 element = self.create_svg_element(
                     'circle',
@@ -856,6 +931,25 @@ class TorontoTileBuilder:
                 
                 if 'dasharray' in style:
                     element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'mobility_access':
+                # Linear mobility features (ramps, handrails along paths)
+                mobility_type = self.determine_mobility_access_type(properties)
+                style = self.feature_types['mobility_access']['styles'].get(mobility_type, 
+                        self.feature_types['mobility_access']['styles']['wheelchair_yes'])
+                
+                element = self.create_svg_element(
+                    'polyline',
+                    points=" ".join(points),
+                    class_=f'mobility-access mobility-{mobility_type}',
+                    fill="none",
+                    stroke=style.get('stroke', '#2E7D32'),
+                    stroke_width=style.get('stroke_width', 2),
+                    stroke_linecap="round",
+                    stroke_linejoin="round"
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
             else:
                 # Default line rendering for non-roads
                 element = self.create_svg_element(
@@ -988,6 +1082,23 @@ class TorontoTileBuilder:
                     'polygon',
                     points=" ".join(exterior_points),
                     class_=f'accessible-facility facility-{facility_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1.5)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'mobility_access':
+                # Areas with mobility access features
+                mobility_type = self.determine_mobility_access_type(properties)
+                style = self.feature_types['mobility_access']['styles'].get(mobility_type, 
+                        self.feature_types['mobility_access']['styles']['wheelchair_yes'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'mobility-access mobility-{mobility_type}',
                     fill=style['fill'],
                     stroke=style['stroke'],
                     stroke_width=style.get('stroke_width', 1.5)
@@ -1348,6 +1459,45 @@ class TorontoTileBuilder:
             
         return 'default'  # Generic accessible facility
     
+    def determine_mobility_access_type(self, properties):
+        """Determine specific mobility access type from tags"""
+        # Check wheelchair accessibility
+        wheelchair = properties.get('wheelchair', '')
+        if wheelchair == 'yes':
+            return 'wheelchair_yes'
+        elif wheelchair == 'no':
+            return 'wheelchair_no'
+        elif wheelchair == 'limited':
+            return 'wheelchair_limited'
+        elif wheelchair == 'designated':
+            return 'wheelchair_designated'
+        
+        # Check for ramps
+        if properties.get('ramp') == 'yes':
+            return 'ramp'
+        if properties.get('ramp:wheelchair') == 'yes':
+            return 'wheelchair_ramp'
+        if properties.get('ramp:stroller') == 'yes':
+            return 'stroller_ramp'
+        if properties.get('ramp:bicycle') == 'yes':
+            return 'bicycle_ramp'
+        
+        # Check for steps
+        if 'step_count' in properties:
+            return 'steps'
+        
+        # Check for handrails
+        if properties.get('handrail:center') == 'yes':
+            return 'handrail_center'
+        elif properties.get('handrail:left') == 'yes':
+            return 'handrail_left'
+        elif properties.get('handrail:right') == 'yes':
+            return 'handrail_right'
+        elif properties.get('handrail') == 'yes':
+            return 'handrail'
+            
+        return 'wheelchair_yes'  # Default to accessible
+    
     def generate_aria_label(self, feature_type, properties):
         """Generate accessible label for feature"""
         
@@ -1705,6 +1855,47 @@ class TorontoTileBuilder:
             level = properties.get('level')
             if level:
                 label_parts.append(f"level {level}")
+        
+        elif feature_type == 'mobility_access':
+            mobility_type = self.determine_mobility_access_type(properties)
+            mobility_labels = {
+                'wheelchair_yes': 'Wheelchair accessible',
+                'wheelchair_no': 'Not wheelchair accessible',
+                'wheelchair_limited': 'Limited wheelchair accessibility',
+                'wheelchair_designated': 'Designated wheelchair accessible',
+                'ramp': 'Ramp',
+                'wheelchair_ramp': 'Wheelchair ramp',
+                'stroller_ramp': 'Stroller ramp',
+                'bicycle_ramp': 'Bicycle ramp',
+                'steps': 'Steps',
+                'handrail': 'Handrail',
+                'handrail_center': 'Center handrail',
+                'handrail_left': 'Left handrail',
+                'handrail_right': 'Right handrail'
+            }
+            label_parts.append(mobility_labels.get(mobility_type, 'Mobility access feature'))
+            
+            # Add step count if available
+            if mobility_type == 'steps' and 'step_count' in properties:
+                count = properties.get('step_count')
+                label_parts.append(f"{count} steps")
+            
+            # Add ramp details
+            if mobility_type.endswith('_ramp') or mobility_type == 'ramp':
+                if properties.get('incline'):
+                    label_parts.append(f"incline: {properties['incline']}")
+                if properties.get('surface'):
+                    label_parts.append(f"surface: {properties['surface']}")
+            
+            # Add wheelchair details
+            if mobility_type.startswith('wheelchair'):
+                if properties.get('description'):
+                    label_parts.append(properties['description'])
+                    
+            # Add handrail details
+            if mobility_type.startswith('handrail'):
+                if properties.get('material'):
+                    label_parts.append(f"material: {properties['material']}")
         
         # Add name if available
         name = properties.get('name')
