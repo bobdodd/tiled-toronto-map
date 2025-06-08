@@ -446,6 +446,38 @@ class TorontoTileBuilder:
                     # Default
                     'default': {'fill': '#81c784', 'stroke': '#388e3c', 'stroke_width': 1.5}
                 }
+            },
+            'accessible_facilities': {
+                'tags': {
+                    'toilets:wheelchair': ['yes'],
+                    'changing_table': ['yes'],
+                    'changing_table:location': True,  # Any value
+                    'elevator': ['yes'],
+                    'escalator': ['yes'],
+                    'conveying': ['yes'],
+                    'automatic_door': ['yes'],
+                    'door:width': True,  # Any value
+                    'kerb:height': True,  # Any value
+                    'incline': True  # Any value
+                },
+                'styles': {
+                    # Toilets and changing facilities
+                    'accessible_toilet': {'fill': '#e1f5fe', 'stroke': '#0288d1', 'stroke_width': 2},
+                    'changing_table': {'fill': '#f3e5f5', 'stroke': '#7b1fa2', 'stroke_width': 2},
+                    # Vertical access
+                    'elevator': {'fill': '#c5e1a5', 'stroke': '#689f38', 'stroke_width': 2},
+                    'escalator': {'fill': '#ffccbc', 'stroke': '#ff5722', 'stroke_width': 2},
+                    'moving_walkway': {'fill': '#d7ccc8', 'stroke': '#795548', 'stroke_width': 2},
+                    # Doors and entrances
+                    'automatic_door': {'fill': '#b2dfdb', 'stroke': '#00796b', 'stroke_width': 2},
+                    'wide_door': {'fill': '#c5cae9', 'stroke': '#3f51b5', 'stroke_width': 2},
+                    # Curbs and ramps
+                    'low_kerb': {'fill': '#fff9c4', 'stroke': '#f9a825', 'stroke_width': 2},
+                    'steep_incline': {'fill': '#ffccbc', 'stroke': '#ff5722', 'stroke_width': 2, 'dasharray': '5,2'},
+                    'gentle_incline': {'fill': '#dcedc8', 'stroke': '#7cb342', 'stroke_width': 2},
+                    # Default
+                    'default': {'fill': '#64b5f6', 'stroke': '#1976d2', 'stroke_width': 1.5}
+                }
             }
         }
 
@@ -639,6 +671,42 @@ class TorontoTileBuilder:
                         stroke=style['stroke'],
                         stroke_width=style.get('stroke_width', 1)
                     )
+            elif feature_type == 'accessible_facilities':
+                facility_type = self.determine_accessible_facility_type(properties)
+                style = self.feature_types['accessible_facilities']['styles'].get(facility_type, 
+                        self.feature_types['accessible_facilities']['styles']['default'])
+                # Use different shapes for different facility types
+                if facility_type in ['elevator', 'escalator']:
+                    # Triangle for vertical access
+                    points = f"{x},{y-8} {x-7},{y+6} {x+7},{y+6}"
+                    element = self.create_svg_element(
+                        'polygon',
+                        points=points,
+                        class_=f'accessible-facility facility-{facility_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                elif facility_type in ['accessible_toilet', 'changing_table']:
+                    # Square for facilities
+                    element = self.create_svg_element(
+                        'rect',
+                        x=x-6, y=y-6, width=12, height=12,
+                        class_=f'accessible-facility facility-{facility_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                else:
+                    # Circle for other facilities
+                    element = self.create_svg_element(
+                        'circle',
+                        cx=x, cy=y, r=7,
+                        class_=f'accessible-facility facility-{facility_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
             else:
                 element = self.create_svg_element(
                     'circle',
@@ -769,6 +837,25 @@ class TorontoTileBuilder:
                 
                 if 'dasharray' in style:
                     element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'accessible_facilities':
+                # Linear accessible features (ramps, paths with inclines)
+                facility_type = self.determine_accessible_facility_type(properties)
+                style = self.feature_types['accessible_facilities']['styles'].get(facility_type, 
+                        self.feature_types['accessible_facilities']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polyline',
+                    points=" ".join(points),
+                    class_=f'accessible-facility facility-{facility_type}',
+                    fill="none",
+                    stroke=style.get('stroke', '#1976d2'),
+                    stroke_width=style.get('stroke_width', 2),
+                    stroke_linecap="round",
+                    stroke_linejoin="round"
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
             else:
                 # Default line rendering for non-roads
                 element = self.create_svg_element(
@@ -884,6 +971,23 @@ class TorontoTileBuilder:
                     'polygon',
                     points=" ".join(exterior_points),
                     class_=f'sensory-accessibility sensory-{sensory_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1.5)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'accessible_facilities':
+                # Areas with accessible facilities
+                facility_type = self.determine_accessible_facility_type(properties)
+                style = self.feature_types['accessible_facilities']['styles'].get(facility_type, 
+                        self.feature_types['accessible_facilities']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'accessible-facility facility-{facility_type}',
                     fill=style['fill'],
                     stroke=style['stroke'],
                     stroke_width=style.get('stroke_width', 1.5)
@@ -1180,6 +1284,69 @@ class TorontoTileBuilder:
             return 'sign_language'
             
         return 'default'  # Generic sensory accessibility feature
+    
+    def determine_accessible_facility_type(self, properties):
+        """Determine specific accessible facility type from tags"""
+        # Check for accessible toilets
+        if properties.get('toilets:wheelchair') == 'yes' or (
+            properties.get('amenity') == 'toilets' and properties.get('wheelchair') == 'yes'):
+            return 'accessible_toilet'
+        
+        # Check for changing tables
+        if properties.get('changing_table') == 'yes':
+            return 'changing_table'
+        
+        # Check for elevators
+        if properties.get('elevator') == 'yes' or properties.get('highway') == 'elevator':
+            return 'elevator'
+        
+        # Check for escalators
+        if properties.get('escalator') == 'yes' or properties.get('highway') == 'escalator':
+            return 'escalator'
+        
+        # Check for moving walkways
+        if properties.get('conveying') == 'yes':
+            return 'moving_walkway'
+        
+        # Check for automatic doors
+        if properties.get('automatic_door') == 'yes':
+            return 'automatic_door'
+        
+        # Check for door width
+        if 'door:width' in properties:
+            try:
+                width = float(properties['door:width'])
+                if width >= 0.9:  # 90cm or wider is considered accessible
+                    return 'wide_door'
+            except:
+                pass
+        
+        # Check for kerb height
+        if 'kerb:height' in properties:
+            try:
+                height = float(properties.get('kerb:height', '0').replace('m', '').replace('cm', ''))
+                if properties.get('kerb:height', '').endswith('cm'):
+                    height = height / 100  # Convert cm to m
+                if height <= 0.03:  # 3cm or less is considered low
+                    return 'low_kerb'
+            except:
+                pass
+        
+        # Check for incline
+        if 'incline' in properties:
+            try:
+                incline_str = properties['incline'].replace('%', '').replace('°', '')
+                if 'up' in incline_str or 'down' in incline_str:
+                    incline_str = incline_str.replace('up', '').replace('down', '').strip()
+                incline = abs(float(incline_str))
+                if incline > 8:  # Greater than 8% is steep
+                    return 'steep_incline'
+                elif incline <= 5:  # 5% or less is gentle
+                    return 'gentle_incline'
+            except:
+                pass
+            
+        return 'default'  # Generic accessible facility
     
     def generate_aria_label(self, feature_type, properties):
         """Generate accessible label for feature"""
@@ -1492,6 +1659,52 @@ class TorontoTileBuilder:
             elif sensory_type == 'audio_signals':
                 if properties.get('button_operated') == 'yes':
                     label_parts.append('button operated')
+        
+        elif feature_type == 'accessible_facilities':
+            facility_type = self.determine_accessible_facility_type(properties)
+            facility_labels = {
+                'accessible_toilet': 'Wheelchair accessible toilet',
+                'changing_table': 'Baby changing table',
+                'elevator': 'Elevator',
+                'escalator': 'Escalator',
+                'moving_walkway': 'Moving walkway',
+                'automatic_door': 'Automatic door',
+                'wide_door': 'Wide accessible door',
+                'low_kerb': 'Low curb',
+                'steep_incline': 'Steep incline',
+                'gentle_incline': 'Gentle incline',
+                'default': 'Accessible facility'
+            }
+            label_parts.append(facility_labels.get(facility_type, 'Accessible facility'))
+            
+            # Add specific details
+            if facility_type == 'changing_table':
+                location = properties.get('changing_table:location')
+                if location:
+                    label_parts.append(f"location: {location}")
+            elif facility_type == 'wide_door':
+                width = properties.get('door:width')
+                if width:
+                    label_parts.append(f"width: {width}")
+            elif facility_type == 'low_kerb':
+                height = properties.get('kerb:height')
+                if height:
+                    label_parts.append(f"height: {height}")
+            elif facility_type in ['steep_incline', 'gentle_incline']:
+                incline = properties.get('incline')
+                if incline:
+                    label_parts.append(f"grade: {incline}")
+                    
+            # Add operational details
+            if properties.get('access') == 'yes':
+                label_parts.append('public access')
+            elif properties.get('access') == 'customers':
+                label_parts.append('customers only')
+            
+            # Add level information
+            level = properties.get('level')
+            if level:
+                label_parts.append(f"level {level}")
         
         # Add name if available
         name = properties.get('name')

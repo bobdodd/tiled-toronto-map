@@ -707,16 +707,16 @@ This document lists all OSM features to be included in the map tiles. Features a
 554. ✅ sign_language=yes - Sign language
 
 ### Accessible Facilities
-555. ❌ toilets:wheelchair=yes - Accessible toilets
-556. ❌ changing_table=yes - Changing tables
-557. ❌ changing_table:location=* - Table location
-558. ❌ elevator=yes - Has elevator
-559. ❌ escalator=yes - Has escalator
-560. ❌ conveying=yes - Moving walkway
-561. ❌ automatic_door=yes - Automatic doors
-562. ❌ door:width=* - Door width
-563. ❌ kerb:height=* - Curb height
-564. ❌ incline=* - Incline percentage
+555. ✅ toilets:wheelchair=yes - Accessible toilets
+556. ✅ changing_table=yes - Changing tables
+557. ✅ changing_table:location=* - Table location
+558. ✅ elevator=yes - Has elevator
+559. ✅ escalator=yes - Has escalator
+560. ✅ conveying=yes - Moving walkway
+561. ✅ automatic_door=yes - Automatic doors
+562. ✅ door:width=* - Door width
+563. ✅ kerb:height=* - Curb height
+564. ✅ incline=* - Incline percentage
 
 ### Parking & Transport
 565. ❌ capacity:disabled=* - Accessible spaces
@@ -882,10 +882,10 @@ This document lists all OSM features to be included in the map tiles. Features a
 ## Summary Statistics
 
 - **Total Features**: 700
-- **Implemented**: 172 (✅)
+- **Implemented**: 182 (✅)
 - **Partially Implemented**: 2 (🚧)
-- **Not Implemented**: 526 (❌)
-- **Completion**: 24.6%
+- **Not Implemented**: 516 (❌)
+- **Completion**: 26.0%
 
 ## Next Priority Features
 

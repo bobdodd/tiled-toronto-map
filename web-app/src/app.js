@@ -684,6 +684,32 @@ class MapApplication {
                 accessibilityLayer.style.display = showAccessibility ? '' : 'none';
             }
             
+            // Handle accessible facilities layer
+            const accessibleFacilitiesLayer = tile.querySelector('[id$="-accessible_facilities"]');
+            if (accessibleFacilitiesLayer) {
+                // Show if any accessible facilities filter is enabled
+                const showAccessibleFacilities = 
+                    this.filterManager.filters['accessible-toilets'] ||
+                    this.filterManager.filters['changing-tables'] ||
+                    this.filterManager.filters['elevators'] ||
+                    this.filterManager.filters['automatic-doors'] ||
+                    this.filterManager.filters['wide-doors'] ||
+                    this.filterManager.filters['low-kerbs'] ||
+                    this.filterManager.filters['gentle-inclines'];
+                accessibleFacilitiesLayer.style.display = showAccessibleFacilities ? '' : 'none';
+            }
+            
+            // Handle sensory accessibility layer
+            const sensoryAccessibilityLayer = tile.querySelector('[id$="-sensory_accessibility"]');
+            if (sensoryAccessibilityLayer) {
+                // Show if any sensory accessibility filter is enabled
+                const showSensoryAccessibility = 
+                    this.filterManager.filters['tactile-paving'] ||
+                    this.filterManager.filters['audio-signals'] ||
+                    this.filterManager.filters['tactile-maps'];
+                sensoryAccessibilityLayer.style.display = showSensoryAccessibility ? '' : 'none';
+            }
+            
             // Handle water layer
             const waterLayer = tile.querySelector('[id$="-water"]');
             if (waterLayer) {
@@ -727,7 +753,7 @@ class MapApplication {
         const visibleFeatures = [];
         document.querySelectorAll('.tile').forEach(tile => {
             // Check each layer group
-            ['buildings', 'roads', 'transit', 'accessibility', 'water', 'parks'].forEach(layerId => {
+            ['buildings', 'roads', 'transit', 'accessibility', 'accessible_facilities', 'sensory_accessibility', 'water', 'parks'].forEach(layerId => {
                 const layerGroup = tile.querySelector(`[id$="-${layerId}"]`);
                 if (layerGroup && layerGroup.style.display !== 'none') {
                     // Get features from this layer
