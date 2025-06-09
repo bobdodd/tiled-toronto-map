@@ -33,13 +33,14 @@ class TorontoTileBuilder:
         self.tiles_dir = self.output_dir / "tiles"
         self.data_dir = self.output_dir / "data"
         
-        # Just the 9 tiles around our center (43.645, -79.375)
+        # Expanded to 36 tiles (6x6 grid) around our center (43.645, -79.375)
+        # This gives us approximately 6km x 6km area to explore
         # Center tile is 43.640_-79.380
         self.gta_bounds = {
-            'north': 43.66,  # 2 tiles north of 43.64
-            'south': 43.63,  # 1 tile south of 43.64
-            'east': -79.36,  # 2 tiles east of -79.38
-            'west': -79.39   # 1 tile west of -79.38
+            'north': 43.68,  # 4 tiles north of 43.64
+            'south': 43.62,  # 2 tiles south of 43.64
+            'east': -79.34,  # 4 tiles east of -79.38
+            'west': -79.40   # 2 tiles west of -79.38
         }
         
         # Tile size in degrees (roughly 1km squares)

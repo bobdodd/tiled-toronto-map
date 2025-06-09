@@ -4,6 +4,7 @@ import { FilterManager } from './FilterManager.js';
 import { AccessibilityManager } from './AccessibilityManager.js';
 import { SVGTileManager } from './SVGTileManager.js';
 import { FeatureRenderer } from './FeatureRenderer.js';
+import { Avatar } from './Avatar.js';
 
 class MapApplication {
     constructor() {
@@ -13,8 +14,10 @@ class MapApplication {
         this.accessibilityManager = null;
         this.svgTileManager = null;
         this.featureRenderer = null;
+        this.avatar = null;
         this.isTracking = false;
         this.isNavigating = false;
+        this.hasInitialLocation = false;
         
         this.init();
         
@@ -49,6 +52,9 @@ class MapApplication {
         this.svgTileManager = new SVGTileManager();
         this.featureRenderer = new FeatureRenderer(this.mapRenderer);
         
+        // Initialize avatar
+        this.avatar = new Avatar(this.mapRenderer);
+        
         // Set up event listeners
         this.setupEventListeners();
         
@@ -79,6 +85,10 @@ class MapApplication {
             
             // Update zoom button states
             this.updateZoomButtonStates();
+            
+            // Set initial avatar position at map center
+            const center = this.mapRenderer.center;
+            this.avatar.setPosition(center.lat, center.lng, false);
             
             // Load initial map tiles
             this.loadMapTiles();
@@ -577,6 +587,10 @@ class MapApplication {
         } else {
             this.locationTracker.stopTracking();
             this.announceStatus('Location tracking disabled');
+            
+            // When tracking is disabled, revert avatar to center position
+            const center = this.mapRenderer.center;
+            this.avatar.setPosition(center.lat, center.lng, false);
         }
     }
 
@@ -590,6 +604,9 @@ class MapApplication {
         
         locationElement.textContent = `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
         accuracyElement.textContent = `${Math.round(position.accuracy)}m`;
+        
+        // Update avatar with real location
+        this.avatar.setPosition(position.lat, position.lng, true);
         
         // Update map
         this.mapRenderer.drawUserLocation(position.lat, position.lng, position.accuracy);
@@ -609,13 +626,23 @@ class MapApplication {
     }
 
     centerOnCurrentLocation() {
-        const position = this.locationTracker.getCurrentPosition();
+        // First try to get the current GPS position if tracking is active
+        if (this.isTracking) {
+            const position = this.locationTracker.getCurrentPosition();
+            if (position) {
+                this.mapRenderer.setCenter(position.lat, position.lng);
+                this.announceStatus('Map centered on current location');
+                return;
+            }
+        }
         
-        if (position) {
-            this.mapRenderer.setCenter(position.lat, position.lng);
-            this.announceStatus('Map centered on current location');
+        // Otherwise, center on avatar's position (which should always exist)
+        if (this.avatar && this.avatar.position) {
+            this.mapRenderer.setCenter(this.avatar.position.lat, this.avatar.position.lng);
+            this.announceStatus('Map centered on avatar location');
         } else {
-            this.announceStatus('Current location not available');
+            // This shouldn't happen, but just in case
+            this.announceStatus('No location available');
         }
     }
 
@@ -913,6 +940,10 @@ class MapApplication {
             if (this.accessibilityManager) {
                 this.accessibilityManager.updateTabOrder();
             }
+            // Update avatar position
+            if (this.avatar) {
+                this.avatar.refresh();
+            }
         };
         
         const originalSetZoom = this.mapRenderer.setZoom.bind(this.mapRenderer);
@@ -923,6 +954,10 @@ class MapApplication {
             // Update accessibility when zoom changes
             if (this.accessibilityManager) {
                 this.accessibilityManager.updateTabOrder();
+            }
+            // Update avatar position
+            if (this.avatar) {
+                this.avatar.refresh();
             }
             return newZoom;
         };
@@ -1058,6 +1093,8 @@ class MapApplication {
         document.querySelectorAll('[tabindex]').forEach(element => {
             if (element.closest('#map-tiles')) {
                 element.removeAttribute('tabindex');
+                // Remove debug attribute
+                element.removeAttribute('data-wcag-visible');
             }
         });
         
@@ -1075,6 +1112,8 @@ class MapApplication {
         
         // Get all visible features in tiles that are within viewport
         const visibleFeatures = [];
+        const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
+        
         document.querySelectorAll('.tile').forEach(tile => {
             // Check each layer group
             ['buildings', 'roads', 'transit', 'accessibility', 'accessible_facilities', 'sensory_accessibility', 'mobility_access', 'accessible_transport', 'water', 'parks'].forEach(layerId => {
@@ -1083,8 +1122,17 @@ class MapApplication {
                     // Get features from this layer
                     const features = layerGroup.querySelectorAll('polygon, polyline, circle');
                     features.forEach(feature => {
-                        if (this.shouldIncludeInRotor(feature, selectedRotorValues) && this.isFeatureInViewport(feature, containerRect)) {
-                            visibleFeatures.push(feature);
+                        if (this.shouldIncludeInRotor(feature, selectedRotorValues)) {
+                            const meetsTargetSize = this.isFeatureInViewport(feature, containerRect);
+                            
+                            if (meetsTargetSize) {
+                                visibleFeatures.push(feature);
+                            }
+                            
+                            // In debug mode, mark features that meet/don't meet WCAG requirements
+                            if (debugMode) {
+                                feature.setAttribute('data-wcag-visible', meetsTargetSize ? 'true' : 'false');
+                            }
                         }
                     });
                 }
@@ -1120,6 +1168,10 @@ class MapApplication {
             }
         });
         
+        // Log summary in debug mode
+        if (debugMode) {
+            console.log(`WCAG Target Size: ${visibleFeatures.length} features meet requirements out of ${document.querySelectorAll('[data-wcag-visible]').length} rotor-selected features in view`);
+        }
     }
     
     shouldIncludeInRotor(feature, selectedRotorValues) {
@@ -1186,15 +1238,35 @@ class MapApplication {
     isFeatureInViewport(feature, containerRect) {
         const featureRect = feature.getBoundingClientRect();
         
-        // Check if feature intersects with viewport
-        const intersects = !(
-            featureRect.right < containerRect.left ||
-            featureRect.left > containerRect.right ||
-            featureRect.bottom < containerRect.top ||
-            featureRect.top > containerRect.bottom
-        );
+        // Calculate the intersection rectangle
+        const intersectionLeft = Math.max(featureRect.left, containerRect.left);
+        const intersectionRight = Math.min(featureRect.right, containerRect.right);
+        const intersectionTop = Math.max(featureRect.top, containerRect.top);
+        const intersectionBottom = Math.min(featureRect.bottom, containerRect.bottom);
         
-        return intersects;
+        // Check if there's an intersection
+        if (intersectionRight <= intersectionLeft || intersectionBottom <= intersectionTop) {
+            return false;
+        }
+        
+        // Calculate visible dimensions
+        const visibleWidth = intersectionRight - intersectionLeft;
+        const visibleHeight = intersectionBottom - intersectionTop;
+        
+        // WCAG 2.2 AAA requires minimum 44x44 CSS pixels for interactive targets
+        // We'll require at least 44x44 pixels visible OR 50% of the feature visible
+        // (for features smaller than 44x44)
+        const minTargetSize = 44;
+        
+        // For small features, check if at least 50% is visible
+        if (featureRect.width < minTargetSize || featureRect.height < minTargetSize) {
+            const featureArea = featureRect.width * featureRect.height;
+            const visibleArea = visibleWidth * visibleHeight;
+            return visibleArea >= featureArea * 0.5;
+        }
+        
+        // For larger features, ensure at least 44x44 pixels are visible
+        return visibleWidth >= minTargetSize && visibleHeight >= minTargetSize;
     }
     
     generateFeatureLabel(feature) {

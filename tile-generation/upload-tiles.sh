@@ -32,7 +32,8 @@ echo "📁 Creating maps directory on server..."
 ssh -i "$SSH_KEY" -p "$SSH_PORT" "$SITE_HOST" "mkdir -p $REMOTE_PATH/maps"
 
 # Upload tiles with rsync (excluding large data files)
-echo "📤 Uploading SVG tiles only (excluding data directory)..."
+echo "📤 Uploading SVG tiles (expecting ~36 tiles)..."
+echo "This may take a few minutes depending on your connection speed..."
 rsync -avz --progress \
     --exclude='data/' \
     --exclude='*.osm.pbf' \
