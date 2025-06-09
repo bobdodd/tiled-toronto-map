@@ -390,6 +390,8 @@ main {
     position: relative;
     background: #e5e3df;
     overflow: hidden;
+    /* Enable touch events for pinch-to-zoom */
+    touch-action: none;
 }
 
 #map-svg {
@@ -1201,6 +1203,40 @@ main {
     outline: none;
 }
 
+/* Disabled state for zoom buttons */
+.nav-zoom.disabled,
+.nav-zoom[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%);
+}
+
+.nav-zoom.disabled:hover,
+.nav-zoom[aria-disabled="true"]:hover {
+    background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%);
+    box-shadow: none;
+}
+
+.nav-zoom.disabled svg,
+.nav-zoom[aria-disabled="true"] svg {
+    stroke: #999;
+}
+
+/* High contrast mode disabled styles */
+@media (prefers-contrast: high) {
+    .nav-zoom.disabled,
+    .nav-zoom[aria-disabled="true"] {
+        opacity: 0.6;
+        background: #666;
+        border-color: #999;
+    }
+    
+    .nav-zoom.disabled svg,
+    .nav-zoom[aria-disabled="true"] svg {
+        stroke: #999;
+    }
+}
+
 /* Zoom button outline divs */
 .zoom-in-outline,
 .zoom-out-outline {
@@ -1501,6 +1537,34 @@ main {
 #map-container {
     margin-left: 0;
     width: 100%;
+}
+
+/* Clear All Button */
+.clear-all-rotor {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid #dc3545;
+    background: #fff;
+    color: #dc3545;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.15s ease;
+}
+
+.clear-all-rotor:hover {
+    background: #dc3545;
+    color: #fff;
+}
+
+.clear-all-rotor:focus {
+    outline: 2px solid #dc3545;
+    outline-offset: 2px;
 }
 
 /* Filter Sub-Accordion Items (Nested) */

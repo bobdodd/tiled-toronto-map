@@ -112,13 +112,38 @@ export class AccessibilityManager {
     }
     
     setupEventListeners() {
-        // Handle rotor changes - now inside accordion
-        const rotorRadios = document.querySelectorAll('input[name="rotor"]');
-        rotorRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.setRotor(e.target.value);
+        // Handle rotor changes - now checkboxes in accordion
+        const rotorCheckboxes = document.querySelectorAll('input[type="checkbox"][id^="rotor-"]');
+        rotorCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.updateTabOrder();
             });
         });
+        
+        // Handle Clear All button
+        const clearAllButton = document.querySelector('.clear-all-rotor');
+        if (clearAllButton) {
+            clearAllButton.addEventListener('click', () => {
+                rotorCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                this.updateTabOrder();
+            });
+        }
+        
+        // Handle "Everything" checkbox
+        const everythingCheckbox = document.querySelector('input[name="rotor-quick"][value="everything"]');
+        if (everythingCheckbox) {
+            everythingCheckbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    // Check all category checkboxes
+                    document.querySelectorAll('input[name="rotor-category"]').forEach(cb => {
+                        cb.checked = true;
+                    });
+                }
+                this.updateTabOrder();
+            });
+        }
         
         // Initialize with default rotor value
         this.updateTabOrder();
@@ -136,9 +161,12 @@ export class AccessibilityManager {
         
         // Wait a bit to ensure features are loaded, then add focus outline
         setTimeout(() => {
+            // Try to add to map-labels (highest layer) first, then map-features
+            const mapLabels = document.querySelector('#map-labels');
             const mapFeatures = document.querySelector('#map-features');
-            if (mapFeatures) {
-                // Always append as last child to ensure it's on top
+            if (mapLabels) {
+                mapLabels.appendChild(this.focusOutline);
+            } else if (mapFeatures) {
                 mapFeatures.appendChild(this.focusOutline);
             }
         }, 500);
@@ -150,32 +178,32 @@ export class AccessibilityManager {
         
         // Also listen on document level for better compatibility
         document.addEventListener('focus', (e) => {
-            if (e.target.closest('#map-features') && this.isMapFeature(e.target)) {
+            if ((e.target.closest('#map-features') || e.target.closest('#map-tiles')) && this.isMapFeature(e.target)) {
                 this.handleFocusIn(e);
             }
         }, true);
         
-        // Listen for mouse events - disabled for performance with large datasets
-        // mapSvg.addEventListener('mouseover', (e) => this.handleMouseOver(e));
-        // mapSvg.addEventListener('mouseout', (e) => this.handleMouseOut(e));
+        // Listen for mouse events on tile features
+        mapSvg.addEventListener('mouseover', (e) => this.handleMouseOver(e));
+        mapSvg.addEventListener('mouseout', (e) => this.handleMouseOut(e));
     }
     
     handleFocusIn(event) {
         const target = event.target;
-        console.log('Focus in:', target);
         if (this.isMapFeature(target)) {
             this.showFocusOutline(target);
         }
     }
     
-    handleFocusOut(event) {
+    handleFocusOut() {
         // Remove focus outline
         this.hideFocusOutline();
     }
     
     handleMouseOver(event) {
         const target = event.target;
-        if (this.isMapFeature(target)) {
+        // Show outline on hover for ANY map feature, not just those with tabindex
+        if (this.isMapFeatureForHover(target)) {
             this.showFocusOutline(target);
         }
     }
@@ -190,12 +218,31 @@ export class AccessibilityManager {
     isMapFeature(element) {
         if (!element) return false;
         
-        // Check if it's a group element with tabindex
-        if (element.tagName === 'g' && element.hasAttribute('tabindex')) {
+        // For keyboard focus - only features with tabindex
+        if (element.hasAttribute('tabindex')) {
             return true;
         }
         
-        // Also check individual features for mouse hover
+        return false;
+    }
+    
+    isMapFeatureForHover(element) {
+        if (!element) return false;
+        
+        // Don't show hover on the focus outline itself
+        if (element.closest('#focus-outline')) return false;
+        
+        // Check if it's any SVG shape element that could be a map feature
+        const shapeElements = ['polygon', 'polyline', 'circle', 'path', 'rect'];
+        if (!shapeElements.includes(element.tagName)) return false;
+        
+        // Skip if it's in a defs section or is a pattern/gradient
+        if (element.closest('defs')) return false;
+        
+        // Skip UI elements
+        if (element.closest('.compass-navigator') || element.closest('.control-sidebar')) return false;
+        
+        // Also check individual features by class
         if (element.classList) {
             // Don't show focus on road casings (they're just the outline)
             if (element.classList.contains('road-casing')) return false;
@@ -214,7 +261,28 @@ export class AccessibilityManager {
                 'bridge', 'tunnel', 'tower', 'mast', 'pier', 'breakwater',
                 'river', 'stream', 'canal', 'ditch', 'coastline'
             ];
-            return featureClasses.some(cls => element.classList.contains(cls));
+            // If it has a known feature class, it's definitely a feature
+            if (featureClasses.some(cls => element.classList.contains(cls))) {
+                return true;
+            }
+        }
+        
+        // For tile features, check if they're in a map layer
+        const parent = element.parentElement;
+        if (parent && parent.id) {
+            // Check if it's in a feature layer
+            const layerTypes = ['buildings', 'roads', 'transit', 'accessibility', 'water', 'parks', 
+                               'accessible_facilities', 'sensory_accessibility', 'mobility_access', 
+                               'accessible_transport'];
+            if (layerTypes.some(type => parent.id.includes(type))) {
+                return true;
+            }
+        }
+        
+        // Check if it's inside map-tiles or map-features
+        if (element.closest('#map-tiles') || element.closest('#map-features')) {
+            // It's likely a map feature if it's a shape in these containers
+            return true;
         }
         
         return false;
@@ -225,8 +293,12 @@ export class AccessibilityManager {
         
         // Ensure focus outline exists and is in the DOM
         if (!this.focusOutline || !this.focusOutline.parentNode) {
+            // Try to add to map-labels (highest layer) first
+            const mapLabels = document.querySelector('#map-labels');
             const mapFeatures = document.querySelector('#map-features');
-            if (mapFeatures && this.focusOutline) {
+            if (mapLabels && this.focusOutline) {
+                mapLabels.appendChild(this.focusOutline);
+            } else if (mapFeatures && this.focusOutline) {
                 mapFeatures.appendChild(this.focusOutline);
             }
         }
@@ -249,7 +321,7 @@ export class AccessibilityManager {
                 this.createOutlineForElement(child);
             });
         } else {
-            // Handle individual elements (mouse hover)
+            // Handle individual elements (mouse hover or direct focus)
             this.createOutlineForElement(element);
         }
         
@@ -275,6 +347,23 @@ export class AccessibilityManager {
         }
         
         if (outlineElement) {
+            // Get the element's transform and parent transforms to position outline correctly
+            let transformList = [];
+            let currentElement = element;
+            
+            // Collect all transforms up to the SVG root
+            while (currentElement && currentElement.tagName !== 'svg') {
+                if (currentElement.getAttribute('transform')) {
+                    transformList.unshift(currentElement.getAttribute('transform'));
+                }
+                currentElement = currentElement.parentElement;
+            }
+            
+            // Apply all collected transforms
+            if (transformList.length > 0) {
+                outlineElement.setAttribute('transform', transformList.join(' '));
+            }
+            
             // Style the outline
             outlineElement.setAttribute('fill', 'none');
             outlineElement.setAttribute('stroke', '#0066ff');
@@ -286,13 +375,15 @@ export class AccessibilityManager {
             // For polygons and polylines, add a slight scale transform to offset from shape
             if (element.tagName !== 'circle') {
                 try {
-                    // Calculate center of element
+                    // Calculate center of element in its local coordinate system
                     const bbox = element.getBBox();
                     const centerX = bbox.x + bbox.width / 2;
                     const centerY = bbox.y + bbox.height / 2;
                     
-                    // Apply slight scale from center
-                    outlineElement.setAttribute('transform', `translate(${centerX}, ${centerY}) scale(1.1) translate(${-centerX}, ${-centerY})`);
+                    // Apply slight scale from center, preserving existing transforms
+                    const existingTransform = outlineElement.getAttribute('transform') || '';
+                    outlineElement.setAttribute('transform', 
+                        `${existingTransform} translate(${centerX}, ${centerY}) scale(1.1) translate(${-centerX}, ${-centerY})`);
                 } catch (e) {
                     // If getBBox fails, skip transform
                     console.warn('Could not calculate bbox for element:', e);
@@ -317,10 +408,17 @@ export class AccessibilityManager {
         }
     }
     
-    setRotor(value) {
-        this.currentRotor = value;
-        this.updateTabOrder();
-        this.announceRotorChange(value);
+    getSelectedRotorValues() {
+        const selected = [];
+        
+        // Get all checked rotor checkboxes
+        document.querySelectorAll('input[type="checkbox"][id^="rotor-"]:checked').forEach(checkbox => {
+            // Use the checkbox ID without the "rotor-" prefix as the value
+            const value = checkbox.id.replace('rotor-', '');
+            selected.push(value);
+        });
+        
+        return selected;
     }
     
     updateTabOrder() {
@@ -331,8 +429,11 @@ export class AccessibilityManager {
             element.removeAttribute('role');
         });
         
-        // If rotor is set to 'none', don't add any tabindex
-        if (this.currentRotor === 'none') {
+        // Get all selected rotor values
+        const selectedValues = this.getSelectedRotorValues();
+        
+        // If no rotor values selected, don't add any tabindex
+        if (selectedValues.length === 0) {
             this.announceFeatureCount(0);
             return;
         }
@@ -353,6 +454,9 @@ export class AccessibilityManager {
             'healthcare': '.hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature',
             'historic-features': '.monument-feature, .memorial-feature, .archaeological-site-feature, .castle-feature, .ruins-feature',
             'manmade-structures': '.bridge-feature, .tunnel-feature, .tower-feature, .mast-feature, .pier-feature, .breakwater-feature',
+            'natural-features': '.water-body-feature, .forest-feature, .wood-feature, .grassland-feature, .beach-feature, .cliff-feature, .peak-feature, .tree-feature',
+            'waterways': '.river-feature, .stream-feature, .canal-feature, .ditch-feature, .coastline-feature',
+            'barriers': '.fence-feature, .wall-feature, .hedge-feature, .gate-feature, .bollard-feature',
             // Individual feature types
             'hospitals': '.hospital-feature',
             'pharmacies': '.pharmacy-feature',
@@ -368,17 +472,30 @@ export class AccessibilityManager {
             'everything': '.building-feature, .road-feature, .transit-feature, .shop-feature, .school-feature, .worship-feature, .park-feature, .address-feature, .hospital-feature, .clinic-feature, .doctor-feature, .dentist-feature, .pharmacy-feature, .veterinary-feature, .accessible-toilet-feature, .accessible-parking-feature, .drinking-water-feature, .bench-feature, .shelter-feature, .crossing-feature, .curb-cut-feature, .elevator-feature, .steps-feature, .tactile-paving-feature, .audio-signal-feature, .tactile-map-feature, .digital-clock-feature, .info-point-feature, .emergency-phone-feature, .defibrillator-feature, .accessible-medical-feature, .barrier-feature, .bank-feature, .atm-feature, .post-office-feature, .currency-exchange-feature, .restaurant-feature, .cafe-feature, .fast-food-feature, .bar-feature, .pub-feature, .food-court-feature, .hotel-feature, .hostel-feature, .guest-house-feature, .campsite-feature, .attraction-feature, .museum-feature, .gallery-feature, .viewpoint-feature, .tourist-info-feature, .cinema-feature, .theatre-feature, .library-feature, .community-centre-feature, .arts-centre-feature, .sports-centre-feature, .swimming-pool-feature, .golf-course-feature, .stadium-feature, .police-station-feature, .fire-station-feature, .emergency-phone-feature, .emergency-defibrillator-feature, .monument-feature, .memorial-feature, .archaeological-site-feature, .castle-feature, .ruins-feature, .bridge-feature, .tunnel-feature, .tower-feature, .mast-feature, .pier-feature, .breakwater-feature, .river-feature, .stream-feature, .canal-feature, .ditch-feature, .coastline-feature'
         };
         
-        const selector = featureSelectors[this.currentRotor];
-        if (!selector) return;
+        // Combine selectors from all selected values
+        const selectors = [];
+        selectedValues.forEach(value => {
+            if (featureSelectors[value]) {
+                selectors.push(featureSelectors[value]);
+            }
+        });
         
-        // Get all individual feature groups
-        const featureGroups = document.querySelectorAll(selector);
+        if (selectors.length === 0) return;
+        
+        // Join all selectors with comma to create a combined selector
+        const combinedSelector = selectors.join(', ');
+        
+        // Get all individual feature groups matching any of the selected types
+        const featureGroups = document.querySelectorAll(combinedSelector);
+        
+        // Use a Set to avoid duplicates (since some features might match multiple selectors)
+        const uniqueFeatures = new Set();
+        featureGroups.forEach(fg => uniqueFeatures.add(fg));
+        
         let tabIndex = 100; // Start tabindex at 100 to come after UI controls
         let visibleCount = 0;
         
-        console.log(`Setting tabindex for rotor '${this.currentRotor}', found ${featureGroups.length} feature groups`);
-        
-        featureGroups.forEach(featureGroup => {
+        uniqueFeatures.forEach(featureGroup => {
             // Check if the feature group is visible
             const children = Array.from(featureGroup.children);
             const hasVisibleChildren = children.some(child => 
@@ -393,17 +510,29 @@ export class AccessibilityManager {
             }
         });
         
-        console.log(`Set tabindex on ${visibleCount} visible feature groups`);
         this.announceFeatureCount(visibleCount);
+        this.announceSelectedCategories(selectedValues);
         
         // Ensure focus outline is always on top
         this.ensureFocusOutlineOnTop();
+        
+        // Also update tile accessibility if we have tile features
+        if (window.mapApp && window.mapApp.updateAccessibilityForTiles) {
+            window.mapApp.updateAccessibilityForTiles();
+        }
     }
     
     ensureFocusOutlineOnTop() {
+        // Try to keep focus outline in the highest layer
+        const mapLabels = document.querySelector('#map-labels');
         const mapFeatures = document.querySelector('#map-features');
-        if (mapFeatures && this.focusOutline && this.focusOutline.parentNode === mapFeatures) {
-            mapFeatures.appendChild(this.focusOutline);
+        
+        if (this.focusOutline && this.focusOutline.parentNode) {
+            if (mapLabels) {
+                mapLabels.appendChild(this.focusOutline);
+            } else if (mapFeatures) {
+                mapFeatures.appendChild(this.focusOutline);
+            }
         }
     }
     
@@ -454,7 +583,51 @@ export class AccessibilityManager {
         }, 100);
     }
     
+    announceSelectedCategories(selectedValues) {
+        const announcements = document.getElementById('map-announcements');
+        
+        const categoryNames = {
+            // Categories
+            'addresses': 'Addresses',
+            'barriers': 'Barriers',
+            'buildings': 'Buildings',
+            'commerce': 'Commerce',
+            'education': 'Education',
+            'emergency-services': 'Emergency Services',
+            'entertainment': 'Entertainment',
+            'healthcare': 'Healthcare',
+            'historic-features': 'Historic Features',
+            'manmade-structures': 'Man-made Structures',
+            'natural-features': 'Natural Features',
+            'worship': 'Places of Worship',
+            'recreation': 'Recreation',
+            'tourism': 'Tourism',
+            'transportation': 'Transportation',
+            'waterways': 'Waterways',
+            // Individual types
+            'hospitals': 'Hospitals',
+            'parks': 'Parks',
+            'pharmacies': 'Pharmacies',
+            'schools': 'Schools',
+            'shops': 'Shops',
+            'transit': 'Transit Stops',
+            // Accessibility
+            'accessibility-all': 'All Accessibility',
+            'emergency-features': 'Emergency Features',
+            'essential-navigation': 'Essential Navigation',
+            'public-facilities': 'Public Facilities',
+            'everything': 'Everything'
+        };
+        
+        const names = selectedValues.map(v => categoryNames[v] || v).join(', ');
+        if (names) {
+            announcements.textContent = `Navigating: ${names}`;
+        } else {
+            announcements.textContent = 'No categories selected for navigation';
+        }
+    }
+    
     getCurrentRotor() {
-        return this.currentRotor;
+        return this.getSelectedRotorValues();
     }
 }

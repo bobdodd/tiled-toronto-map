@@ -8,7 +8,6 @@ export class SVGTileManager {
             // Production - use relative path (same domain)
             this.tileBaseUrl = '/maps/tiles/tiles/';
         }
-        console.log('SVGTileManager initialized with base URL:', this.tileBaseUrl);
         this.tileIndex = null;
         this.tileCache = new Map();
         this.maxCacheSize = 20;
@@ -23,10 +22,8 @@ export class SVGTileManager {
         try {
             // tile-index.json is one level up from the tiles directory
             const indexUrl = '/maps/tiles/tile-index.json';
-            console.log('Loading tile index from:', indexUrl);
             const response = await fetch(indexUrl);
             this.tileIndex = await response.json();
-            console.log('Loaded tile index:', this.tileIndex);
             return this.tileIndex;
         } catch (error) {
             console.error('Failed to load tile index:', error);
@@ -43,7 +40,6 @@ export class SVGTileManager {
 
     getTileUrl(tileId) {
         const tileUrl = this.tileBaseUrl + tileId + '.svg.gz';
-        console.log('Generated tile URL:', tileUrl);
         return tileUrl;
     }
 
@@ -95,7 +91,6 @@ export class SVGTileManager {
     }
 
     async fetchTile(url, tileId) {
-        console.log(`Fetching tile ${tileId} from: ${url}`);
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -103,44 +98,87 @@ export class SVGTileManager {
         
         // Check Content-Encoding header
         const contentEncoding = response.headers.get('content-encoding');
-        console.log(`Content-Encoding for ${tileId}: ${contentEncoding}`);
+        const contentType = response.headers.get('content-type');
         
-        // If the server is not sending proper gzip headers, we need to decompress manually
-        if (url.endsWith('.gz') && contentEncoding !== 'gzip') {
-            // The content is gzipped but server isn't telling browser to decompress
-            // We need to decompress it ourselves
-            const arrayBuffer = await response.arrayBuffer();
-            const decompressed = await this.decompressGzip(arrayBuffer);
-            console.log(`Manually decompressed tile ${tileId} (${decompressed.length} bytes)`);
-            console.log(`First 200 chars: ${decompressed.substring(0, 200)}`);
-            return decompressed;
-        } else {
-            // Server is handling decompression or file is not gzipped
-            const svgText = await response.text();
-            console.log(`Loaded tile ${tileId} (${svgText.length} bytes)`);
-            console.log(`First 200 chars: ${svgText.substring(0, 200)}`);
+        // First, try to read as text to see if browser already decompressed
+        const responseClone = response.clone();
+        try {
+            const text = await responseClone.text();
             
-            // Validate that we have valid SVG
-            if (!svgText.includes('<svg')) {
-                console.error(`Invalid SVG content for tile ${tileId}`);
-                return null;
+            // Check if we got valid SVG
+            if (text.includes('<svg') && text.includes('</svg>')) {
+                return text;
             }
             
-            return svgText;
+            // If not valid SVG and URL suggests gzip, try manual decompression
+            if (url.endsWith('.gz')) {
+                console.log(`Content doesn't look like SVG, attempting manual decompression for ${tileId}`);
+                const arrayBuffer = await response.arrayBuffer();
+                const decompressed = await this.decompressGzip(arrayBuffer);
+                
+                // Validate decompressed content
+                if (!decompressed.includes('<svg')) {
+                    console.error(`Decompressed content is not valid SVG for tile ${tileId}`);
+                    return null;
+                }
+                
+                return decompressed;
+            }
+        } catch (textError) {
+            // If reading as text failed, try manual decompression
+            if (url.endsWith('.gz')) {
+                try {
+                    const arrayBuffer = await response.arrayBuffer();
+                    const decompressed = await this.decompressGzip(arrayBuffer);
+                    
+                    // Validate decompressed content
+                    if (!decompressed.includes('<svg')) {
+                        console.error(`Decompressed content is not valid SVG for tile ${tileId}`);
+                        return null;
+                    }
+                    
+                    return decompressed;
+                } catch (decompressError) {
+                    console.error(`Failed to decompress tile ${tileId}:`, decompressError);
+                    return null;
+                }
+            }
         }
+        
+        console.error(`Failed to load tile ${tileId}: Invalid content`);
+        return null;
     }
     
     async decompressGzip(arrayBuffer) {
-        // Use the DecompressionStream API if available
-        if ('DecompressionStream' in window) {
-            const ds = new DecompressionStream('gzip');
-            const decompressedStream = new Response(arrayBuffer).body.pipeThrough(ds);
-            const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer();
-            return new TextDecoder().decode(decompressedArrayBuffer);
-        } else {
-            // Fallback: Could use pako.js library here
-            console.error('DecompressionStream not available. Cannot decompress gzip in browser.');
-            throw new Error('Cannot decompress gzip content');
+        try {
+            // Try DecompressionStream API first (Chrome 80+, Edge 80+, Safari 16.4+)
+            if ('DecompressionStream' in window) {
+                try {
+                    const ds = new DecompressionStream('gzip');
+                    const decompressedStream = new Response(arrayBuffer).body.pipeThrough(ds);
+                    const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer();
+                    return new TextDecoder().decode(decompressedArrayBuffer);
+                } catch (streamError) {
+                    console.warn('DecompressionStream failed, trying pako fallback:', streamError);
+                }
+            }
+            
+            // Fallback to pako library
+            if (typeof pako !== 'undefined') {
+                try {
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    const decompressed = pako.ungzip(uint8Array);
+                    return new TextDecoder().decode(decompressed);
+                } catch (pakoError) {
+                    console.error('Pako decompression failed:', pakoError);
+                    throw pakoError;
+                }
+            } else {
+                throw new Error('No gzip decompression method available');
+            }
+        } catch (error) {
+            console.error('Failed to decompress gzip content:', error);
+            throw error;
         }
     }
 

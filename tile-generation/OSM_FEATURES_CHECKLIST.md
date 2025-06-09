@@ -719,13 +719,13 @@ This document lists all OSM features to be included in the map tiles. Features a
 564. ✅ incline=* - Incline percentage
 
 ### Parking & Transport
-565. ❌ capacity:disabled=* - Accessible spaces
-566. ❌ parking:disabled=yes - Disabled parking
-567. ❌ priority=disabled - Priority access
-568. ❌ bus:wheelchair=yes - Accessible buses
-569. ❌ subway:wheelchair=yes - Accessible subway
-570. ❌ tram:wheelchair=yes - Accessible trams
-571. ❌ train:wheelchair=yes - Accessible trains
+565. ✅ capacity:disabled=* - Accessible spaces
+566. ✅ parking:disabled=yes - Disabled parking
+567. ✅ priority=disabled - Priority access
+568. ✅ bus:wheelchair=yes - Accessible buses
+569. ✅ subway:wheelchair=yes - Accessible subway
+570. ✅ tram:wheelchair=yes - Accessible trams
+571. ✅ train:wheelchair=yes - Accessible trains
 
 ## Infrastructure (572-650)
 
@@ -882,10 +882,10 @@ This document lists all OSM features to be included in the map tiles. Features a
 ## Summary Statistics
 
 - **Total Features**: 700
-- **Implemented**: 195 (✅)
+- **Implemented**: 202 (✅)
 - **Partially Implemented**: 1 (🚧)
-- **Not Implemented**: 504 (❌)
-- **Completion**: 27.9%
+- **Not Implemented**: 497 (❌)
+- **Completion**: 28.9%
 
 ## Next Priority Features
 

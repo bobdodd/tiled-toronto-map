@@ -23,7 +23,6 @@ export class OSMDataFetcher {
         
         // Check cache first
         if (this.cache.has(cacheKey)) {
-            console.log('Using cached data for bounds:', cacheKey);
             return this.cache.get(cacheKey);
         }
         
@@ -318,7 +317,6 @@ export class OSMDataFetcher {
             // Create new AbortController for this request
             this.currentRequest = new AbortController();
             
-            console.log('Fetching OSM data for bbox:', bbox);
             
             const response = await fetch(this.overpassUrl, {
                 method: 'POST',
@@ -334,7 +332,6 @@ export class OSMDataFetcher {
             }
             
             const data = await response.json();
-            console.log(`OSM returned ${data.elements?.length || 0} elements`);
             
             const features = this.convertToGeoJSON(data);
             
@@ -352,7 +349,6 @@ export class OSMDataFetcher {
             
             // Don't log abort errors
             if (error.name === 'AbortError') {
-                console.log('OSM request cancelled');
                 return null;
             }
             
@@ -2633,12 +2629,6 @@ export class OSMDataFetcher {
             west: center.lng - lngDelta
         };
         
-        console.log('Calculated bounds:', {
-            center: { lat: center.lat, lng: center.lng },
-            viewport: { width, height },
-            zoom,
-            bounds
-        });
         
         return bounds;
     }

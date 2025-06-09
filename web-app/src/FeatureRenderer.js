@@ -252,14 +252,6 @@ export class FeatureRenderer {
         this.renderTrees(features.trees, groups.trees);
         
         // Render waterways
-        console.log('Waterway data:', {
-            rivers: features.rivers?.length || 0,
-            streams: features.streams?.length || 0,
-            canals: features.canals?.length || 0,
-            ditches: features.ditches?.length || 0,
-            coastlines: features.coastlines?.length || 0,
-            waterBodies: features.waterBodies?.length || 0
-        });
         this.renderRivers(features.rivers, groups.rivers);
         this.renderStreams(features.streams, groups.streams);
         this.renderCanals(features.canals, groups.canals);
@@ -280,7 +272,7 @@ export class FeatureRenderer {
     }
     
     renderBuildings(buildings, group) {
-        buildings.forEach((feature, index) => {
+        buildings.forEach((feature) => {
             // Create individual group for each building
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'building-feature');
@@ -306,7 +298,7 @@ export class FeatureRenderer {
             return aIndex - bIndex;
         });
         
-        sortedRoads.forEach((feature, index) => {
+        sortedRoads.forEach((feature) => {
             // Create individual group for each road
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'road-feature');
@@ -339,7 +331,7 @@ export class FeatureRenderer {
     }
     
     renderTransitStops(stops, group) {
-        stops.forEach((feature, index) => {
+        stops.forEach((feature) => {
             // Create individual group for each transit stop
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'transit-feature');
@@ -359,7 +351,7 @@ export class FeatureRenderer {
     }
     
     renderShops(shops, group) {
-        shops.forEach((feature, index) => {
+        shops.forEach((feature) => {
             // Create individual group for each shop
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'shop-feature');
@@ -386,7 +378,7 @@ export class FeatureRenderer {
     }
     
     renderSchools(schools, group) {
-        schools.forEach((feature, index) => {
+        schools.forEach((feature) => {
             // Create individual group for each school
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'school-feature');
@@ -411,7 +403,7 @@ export class FeatureRenderer {
     }
     
     renderWorship(places, group) {
-        places.forEach((feature, index) => {
+        places.forEach((feature) => {
             // Create individual group for each place of worship
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'worship-feature');
@@ -436,7 +428,7 @@ export class FeatureRenderer {
     }
     
     renderParks(parks, group) {
-        parks.forEach((feature, index) => {
+        parks.forEach((feature) => {
             // Create individual group for each park
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'park-feature');
@@ -454,7 +446,7 @@ export class FeatureRenderer {
     }
     
     renderAddresses(addresses, group) {
-        addresses.forEach((feature, index) => {
+        addresses.forEach((feature) => {
             // Create individual group for each address
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'address-feature');
@@ -767,7 +759,7 @@ export class FeatureRenderer {
     
     // Accessibility feature rendering methods
     renderAccessibleToilets(toilets, group) {
-        toilets.forEach((feature, index) => {
+        toilets.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'accessible-toilet-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Accessible toilet');
@@ -785,7 +777,7 @@ export class FeatureRenderer {
     }
     
     renderAccessibleParking(parking, group) {
-        parking.forEach((feature, index) => {
+        parking.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'accessible-parking-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Accessible parking');
@@ -811,7 +803,7 @@ export class FeatureRenderer {
     }
     
     renderDrinkingWater(water, group) {
-        water.forEach((feature, index) => {
+        water.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'drinking-water-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Drinking water');
@@ -829,7 +821,7 @@ export class FeatureRenderer {
     }
     
     renderBenches(benches, group) {
-        benches.forEach((feature, index) => {
+        benches.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'bench-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Bench');
@@ -847,7 +839,7 @@ export class FeatureRenderer {
     }
     
     renderShelters(shelters, group) {
-        shelters.forEach((feature, index) => {
+        shelters.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'shelter-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Shelter');
@@ -873,7 +865,7 @@ export class FeatureRenderer {
     }
     
     renderCrossings(crossings, group) {
-        crossings.forEach((feature, index) => {
+        crossings.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'crossing-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Pedestrian crossing');
@@ -891,7 +883,7 @@ export class FeatureRenderer {
     }
     
     renderCurbCuts(curbCuts, group) {
-        curbCuts.forEach((feature, index) => {
+        curbCuts.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'curb-cut-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Curb cut');
@@ -909,7 +901,7 @@ export class FeatureRenderer {
     }
     
     renderElevators(elevators, group) {
-        elevators.forEach((feature, index) => {
+        elevators.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'elevator-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Elevator');
@@ -927,7 +919,7 @@ export class FeatureRenderer {
     }
     
     renderSteps(steps, group) {
-        steps.forEach((feature, index) => {
+        steps.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'steps-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Steps');
@@ -953,7 +945,7 @@ export class FeatureRenderer {
     }
     
     renderTactilePaving(tactile, group) {
-        tactile.forEach((feature, index) => {
+        tactile.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'tactile-paving-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Tactile paving');
@@ -979,7 +971,7 @@ export class FeatureRenderer {
     }
     
     renderAudioSignals(signals, group) {
-        signals.forEach((feature, index) => {
+        signals.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'audio-signal-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Audio crossing signal');
@@ -997,7 +989,7 @@ export class FeatureRenderer {
     }
     
     renderTactileMaps(maps, group) {
-        maps.forEach((feature, index) => {
+        maps.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'tactile-map-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Tactile map');
@@ -1015,7 +1007,7 @@ export class FeatureRenderer {
     }
     
     renderDigitalClocks(clocks, group) {
-        clocks.forEach((feature, index) => {
+        clocks.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'digital-clock-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Digital clock');
@@ -1033,7 +1025,7 @@ export class FeatureRenderer {
     }
     
     renderInfoPoints(points, group) {
-        points.forEach((feature, index) => {
+        points.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'info-point-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Information point');
@@ -1051,7 +1043,7 @@ export class FeatureRenderer {
     }
     
     renderEmergencyPhones(phones, group) {
-        phones.forEach((feature, index) => {
+        phones.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'emergency-phone-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Emergency phone');
@@ -1069,7 +1061,7 @@ export class FeatureRenderer {
     }
     
     renderDefibrillators(defib, group) {
-        defib.forEach((feature, index) => {
+        defib.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'defibrillator-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Defibrillator');
@@ -1087,7 +1079,7 @@ export class FeatureRenderer {
     }
     
     renderAccessibleMedical(medical, group) {
-        medical.forEach((feature, index) => {
+        medical.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'accessible-medical-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Accessible medical facility');
@@ -1113,7 +1105,7 @@ export class FeatureRenderer {
     }
     
     renderBarriers(barriers, group) {
-        barriers.forEach((feature, index) => {
+        barriers.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'barrier-feature');
             const label = this.generateAccessibilityLabel(feature.properties, 'Barrier');
@@ -1175,7 +1167,7 @@ export class FeatureRenderer {
     
     // Healthcare feature rendering methods
     renderHospitals(hospitals, group) {
-        hospitals.forEach((feature, index) => {
+        hospitals.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'hospital-feature');
             const label = this.generateHealthcareLabel(feature.properties, 'Hospital');
@@ -1201,7 +1193,7 @@ export class FeatureRenderer {
     }
     
     renderClinics(clinics, group) {
-        clinics.forEach((feature, index) => {
+        clinics.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'clinic-feature');
             const label = this.generateHealthcareLabel(feature.properties, 'Clinic');
@@ -1227,7 +1219,7 @@ export class FeatureRenderer {
     }
     
     renderDoctors(doctors, group) {
-        doctors.forEach((feature, index) => {
+        doctors.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'doctor-feature');
             const label = this.generateHealthcareLabel(feature.properties, 'Doctor');
@@ -1253,7 +1245,7 @@ export class FeatureRenderer {
     }
     
     renderDentists(dentists, group) {
-        dentists.forEach((feature, index) => {
+        dentists.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'dentist-feature');
             const label = this.generateHealthcareLabel(feature.properties, 'Dentist');
@@ -1279,7 +1271,7 @@ export class FeatureRenderer {
     }
     
     renderPharmacies(pharmacies, group) {
-        pharmacies.forEach((feature, index) => {
+        pharmacies.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'pharmacy-feature');
             const label = this.generateHealthcareLabel(feature.properties, 'Pharmacy');
@@ -1305,7 +1297,7 @@ export class FeatureRenderer {
     }
     
     renderVeterinary(veterinary, group) {
-        veterinary.forEach((feature, index) => {
+        veterinary.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'veterinary-feature');
             const label = this.generateHealthcareLabel(feature.properties, 'Veterinary');
@@ -1366,7 +1358,7 @@ export class FeatureRenderer {
     
     // Transportation Infrastructure rendering methods
     renderRailways(railways, group) {
-        railways.forEach((feature, index) => {
+        railways.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'railway-feature');
             const label = this.generateRailwayLabel(feature.properties);
@@ -1410,7 +1402,7 @@ export class FeatureRenderer {
     }
     
     renderAirports(airports, group) {
-        airports.forEach((feature, index) => {
+        airports.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'airport-feature');
             const label = this.generateAirportLabel(feature.properties);
@@ -1453,7 +1445,7 @@ export class FeatureRenderer {
     }
     
     renderEnhancedHighways(highways, group) {
-        highways.forEach((feature, index) => {
+        highways.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'enhanced-highway-feature');
             const label = this.generateEnhancedHighwayLabel(feature.properties);
@@ -1502,7 +1494,7 @@ export class FeatureRenderer {
     }
     
     renderTransitPlatforms(platforms, group) {
-        platforms.forEach((feature, index) => {
+        platforms.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'transit-platform-feature');
             const label = this.generateTransitPlatformLabel(feature.properties);
@@ -1652,7 +1644,7 @@ export class FeatureRenderer {
     
     // Financial Services rendering methods
     renderBanks(banks, group) {
-        banks.forEach((feature, index) => {
+        banks.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'bank-feature');
             const label = this.generateBankLabel(feature.properties);
@@ -1678,7 +1670,7 @@ export class FeatureRenderer {
     }
     
     renderAtms(atms, group) {
-        atms.forEach((feature, index) => {
+        atms.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'atm-feature');
             const label = this.generateAtmLabel(feature.properties);
@@ -1696,7 +1688,7 @@ export class FeatureRenderer {
     }
     
     renderPostOffices(postOffices, group) {
-        postOffices.forEach((feature, index) => {
+        postOffices.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'post-office-feature');
             const label = this.generatePostOfficeLabel(feature.properties);
@@ -1723,7 +1715,7 @@ export class FeatureRenderer {
     }
     
     renderCurrencyExchange(exchanges, group) {
-        exchanges.forEach((feature, index) => {
+        exchanges.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'currency-exchange-feature');
             const label = this.generateCurrencyExchangeLabel(feature.properties);
@@ -1882,7 +1874,7 @@ export class FeatureRenderer {
     
     // Sustenance & Food rendering methods
     renderRestaurants(restaurants, group) {
-        restaurants.forEach((feature, index) => {
+        restaurants.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'restaurant-feature');
             const label = this.generateSustenanceLabel(feature.properties, 'Restaurant');
@@ -1909,7 +1901,7 @@ export class FeatureRenderer {
     }
     
     renderCafes(cafes, group) {
-        cafes.forEach((feature, index) => {
+        cafes.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'cafe-feature');
             const label = this.generateSustenanceLabel(feature.properties, 'Cafe');
@@ -1936,7 +1928,7 @@ export class FeatureRenderer {
     }
     
     renderFastFood(fastFood, group) {
-        fastFood.forEach((feature, index) => {
+        fastFood.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'fast-food-feature');
             const label = this.generateSustenanceLabel(feature.properties, 'Fast food');
@@ -1962,7 +1954,7 @@ export class FeatureRenderer {
     }
     
     renderBars(bars, group) {
-        bars.forEach((feature, index) => {
+        bars.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'bar-feature');
             const label = this.generateSustenanceLabel(feature.properties, 'Bar');
@@ -1988,7 +1980,7 @@ export class FeatureRenderer {
     }
     
     renderPubs(pubs, group) {
-        pubs.forEach((feature, index) => {
+        pubs.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'pub-feature');
             const label = this.generateSustenanceLabel(feature.properties, 'Pub');
@@ -2014,7 +2006,7 @@ export class FeatureRenderer {
     }
     
     renderFoodCourts(foodCourts, group) {
-        foodCourts.forEach((feature, index) => {
+        foodCourts.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'food-court-feature');
             const label = this.generateSustenanceLabel(feature.properties, 'Food court');
@@ -2090,7 +2082,7 @@ export class FeatureRenderer {
     
     // Accommodation & Tourism rendering methods
     renderHotels(hotels, group) {
-        hotels.forEach((feature, index) => {
+        hotels.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'hotel-feature');
             const label = this.generateTourismLabel(feature.properties, 'Hotel');
@@ -2116,7 +2108,7 @@ export class FeatureRenderer {
     }
     
     renderHostels(hostels, group) {
-        hostels.forEach((feature, index) => {
+        hostels.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'hostel-feature');
             const label = this.generateTourismLabel(feature.properties, 'Hostel');
@@ -2143,7 +2135,7 @@ export class FeatureRenderer {
     }
     
     renderGuestHouses(guestHouses, group) {
-        guestHouses.forEach((feature, index) => {
+        guestHouses.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'guest-house-feature');
             const label = this.generateTourismLabel(feature.properties, 'Guest house');
@@ -2169,7 +2161,7 @@ export class FeatureRenderer {
     }
     
     renderCampsites(campsites, group) {
-        campsites.forEach((feature, index) => {
+        campsites.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'campsite-feature');
             const label = this.generateTourismLabel(feature.properties, 'Campsite');
@@ -2195,7 +2187,7 @@ export class FeatureRenderer {
     }
     
     renderAttractions(attractions, group) {
-        attractions.forEach((feature, index) => {
+        attractions.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'attraction-feature');
             const label = this.generateTourismLabel(feature.properties, 'Tourist attraction');
@@ -2222,7 +2214,7 @@ export class FeatureRenderer {
     }
     
     renderMuseums(museums, group) {
-        museums.forEach((feature, index) => {
+        museums.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'museum-feature');
             const label = this.generateTourismLabel(feature.properties, 'Museum');
@@ -2248,7 +2240,7 @@ export class FeatureRenderer {
     }
     
     renderGalleries(galleries, group) {
-        galleries.forEach((feature, index) => {
+        galleries.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'gallery-feature');
             const label = this.generateTourismLabel(feature.properties, 'Art gallery');
@@ -2274,7 +2266,7 @@ export class FeatureRenderer {
     }
     
     renderViewpoints(viewpoints, group) {
-        viewpoints.forEach((feature, index) => {
+        viewpoints.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'viewpoint-feature');
             const label = this.generateTourismLabel(feature.properties, 'Scenic viewpoint');
@@ -2292,7 +2284,7 @@ export class FeatureRenderer {
     }
     
     renderTouristInfo(touristInfo, group) {
-        touristInfo.forEach((feature, index) => {
+        touristInfo.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'tourist-info-feature');
             const label = this.generateTourismLabel(feature.properties, 'Tourist information');
@@ -2320,7 +2312,7 @@ export class FeatureRenderer {
     
     // Entertainment & Culture rendering methods
     renderCinemas(cinemas, group) {
-        cinemas.forEach((feature, index) => {
+        cinemas.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'cinema-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Cinema');
@@ -2347,7 +2339,7 @@ export class FeatureRenderer {
     }
     
     renderTheatres(theatres, group) {
-        theatres.forEach((feature, index) => {
+        theatres.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'theatre-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Theatre');
@@ -2373,7 +2365,7 @@ export class FeatureRenderer {
     }
     
     renderLibraries(libraries, group) {
-        libraries.forEach((feature, index) => {
+        libraries.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'library-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Library');
@@ -2399,7 +2391,7 @@ export class FeatureRenderer {
     }
     
     renderCommunityCentres(centres, group) {
-        centres.forEach((feature, index) => {
+        centres.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'community-centre-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Community centre');
@@ -2426,7 +2418,7 @@ export class FeatureRenderer {
     }
     
     renderArtsCentres(centres, group) {
-        centres.forEach((feature, index) => {
+        centres.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'arts-centre-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Arts centre');
@@ -2452,7 +2444,7 @@ export class FeatureRenderer {
     }
     
     renderSportsCentres(centres, group) {
-        centres.forEach((feature, index) => {
+        centres.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'sports-centre-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Sports centre');
@@ -2478,7 +2470,7 @@ export class FeatureRenderer {
     }
     
     renderSwimmingPools(pools, group) {
-        pools.forEach((feature, index) => {
+        pools.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'swimming-pool-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Swimming pool');
@@ -2505,7 +2497,7 @@ export class FeatureRenderer {
     }
     
     renderGolfCourses(courses, group) {
-        courses.forEach((feature, index) => {
+        courses.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'golf-course-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Golf course');
@@ -2532,7 +2524,7 @@ export class FeatureRenderer {
     }
     
     renderStadiums(stadiums, group) {
-        stadiums.forEach((feature, index) => {
+        stadiums.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'stadium-feature');
             const label = this.generateEntertainmentLabel(feature.properties, 'Stadium');
@@ -2703,7 +2695,7 @@ export class FeatureRenderer {
     
     // Emergency Services Rendering Methods
     renderPoliceStations(policeStations, group) {
-        policeStations.forEach((feature, index) => {
+        policeStations.forEach((feature) => {
             // Create individual group for each police station
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'police-station-feature');
@@ -2748,7 +2740,7 @@ export class FeatureRenderer {
     }
     
     renderFireStations(fireStations, group) {
-        fireStations.forEach((feature, index) => {
+        fireStations.forEach((feature) => {
             // Create individual group for each fire station
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'fire-station-feature');
@@ -2791,7 +2783,7 @@ export class FeatureRenderer {
     }
     
     renderEmergencyPhonesCivil(emergencyPhones, group) {
-        emergencyPhones.forEach((feature, index) => {
+        emergencyPhones.forEach((feature) => {
             // Create individual group for each emergency phone
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'emergency-phone-feature');
@@ -2824,7 +2816,7 @@ export class FeatureRenderer {
     }
     
     renderEmergencyDefibrillators(emergencyDefibrillators, group) {
-        emergencyDefibrillators.forEach((feature, index) => {
+        emergencyDefibrillators.forEach((feature) => {
             // Create individual group for each defibrillator
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'emergency-defibrillator-feature');
@@ -2938,7 +2930,7 @@ export class FeatureRenderer {
     
     // Historic Features Rendering Methods
     renderMonuments(monuments, group) {
-        monuments.forEach((feature, index) => {
+        monuments.forEach((feature) => {
             // Create individual group for each monument
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'monument-feature');
@@ -2983,7 +2975,7 @@ export class FeatureRenderer {
     }
     
     renderMemorials(memorials, group) {
-        memorials.forEach((feature, index) => {
+        memorials.forEach((feature) => {
             // Create individual group for each memorial
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'memorial-feature');
@@ -3037,7 +3029,7 @@ export class FeatureRenderer {
     }
     
     renderArchaeologicalSites(archaeologicalSites, group) {
-        archaeologicalSites.forEach((feature, index) => {
+        archaeologicalSites.forEach((feature) => {
             // Create individual group for each archaeological site
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'archaeological-site-feature');
@@ -3082,7 +3074,7 @@ export class FeatureRenderer {
     }
     
     renderCastles(castles, group) {
-        castles.forEach((feature, index) => {
+        castles.forEach((feature) => {
             // Create individual group for each castle
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'castle-feature');
@@ -3144,7 +3136,7 @@ export class FeatureRenderer {
     }
     
     renderRuins(ruins, group) {
-        ruins.forEach((feature, index) => {
+        ruins.forEach((feature) => {
             // Create individual group for each ruin
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'ruins-feature');
@@ -3279,7 +3271,7 @@ export class FeatureRenderer {
     
     // Man-made Structures rendering methods
     renderBridges(bridges, group) {
-        bridges.forEach((feature, index) => {
+        bridges.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'bridge-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3336,7 +3328,7 @@ export class FeatureRenderer {
     }
     
     renderTunnels(tunnels, group) {
-        tunnels.forEach((feature, index) => {
+        tunnels.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'tunnel-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3397,7 +3389,7 @@ export class FeatureRenderer {
     }
     
     renderTowers(towers, group) {
-        towers.forEach((feature, index) => {
+        towers.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'tower-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3446,7 +3438,7 @@ export class FeatureRenderer {
     }
     
     renderMasts(masts, group) {
-        masts.forEach((feature, index) => {
+        masts.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'mast-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3499,7 +3491,7 @@ export class FeatureRenderer {
     }
     
     renderPiers(piers, group) {
-        piers.forEach((feature, index) => {
+        piers.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'pier-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3562,7 +3554,7 @@ export class FeatureRenderer {
     }
     
     renderBreakwaters(breakwaters, group) {
-        breakwaters.forEach((feature, index) => {
+        breakwaters.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'breakwater-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3661,7 +3653,7 @@ export class FeatureRenderer {
     
     // Barriers rendering methods
     renderFences(fences, group) {
-        fences.forEach((feature, index) => {
+        fences.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'fence-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3701,7 +3693,7 @@ export class FeatureRenderer {
     }
     
     renderWalls(walls, group) {
-        walls.forEach((feature, index) => {
+        walls.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'wall-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3740,7 +3732,7 @@ export class FeatureRenderer {
     }
     
     renderHedges(hedges, group) {
-        hedges.forEach((feature, index) => {
+        hedges.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'hedge-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3779,7 +3771,7 @@ export class FeatureRenderer {
     }
     
     renderGates(gates, group) {
-        gates.forEach((feature, index) => {
+        gates.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'gate-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3816,7 +3808,7 @@ export class FeatureRenderer {
     }
     
     renderBollards(bollards, group) {
-        bollards.forEach((feature, index) => {
+        bollards.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'bollard-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -3957,7 +3949,7 @@ export class FeatureRenderer {
     
     // Natural Features rendering methods
     renderWaterBodies(waterBodies, group) {
-        waterBodies.forEach((feature, index) => {
+        waterBodies.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'water-body-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4007,7 +3999,7 @@ export class FeatureRenderer {
     }
     
     renderForests(forests, group) {
-        forests.forEach((feature, index) => {
+        forests.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'forest-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4045,7 +4037,7 @@ export class FeatureRenderer {
     }
     
     renderWoods(woods, group) {
-        woods.forEach((feature, index) => {
+        woods.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'wood-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4083,7 +4075,7 @@ export class FeatureRenderer {
     }
     
     renderGrasslands(grasslands, group) {
-        grasslands.forEach((feature, index) => {
+        grasslands.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'grassland-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4121,7 +4113,7 @@ export class FeatureRenderer {
     }
     
     renderBeaches(beaches, group) {
-        beaches.forEach((feature, index) => {
+        beaches.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'beach-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4159,7 +4151,7 @@ export class FeatureRenderer {
     }
     
     renderCliffs(cliffs, group) {
-        cliffs.forEach((feature, index) => {
+        cliffs.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'cliff-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4196,7 +4188,7 @@ export class FeatureRenderer {
     }
     
     renderPeaks(peaks, group) {
-        peaks.forEach((feature, index) => {
+        peaks.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'peak-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4232,7 +4224,7 @@ export class FeatureRenderer {
     }
     
     renderTrees(trees, group) {
-        trees.forEach((feature, index) => {
+        trees.forEach((feature) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'tree-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4384,7 +4376,7 @@ export class FeatureRenderer {
     renderRivers(rivers, group) {
         if (!rivers) return;
         
-        rivers.forEach((river, index) => {
+        rivers.forEach((river) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'river-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4444,7 +4436,7 @@ export class FeatureRenderer {
     renderStreams(streams, group) {
         if (!streams) return;
         
-        streams.forEach((stream, index) => {
+        streams.forEach((stream) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'stream-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4488,7 +4480,7 @@ export class FeatureRenderer {
     renderCanals(canals, group) {
         if (!canals) return;
         
-        canals.forEach((canal, index) => {
+        canals.forEach((canal) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'canal-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4532,7 +4524,7 @@ export class FeatureRenderer {
     renderDitches(ditches, group) {
         if (!ditches) return;
         
-        ditches.forEach((ditch, index) => {
+        ditches.forEach((ditch) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'ditch-feature');
             featureGroup.setAttribute('tabindex', '-1');
@@ -4576,7 +4568,7 @@ export class FeatureRenderer {
     renderCoastlines(coastlines, group) {
         if (!coastlines) return;
         
-        coastlines.forEach((coastline, index) => {
+        coastlines.forEach((coastline) => {
             const featureGroup = document.createElementNS(this.SVG_NS, 'g');
             featureGroup.setAttribute('class', 'coastline-feature');
             featureGroup.setAttribute('tabindex', '-1');

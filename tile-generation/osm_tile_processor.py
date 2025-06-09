@@ -25,7 +25,8 @@ class OSMHandler(osmium.SimpleHandler):
             'parking': [],
             'sensory_accessibility': [],
             'accessible_facilities': [],
-            'mobility_access': []
+            'mobility_access': [],
+            'accessible_transport': []
         }
         
     def is_in_bounds(self, lat, lon):
@@ -133,6 +134,19 @@ class OSMHandler(osmium.SimpleHandler):
             tags.get('handrail:left') == 'yes' or
             tags.get('handrail:right') == 'yes'):
             self.features['mobility_access'].append({
+                'geometry': Point(n.location.lon, n.location.lat),
+                'properties': {**tags, 'osm_id': n.id}
+            })
+            
+        # Accessible transport features
+        if ('capacity:disabled' in tags or
+            tags.get('parking:disabled') == 'yes' or
+            tags.get('priority') == 'disabled' or
+            tags.get('bus:wheelchair') == 'yes' or
+            tags.get('subway:wheelchair') == 'yes' or
+            tags.get('tram:wheelchair') == 'yes' or
+            tags.get('train:wheelchair') == 'yes'):
+            self.features['accessible_transport'].append({
                 'geometry': Point(n.location.lon, n.location.lat),
                 'properties': {**tags, 'osm_id': n.id}
             })
@@ -415,6 +429,32 @@ class OSMHandler(osmium.SimpleHandler):
             else:
                 # Linear feature (ramp, handrail)
                 self.features['mobility_access'].append({
+                    'geometry': line,
+                    'properties': {**tags, 'osm_id': w.id}
+                })
+                
+        # Accessible transport features (ways)
+        elif ('capacity:disabled' in tags or
+              tags.get('parking:disabled') == 'yes' or
+              tags.get('priority') == 'disabled' or
+              tags.get('bus:wheelchair') == 'yes' or
+              tags.get('subway:wheelchair') == 'yes' or
+              tags.get('tram:wheelchair') == 'yes' or
+              tags.get('train:wheelchair') == 'yes'):
+            # Can be lines (platforms) or areas (parking lots)
+            if w.is_closed():
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['accessible_transport'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+            else:
+                # Linear feature (platform edge, route)
+                self.features['accessible_transport'].append({
                     'geometry': line,
                     'properties': {**tags, 'osm_id': w.id}
                 })
@@ -778,6 +818,48 @@ class OSMHandler(osmium.SimpleHandler):
                             })
                     else:
                         self.features['mobility_access'].append({
+                            'geometry': multipoly,
+                            'properties': {**tags, 'osm_id': a.id}
+                        })
+            except Exception:
+                pass
+                
+        # Accessible transport from relations
+        elif ('capacity:disabled' in tags or
+              tags.get('parking:disabled') == 'yes' or
+              tags.get('priority') == 'disabled' or
+              tags.get('bus:wheelchair') == 'yes' or
+              tags.get('subway:wheelchair') == 'yes' or
+              tags.get('tram:wheelchair') == 'yes' or
+              tags.get('train:wheelchair') == 'yes'):
+            try:
+                wkb = osmium.geom.WKBFactory()
+                geom = wkb.create_multipolygon(a)
+                multipoly = loads(geom, hex=True)
+                
+                # Check if any polygon intersects with tile bounds
+                bounds_check = False
+                tile_bounds = (self.bounds['west'], self.bounds['south'], 
+                              self.bounds['east'], self.bounds['north'])
+                
+                for poly in multipoly.geoms if hasattr(multipoly, 'geoms') else [multipoly]:
+                    poly_bounds = poly.bounds
+                    # Check if bounding boxes overlap
+                    if (poly_bounds[0] <= tile_bounds[2] and poly_bounds[2] >= tile_bounds[0] and
+                        poly_bounds[1] <= tile_bounds[3] and poly_bounds[3] >= tile_bounds[1]):
+                        bounds_check = True
+                        break
+                
+                if bounds_check:
+                    # Convert multipolygon to individual polygons
+                    if hasattr(multipoly, 'geoms'):
+                        for poly in multipoly.geoms:
+                            self.features['accessible_transport'].append({
+                                'geometry': poly,
+                                'properties': {**tags, 'osm_id': a.id}
+                            })
+                    else:
+                        self.features['accessible_transport'].append({
                             'geometry': multipoly,
                             'properties': {**tags, 'osm_id': a.id}
                         })

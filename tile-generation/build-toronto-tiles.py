@@ -476,6 +476,29 @@ class TorontoTileBuilder:
                     'handrail_right': {'fill': '#E0E0E0', 'stroke': '#757575', 'stroke_width': 2}
                 }
             },
+            'accessible_transport': {
+                'tags': {
+                    'capacity:disabled': True,  # Any value
+                    'parking:disabled': ['yes'],
+                    'priority': ['disabled'],
+                    'bus:wheelchair': ['yes'],
+                    'subway:wheelchair': ['yes'],
+                    'tram:wheelchair': ['yes'],
+                    'train:wheelchair': ['yes']
+                },
+                'styles': {
+                    # Parking
+                    'disabled_parking': {'fill': '#2196F3', 'stroke': '#0D47A1', 'stroke_width': 2},
+                    'priority_access': {'fill': '#3F51B5', 'stroke': '#1A237E', 'stroke_width': 2},
+                    # Transit
+                    'accessible_bus': {'fill': '#4CAF50', 'stroke': '#2E7D32', 'stroke_width': 2},
+                    'accessible_subway': {'fill': '#9C27B0', 'stroke': '#6A1B9A', 'stroke_width': 2},
+                    'accessible_tram': {'fill': '#FF9800', 'stroke': '#E65100', 'stroke_width': 2},
+                    'accessible_train': {'fill': '#795548', 'stroke': '#3E2723', 'stroke_width': 2},
+                    # Default
+                    'default': {'fill': '#00BCD4', 'stroke': '#006064', 'stroke_width': 1.5}
+                }
+            },
             'accessible_facilities': {
                 'tags': {
                     'toilets:wheelchair': ['yes'],
@@ -782,6 +805,48 @@ class TorontoTileBuilder:
                         stroke=style['stroke'],
                         stroke_width=style.get('stroke_width', 1)
                     )
+            elif feature_type == 'accessible_transport':
+                transport_type = self.determine_accessible_transport_type(properties)
+                style = self.feature_types['accessible_transport']['styles'].get(transport_type, 
+                        self.feature_types['accessible_transport']['styles']['default'])
+                # Use different shapes for different transport features
+                if transport_type in ['disabled_parking', 'priority_access']:
+                    # Pentagon for parking/priority
+                    r = 8
+                    points = []
+                    for i in range(5):
+                        angle = (i * 72 - 90) * math.pi / 180
+                        px = x + r * math.cos(angle)
+                        py = y + r * math.sin(angle)
+                        points.append(f"{px},{py}")
+                    element = self.create_svg_element(
+                        'polygon',
+                        points=" ".join(points),
+                        class_=f'accessible-transport transport-{transport_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                elif transport_type in ['accessible_bus', 'accessible_subway', 'accessible_tram', 'accessible_train']:
+                    # Star for transit
+                    element = self.create_svg_element(
+                        'polygon',
+                        points=f"{x},{y-10} {x+3},{y-3} {x+10},{y-2} {x+4},{y+3} {x+6},{y+10} {x},{y+5} {x-6},{y+10} {x-4},{y+3} {x-10},{y-2} {x-3},{y-3}",
+                        class_=f'accessible-transport transport-{transport_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                else:
+                    # Circle for other
+                    element = self.create_svg_element(
+                        'circle',
+                        cx=x, cy=y, r=7,
+                        class_=f'accessible-transport transport-{transport_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
             else:
                 element = self.create_svg_element(
                     'circle',
@@ -950,6 +1015,25 @@ class TorontoTileBuilder:
                 
                 if 'dasharray' in style:
                     element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'accessible_transport':
+                # Linear transport features (accessible routes)
+                transport_type = self.determine_accessible_transport_type(properties)
+                style = self.feature_types['accessible_transport']['styles'].get(transport_type, 
+                        self.feature_types['accessible_transport']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polyline',
+                    points=" ".join(points),
+                    class_=f'accessible-transport transport-{transport_type}',
+                    fill="none",
+                    stroke=style.get('stroke', '#006064'),
+                    stroke_width=style.get('stroke_width', 2),
+                    stroke_linecap="round",
+                    stroke_linejoin="round"
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
             else:
                 # Default line rendering for non-roads
                 element = self.create_svg_element(
@@ -1099,6 +1183,23 @@ class TorontoTileBuilder:
                     'polygon',
                     points=" ".join(exterior_points),
                     class_=f'mobility-access mobility-{mobility_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1.5)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'accessible_transport':
+                # Areas with accessible transport features (parking areas, stations)
+                transport_type = self.determine_accessible_transport_type(properties)
+                style = self.feature_types['accessible_transport']['styles'].get(transport_type, 
+                        self.feature_types['accessible_transport']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'accessible-transport transport-{transport_type}',
                     fill=style['fill'],
                     stroke=style['stroke'],
                     stroke_width=style.get('stroke_width', 1.5)
@@ -1498,6 +1599,28 @@ class TorontoTileBuilder:
             
         return 'wheelchair_yes'  # Default to accessible
     
+    def determine_accessible_transport_type(self, properties):
+        """Determine specific accessible transport type from tags"""
+        # Check for disabled parking
+        if 'capacity:disabled' in properties or properties.get('parking:disabled') == 'yes':
+            return 'disabled_parking'
+        
+        # Check for priority access
+        if properties.get('priority') == 'disabled':
+            return 'priority_access'
+        
+        # Check for accessible transit
+        if properties.get('bus:wheelchair') == 'yes':
+            return 'accessible_bus'
+        if properties.get('subway:wheelchair') == 'yes':
+            return 'accessible_subway'
+        if properties.get('tram:wheelchair') == 'yes':
+            return 'accessible_tram'
+        if properties.get('train:wheelchair') == 'yes':
+            return 'accessible_train'
+            
+        return 'default'  # Generic accessible transport
+    
     def generate_aria_label(self, feature_type, properties):
         """Generate accessible label for feature"""
         
@@ -1896,6 +2019,42 @@ class TorontoTileBuilder:
             if mobility_type.startswith('handrail'):
                 if properties.get('material'):
                     label_parts.append(f"material: {properties['material']}")
+        
+        elif feature_type == 'accessible_transport':
+            transport_type = self.determine_accessible_transport_type(properties)
+            transport_labels = {
+                'disabled_parking': 'Disabled parking',
+                'priority_access': 'Priority access',
+                'accessible_bus': 'Wheelchair accessible bus stop',
+                'accessible_subway': 'Wheelchair accessible subway',
+                'accessible_tram': 'Wheelchair accessible tram',
+                'accessible_train': 'Wheelchair accessible train',
+                'default': 'Accessible transport'
+            }
+            label_parts.append(transport_labels.get(transport_type, 'Accessible transport'))
+            
+            # Add capacity for disabled parking
+            if transport_type == 'disabled_parking' and 'capacity:disabled' in properties:
+                capacity = properties.get('capacity:disabled')
+                label_parts.append(f"{capacity} disabled spaces")
+            
+            # Add route information for transit
+            if transport_type.startswith('accessible_'):
+                if properties.get('name'):
+                    # Name is added separately below
+                    pass
+                if properties.get('ref'):
+                    label_parts.append(f"route {properties['ref']}")
+                if properties.get('operator'):
+                    label_parts.append(f"operated by {properties['operator']}")
+            
+            # Add platform information
+            if properties.get('platform'):
+                label_parts.append(f"platform {properties['platform']}")
+                
+            # Add level information
+            if properties.get('level'):
+                label_parts.append(f"level {properties['level']}")
         
         # Add name if available
         name = properties.get('name')

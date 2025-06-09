@@ -8,7 +8,7 @@ export class MapRenderer {
         this.routeGroup = svgElement.querySelector('#navigation-route');
         
         this.tileSize = 256;
-        this.zoom = 17;
+        this.zoom = 17; // Start at zoom 17 to allow more zoom out room
         // Center on the middle of tile 43.640_-79.380
         // Tile covers 43.640-43.650 lat, -79.380--79.370 lng
         this.center = { lat: 43.645, lng: -79.375 }; // Center of the tile
@@ -17,6 +17,13 @@ export class MapRenderer {
         const container = svgElement.parentElement;
         const rect = container.getBoundingClientRect();
         
+        // Store viewport (actual window size) separately from viewBox
+        this.viewport = {
+            width: rect.width || 800,
+            height: rect.height || 600
+        };
+        
+        // ViewBox controls the zoom level
         this.viewBox = {
             x: 0,
             y: 0,
@@ -24,26 +31,97 @@ export class MapRenderer {
             height: rect.height || 600
         };
         
+        // Track the current scale based on zoom
+        this.currentScale = 1;
+        
         this.tileCache = new Map();
         this.loadedTiles = new Set();
     }
 
     setCenter(lat, lng) {
+        const oldCenter = this.center;
         this.center = { lat, lng };
-        this.render();
+        
+        // If we're initialized, pan the viewBox instead of re-rendering
+        if (this.isInitialized) {
+            const oldPixel = this.project(oldCenter.lat, oldCenter.lng);
+            const newPixel = this.project(lat, lng);
+            
+            // Move the viewBox by the difference
+            this.viewBox.x += newPixel.x - oldPixel.x;
+            this.viewBox.y += newPixel.y - oldPixel.y;
+            
+            this.updateViewBox();
+            
+            // Check if we need new tiles
+            this.checkAndLoadTiles();
+        } else {
+            this.render();
+        }
     }
 
     setZoom(zoom) {
-        this.zoom = Math.max(1, Math.min(19, zoom));
-        this.render();
+        // Allow zoom up to 23 for detailed accessibility (44x44 pixel touch targets)
+        // At zoom 23, features will be much larger and easier to interact with
+        const previousZoom = this.zoom;
+        this.zoom = Math.max(15, Math.min(23, zoom));
+        
+        if (this.zoom !== previousZoom) {
+            // Calculate the scale change
+            const scaleFactor = Math.pow(2, this.zoom - previousZoom);
+            
+            // Get current center of viewBox
+            const centerX = this.viewBox.x + this.viewBox.width / 2;
+            const centerY = this.viewBox.y + this.viewBox.height / 2;
+            
+            // Scale the viewBox dimensions
+            this.viewBox.width = this.viewport.width / Math.pow(2, this.zoom - 18);
+            this.viewBox.height = this.viewport.height / Math.pow(2, this.zoom - 18);
+            
+            // Recenter the viewBox
+            this.viewBox.x = centerX - this.viewBox.width / 2;
+            this.viewBox.y = centerY - this.viewBox.height / 2;
+            
+            // Update the SVG viewBox attribute
+            this.updateViewBox();
+            
+            // Check if we need to load more tiles (only when zooming out)
+            if (this.zoom < previousZoom) {
+                this.checkAndLoadTiles();
+            }
+        }
+        
+        return this.zoom;
     }
 
     zoomIn() {
-        this.setZoom(this.zoom + 1);
+        return this.setZoom(this.zoom + 1);
     }
 
     zoomOut() {
-        this.setZoom(this.zoom - 1);
+        return this.setZoom(this.zoom - 1);
+    }
+    
+    isMaxZoom() {
+        return this.zoom >= 23;
+    }
+    
+    isMinZoom() {
+        return this.zoom <= 15;
+    }
+    
+    initializeCoordinateSystem() {
+        // Set up the initial coordinate system centered on our location
+        // Convert center lat/lng to pixel coordinates at zoom 18
+        const centerPixel = this.project(this.center.lat, this.center.lng);
+        
+        // Position viewBox so that center is in the middle
+        this.viewBox.x = centerPixel.x - this.viewport.width / 2;
+        this.viewBox.y = centerPixel.y - this.viewport.height / 2;
+        this.viewBox.width = this.viewport.width;
+        this.viewBox.height = this.viewport.height;
+        
+        this.updateViewBox();
     }
 
     latLngToTile(lat, lng, zoom) {
@@ -63,31 +141,36 @@ export class MapRenderer {
     }
 
     project(lat, lng) {
-        // Use the same projection as tile positioning for consistency
-        const n = Math.pow(2, this.zoom);
+        // Match the tile generation's simple linear projection
+        // Tiles use 0.01 degrees = 1000 pixels
+        const degreesPerTile = 0.01;
+        const pixelsPerTile = 1000;
         
-        // Convert lat/lng to tile coordinates with fractional precision
-        const tileX = (lng + 180) / 360 * n;
-        const latRad = lat * Math.PI / 180;
-        const tileY = (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n;
+        // Simple linear projection (same as tile generation)
+        const x = (lng / degreesPerTile) * pixelsPerTile;
+        const y = -(lat / degreesPerTile) * pixelsPerTile; // Negative because Y increases downward in SVG
         
-        // Get the center tile position
-        const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        
-        // Calculate pixel position relative to center
-        // Using integer center tile to match how tiles are positioned
-        const pixelX = (tileX - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2;
-        const pixelY = (tileY - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2;
-        
-        return { x: pixelX, y: pixelY };
+        return { x, y };
     }
 
     async loadTile(x, y, z) {
         const key = `${z}/${x}/${y}`;
         if (this.loadedTiles.has(key)) return;
         
+        // OSM tiles are only available up to zoom level 19
+        // Beyond that, we'll just scale the zoom 19 tiles
+        const effectiveZoom = Math.min(z, 19);
         
-        const tileUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+        // If we're beyond zoom 19, we need to calculate which zoom 19 tile contains this position
+        let effectiveX = x;
+        let effectiveY = y;
+        if (z > 19) {
+            const scaleFactor = Math.pow(2, z - 19);
+            effectiveX = Math.floor(x / scaleFactor);
+            effectiveY = Math.floor(y / scaleFactor);
+        }
+        
+        const tileUrl = `https://tile.openstreetmap.org/${effectiveZoom}/${effectiveX}/${effectiveY}.png`;
         
         const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
         image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', tileUrl);
@@ -119,6 +202,12 @@ export class MapRenderer {
     }
 
     async render() {
+        // Initial render - set up the base coordinate system
+        if (!this.isInitialized) {
+            this.initializeCoordinateSystem();
+            this.isInitialized = true;
+        }
+        
         // Clear existing tiles
         while (this.tilesGroup.firstChild) {
             this.tilesGroup.removeChild(this.tilesGroup.firstChild);
@@ -127,10 +216,11 @@ export class MapRenderer {
         
         // Add a solid background to prevent any patterns
         const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bgRect.setAttribute('x', '0');
-        bgRect.setAttribute('y', '0');
-        bgRect.setAttribute('width', this.viewBox.width);
-        bgRect.setAttribute('height', this.viewBox.height);
+        // Background should cover the entire coordinate space, not just viewBox
+        bgRect.setAttribute('x', '-10000');
+        bgRect.setAttribute('y', '-10000');
+        bgRect.setAttribute('width', '20000');
+        bgRect.setAttribute('height', '20000');
         bgRect.setAttribute('fill', '#e5e3df');
         bgRect.setAttribute('stroke', 'none');
         this.tilesGroup.appendChild(bgRect);
@@ -157,9 +247,22 @@ export class MapRenderer {
     }
 
     updateViewBox() {
-        // Keep viewBox static at 0 0 width height
+        // Update the SVG viewBox for zooming
         this.svg.setAttribute('viewBox', 
-            `0 0 ${this.viewBox.width} ${this.viewBox.height}`);
+            `${this.viewBox.x} ${this.viewBox.y} ${this.viewBox.width} ${this.viewBox.height}`);
+    }
+    
+    checkAndLoadTiles() {
+        // Check if current viewBox extends beyond loaded tiles
+        // This would trigger the app.js tile loading logic
+        // For now, we'll emit an event that app.js can listen to
+        const event = new CustomEvent('viewBoxChanged', { 
+            detail: { 
+                viewBox: this.viewBox,
+                zoom: this.zoom 
+            }
+        });
+        this.svg.dispatchEvent(event);
     }
 
     drawUserLocation(lat, lng, accuracy) {
@@ -172,13 +275,17 @@ export class MapRenderer {
         
         // Accuracy circle
         if (accuracy > 0) {
-            const radiusMeters = accuracy;
-            const radiusPixels = radiusMeters / (40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, this.zoom + 8));
+            // Convert meters to pixels using simple projection
+            // At Toronto's latitude (43.6°), 1 degree ≈ 111km, so 0.01° ≈ 1.11km
+            const metersPerDegree = 111000 * Math.cos(lat * Math.PI / 180);
+            const metersPerTile = 0.01 * metersPerDegree; // 0.01 degrees per tile
+            const pixelsPerMeter = 1000 / metersPerTile; // 1000 pixels per tile
+            const radiusPixels = accuracy * pixelsPerMeter;
             
             const accuracyCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
             accuracyCircle.setAttribute('cx', pos.x);
             accuracyCircle.setAttribute('cy', pos.y);
-            accuracyCircle.setAttribute('r', radiusPixels * this.tileSize);
+            accuracyCircle.setAttribute('r', radiusPixels);
             accuracyCircle.setAttribute('fill', 'rgba(66, 133, 244, 0.2)');
             accuracyCircle.setAttribute('stroke', 'rgba(66, 133, 244, 0.5)');
             accuracyCircle.setAttribute('stroke-width', '2');
@@ -274,9 +381,20 @@ export class MapRenderer {
     handleResize() {
         const container = this.svg.parentElement;
         const rect = container.getBoundingClientRect();
-        this.viewBox.width = rect.width;
-        this.viewBox.height = rect.height;
+        
+        // Update viewport size
+        this.viewport.width = rect.width;
+        this.viewport.height = rect.height;
+        
+        // Recalculate viewBox to maintain zoom level
+        const scale = Math.pow(2, this.zoom - 18);
+        this.viewBox.width = this.viewport.width / scale;
+        this.viewBox.height = this.viewport.height / scale;
+        
         this.updateViewBox();
+        
+        // Only re-render if we actually need new tiles
+        // For now, keep the render call
         this.render();
     }
 }
