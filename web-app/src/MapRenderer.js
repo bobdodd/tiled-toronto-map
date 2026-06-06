@@ -157,54 +157,6 @@ export class MapRenderer {
         return { x, y };
     }
 
-    async loadTile(x, y, z) {
-        const key = `${z}/${x}/${y}`;
-        if (this.loadedTiles.has(key)) return;
-        
-        // OSM tiles are only available up to zoom level 19
-        // Beyond that, we'll just scale the zoom 19 tiles
-        const effectiveZoom = Math.min(z, 19);
-        
-        // If we're beyond zoom 19, we need to calculate which zoom 19 tile contains this position
-        let effectiveX = x;
-        let effectiveY = y;
-        if (z > 19) {
-            const scaleFactor = Math.pow(2, z - 19);
-            effectiveX = Math.floor(x / scaleFactor);
-            effectiveY = Math.floor(y / scaleFactor);
-        }
-        
-        const tileUrl = `https://tile.openstreetmap.org/${effectiveZoom}/${effectiveX}/${effectiveY}.png`;
-        
-        const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-        image.setAttributeNS('http://www.w3.org/1999/xlink', 'href', tileUrl);
-        image.setAttribute('crossorigin', 'anonymous');
-        // Use exact tile size
-        image.setAttribute('width', this.tileSize);
-        image.setAttribute('height', this.tileSize);
-        
-        // Remove opacity handling for now
-        
-        const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        // Calculate position without rounding for precise alignment
-        const offsetX = (x - centerTile.x) * this.tileSize + this.viewBox.width / 2 - this.tileSize / 2;
-        const offsetY = (y - centerTile.y) * this.tileSize + this.viewBox.height / 2 - this.tileSize / 2;
-        
-        image.setAttribute('x', offsetX);
-        image.setAttribute('y', offsetY);
-        image.setAttribute('aria-label', `Map tile ${x},${y} at zoom ${z}`);
-        
-        // Add error handling for failed tiles
-        image.addEventListener('error', () => {
-            console.warn(`Failed to load tile ${x},${y} at zoom ${z}`);
-            // Don't replace with rect to avoid pattern issues
-            image.style.opacity = '0';
-        });
-        
-        this.tilesGroup.appendChild(image);
-        this.loadedTiles.add(key);
-    }
-
     async render() {
         // Initial render - set up the base coordinate system
         if (!this.isInitialized) {
@@ -228,23 +180,6 @@ export class MapRenderer {
         bgRect.setAttribute('fill', '#e5e3df');
         bgRect.setAttribute('stroke', 'none');
         this.tilesGroup.appendChild(bgRect);
-        
-        // Calculate visible tile range
-        const centerTile = this.latLngToTile(this.center.lat, this.center.lng, this.zoom);
-        const tilesX = Math.ceil(this.viewBox.width / this.tileSize) + 2;
-        const tilesY = Math.ceil(this.viewBox.height / this.tileSize) + 2;
-        
-        const startX = Math.floor(centerTile.x - tilesX / 2);
-        const startY = Math.floor(centerTile.y - tilesY / 2);
-        const endX = Math.ceil(centerTile.x + tilesX / 2);
-        const endY = Math.ceil(centerTile.y + tilesY / 2);
-        
-        // Disabled OSM tile loading - using SVG tiles instead
-        // for (let x = startX; x <= endX; x++) {
-        //     for (let y = startY; y <= endY; y++) {
-        //         this.loadTile(x, y, this.zoom);
-        //     }
-        // }
         
         // Update viewBox for proper centering
         this.updateViewBox();

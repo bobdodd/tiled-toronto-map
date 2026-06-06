@@ -1,13 +1,20 @@
+// Base URL for the pre-rendered SVG tile store.
+//
+// The viewer is deliberately PASSIVE: it does no map-data processing
+// itself, it only fetches finished tiles from this location. Point this at
+// any static host or CDN that serves the tile set — a real deployment would
+// use its own CDN. For this demo the tiles live on a dedicated subdomain,
+// kept separate from the site that hosts the viewer.
+//
+// Expected layout under this base:
+//   <TILE_BASE>/tile-index.json
+//   <TILE_BASE>/tiles/<lat>_<lng>.svg.gz
+const TILE_BASE = 'https://tiles.a11ybob.com/toronto/';
+
 export class SVGTileManager {
     constructor() {
-        // Determine base URL based on environment
-        if (window.location.hostname === 'localhost') {
-            // Local development - use local proxy
-            this.tileBaseUrl = '/maps/tiles/tiles/';
-        } else {
-            // Production - use relative path (same domain)
-            this.tileBaseUrl = '/maps/tiles/tiles/';
-        }
+        this.tileBaseUrl = TILE_BASE + 'tiles/';
+        this.indexUrl = TILE_BASE + 'tile-index.json';
         this.tileIndex = null;
         this.tileCache = new Map();
         this.maxCacheSize = 20;
@@ -20,9 +27,8 @@ export class SVGTileManager {
         if (this.tileIndex) return this.tileIndex;
         
         try {
-            // tile-index.json is one level up from the tiles directory
             // Add timestamp to bypass cache
-            const indexUrl = `/maps/tiles/tile-index.json?t=${Date.now()}`;
+            const indexUrl = `${this.indexUrl}?t=${Date.now()}`;
             const response = await fetch(indexUrl);
             this.tileIndex = await response.json();
             console.log(`Loaded tile index: ${this.tileIndex.tiles?.length || 0} tiles available`);
