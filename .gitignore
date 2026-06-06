@@ -82,3 +82,9 @@ minimal.html
 # Cache
 .cache/
 *.cache
+
+# Strays that live in their own repos / are local scratch, not part of
+# this project's published tree
+ContextDescriptionApp/
+demo-clean/
+terminal-map/

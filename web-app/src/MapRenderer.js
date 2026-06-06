@@ -9,9 +9,9 @@ export class MapRenderer {
         
         this.tileSize = 256;
         this.zoom = 17; // Start at zoom 17 to allow more zoom out room
-        // Center on the middle of tile 43.640_-79.380
-        // Tile covers 43.640-43.650 lat, -79.380--79.370 lng
-        this.center = { lat: 43.645, lng: -79.375 }; // Center of the tile
+        // Center on the middle of the shifted tile coverage area
+        // Now centered one tile north to avoid Lake Ontario
+        this.center = { lat: 43.655, lng: -79.375 }; // Center of the shifted coverage
         
         // Get initial container size
         const container = svgElement.parentElement;
@@ -147,8 +147,12 @@ export class MapRenderer {
         const pixelsPerTile = 1000;
         
         // Simple linear projection (same as tile generation)
+        // In the tile generation, coordinates are calculated as:
+        // x = lng * (pixelsPerTile / degreesPerTile)
+        // y = lat * (pixelsPerTile / degreesPerTile)
+        // No inversion needed - tiles handle their own internal Y-axis flipping
         const x = (lng / degreesPerTile) * pixelsPerTile;
-        const y = -(lat / degreesPerTile) * pixelsPerTile; // Negative because Y increases downward in SVG
+        const y = (lat / degreesPerTile) * pixelsPerTile;
         
         return { x, y };
     }
@@ -235,12 +239,12 @@ export class MapRenderer {
         const endX = Math.ceil(centerTile.x + tilesX / 2);
         const endY = Math.ceil(centerTile.y + tilesY / 2);
         
-        // Load visible tiles
-        for (let x = startX; x <= endX; x++) {
-            for (let y = startY; y <= endY; y++) {
-                this.loadTile(x, y, this.zoom);
-            }
-        }
+        // Disabled OSM tile loading - using SVG tiles instead
+        // for (let x = startX; x <= endX; x++) {
+        //     for (let y = startY; y <= endY; y++) {
+        //         this.loadTile(x, y, this.zoom);
+        //     }
+        // }
         
         // Update viewBox for proper centering
         this.updateViewBox();

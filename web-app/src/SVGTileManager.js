@@ -21,9 +21,11 @@ export class SVGTileManager {
         
         try {
             // tile-index.json is one level up from the tiles directory
-            const indexUrl = '/maps/tiles/tile-index.json';
+            // Add timestamp to bypass cache
+            const indexUrl = `/maps/tiles/tile-index.json?t=${Date.now()}`;
             const response = await fetch(indexUrl);
             this.tileIndex = await response.json();
+            console.log(`Loaded tile index: ${this.tileIndex.tiles?.length || 0} tiles available`);
             return this.tileIndex;
         } catch (error) {
             console.error('Failed to load tile index:', error);

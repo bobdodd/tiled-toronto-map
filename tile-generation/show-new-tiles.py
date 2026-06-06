@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Show which tiles will be generated with the new bounds"""
 
-# New bounds from build-toronto-tiles.py
+# New bounds from build-toronto-tiles.py (shifted north to avoid lake)
 gta_bounds = {
-    'north': 43.68,  # 4 tiles north of 43.64
-    'south': 43.62,  # 2 tiles south of 43.64
+    'north': 43.69,  # 4 tiles north of 43.65
+    'south': 43.63,  # 2 tiles south of 43.65
     'east': -79.34,  # 4 tiles east of -79.38
     'west': -79.40   # 2 tiles west of -79.38
 }

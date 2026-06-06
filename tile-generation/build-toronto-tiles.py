@@ -33,12 +33,12 @@ class TorontoTileBuilder:
         self.tiles_dir = self.output_dir / "tiles"
         self.data_dir = self.output_dir / "data"
         
-        # Expanded to 36 tiles (6x6 grid) around our center (43.645, -79.375)
-        # This gives us approximately 6km x 6km area to explore
-        # Center tile is 43.640_-79.380
+        # Expanded to 36 tiles (6x6 grid) shifted north to avoid Lake Ontario
+        # This gives us approximately 6km x 6km area to explore with more land
+        # Center tile is now 43.650_-79.380 (one tile north of original)
         self.gta_bounds = {
-            'north': 43.68,  # 4 tiles north of 43.64
-            'south': 43.62,  # 2 tiles south of 43.64
+            'north': 43.69,  # 4 tiles north of 43.65
+            'south': 43.63,  # 2 tiles south of 43.65
             'east': -79.34,  # 4 tiles east of -79.38
             'west': -79.40   # 2 tiles west of -79.38
         }
@@ -91,6 +91,7 @@ class TorontoTileBuilder:
                     'public': {'fill': '#d4d5e8', 'stroke': '#a9aac4', 'stroke_width': 1.5},
                     'train_station': {'fill': '#d4c5e8', 'stroke': '#a99bc4', 'stroke_width': 2},
                     'transportation': {'fill': '#d4c5e8', 'stroke': '#a99bc4', 'stroke_width': 1.5},
+                    'terminal': {'fill': '#d4a373', 'stroke': '#8b6914', 'stroke_width': 2.5},
                     
                     # Special structures (some already in religious)
                     'barn': {'fill': '#d4a76a', 'stroke': '#b58652', 'stroke_width': 1},
@@ -507,11 +508,12 @@ class TorontoTileBuilder:
                     'changing_table:location': True,  # Any value
                     'elevator': ['yes'],
                     'escalator': ['yes'],
-                    'conveying': ['yes'],
+                    'conveying': ['yes', 'moving_walkway'],
                     'automatic_door': ['yes'],
                     'door:width': True,  # Any value
                     'kerb:height': True,  # Any value
-                    'incline': True  # Any value
+                    'incline': True,  # Any value
+                    'highway': ['elevator', 'escalator']
                 },
                 'styles': {
                     # Toilets and changing facilities
@@ -530,6 +532,151 @@ class TorontoTileBuilder:
                     'gentle_incline': {'fill': '#dcedc8', 'stroke': '#7cb342', 'stroke_width': 2},
                     # Default
                     'default': {'fill': '#64b5f6', 'stroke': '#1976d2', 'stroke_width': 1.5}
+                }
+            },
+            'aeroway': {
+                'tags': {
+                    'aeroway': ['aerodrome', 'apron', 'gate', 'hangar', 'helipad', 'heliport',
+                               'holding_position', 'jet_bridge', 'navigationaid', 'parking_position', 
+                               'runway', 'taxilane', 'taxiway', 'terminal', 'windsock']
+                },
+                'styles': {
+                    # Airport infrastructure
+                    'aerodrome': {'fill': '#e8e8e8', 'stroke': '#999999', 'stroke_width': 2},
+                    'terminal': {'fill': '#d4a373', 'stroke': '#8b6914', 'stroke_width': 2},
+                    'hangar': {'fill': '#d9d0c9', 'stroke': '#b8b0a9', 'stroke_width': 1.5},
+                    
+                    # Runways and taxiways
+                    'runway': {'fill': '#333333', 'stroke': '#000000', 'stroke_width': 2},
+                    'taxiway': {'fill': '#666666', 'stroke': '#333333', 'stroke_width': 1.5},
+                    'taxilane': {'fill': '#808080', 'stroke': '#666666', 'stroke_width': 1},
+                    'apron': {'fill': '#cccccc', 'stroke': '#999999', 'stroke_width': 1},
+                    
+                    # Aircraft positions
+                    'parking_position': {'fill': '#e0e0e0', 'stroke': '#999999', 'stroke_width': 1, 'dasharray': '5,2'},
+                    'holding_position': {'fill': '#ffeb3b', 'stroke': '#f57f17', 'stroke_width': 2},
+                    
+                    # Gates and terminals
+                    'gate': {'fill': '#ff6b6b', 'stroke': '#cc0000', 'stroke_width': 2},
+                    'jet_bridge': {'fill': '#b0bec5', 'stroke': '#607d8b', 'stroke_width': 2},
+                    
+                    # Helipads
+                    'helipad': {'fill': '#ff9800', 'stroke': '#e65100', 'stroke_width': 2},
+                    'heliport': {'fill': '#ff5722', 'stroke': '#bf360c', 'stroke_width': 2},
+                    
+                    # Navigation aids
+                    'navigationaid': {'fill': '#2196f3', 'stroke': '#0d47a1', 'stroke_width': 2},
+                    'windsock': {'fill': '#f44336', 'stroke': '#b71c1c', 'stroke_width': 1.5},
+                    
+                    # Default style
+                    'default': {'fill': '#cccccc', 'stroke': '#999999', 'stroke_width': 1}
+                }
+            },
+            'indoor': {
+                'tags': {
+                    'indoor': ['area', 'corridor', 'room', 'wall', 'level', 'yes'],
+                    'room': ['gate_area', 'security', 'shop', 'restaurant', 'waiting_area', 'office']
+                },
+                'styles': {
+                    # Indoor areas
+                    'area': {'fill': '#f5f5f5', 'stroke': '#cccccc', 'stroke_width': 1},
+                    'corridor': {'fill': '#fffbf0', 'stroke': '#d9d0c1', 'stroke_width': 1},
+                    'room': {'fill': '#f0f0f0', 'stroke': '#c0c0c0', 'stroke_width': 1},
+                    'wall': {'fill': '#666666', 'stroke': '#333333', 'stroke_width': 2},
+                    'level': {'fill': '#e8e8e8', 'stroke': '#b8b8b8', 'stroke_width': 1},
+                    
+                    # Specific room types
+                    'gate_area': {'fill': '#ffe0b2', 'stroke': '#ffb74d', 'stroke_width': 1.5},
+                    'security': {'fill': '#ffcdd2', 'stroke': '#ef5350', 'stroke_width': 1.5},
+                    'waiting_area': {'fill': '#e1f5fe', 'stroke': '#4fc3f7', 'stroke_width': 1},
+                    
+                    # Default indoor style
+                    'yes': {'fill': '#f8f8f8', 'stroke': '#d0d0d0', 'stroke_width': 1},
+                    'default': {'fill': '#f8f8f8', 'stroke': '#d0d0d0', 'stroke_width': 1}
+                }
+            },
+            'amenity': {
+                'tags': {
+                    'amenity': ['seating', 'bench', 'waiting_area', 'shelter', 'check_in', 'baggage_drop', 
+                               'security_check', 'customs', 'immigration', 'lounge', 'baggage_claim',
+                               'lost_property', 'information', 'currency_exchange', 'toilets', 'shower',
+                               'nursing_room', 'prayer_room', 'smoking_area', 'wheelchair_rental',
+                               'animal_relief_area', 'taxi', 'car_rental', 'bus_station', 'parking',
+                               'valet_parking', 'restaurant', 'fast_food', 'cafe', 'bar', 'vending_machine']
+                },
+                'styles': {
+                    # Seating and waiting
+                    'seating': {'fill': '#81c784', 'stroke': '#4caf50', 'stroke_width': 1.5},
+                    'bench': {'fill': '#a5d6a7', 'stroke': '#66bb6a', 'stroke_width': 1},
+                    'waiting_area': {'fill': '#c5e1a5', 'stroke': '#9ccc65', 'stroke_width': 1.5},
+                    'shelter': {'fill': '#dce775', 'stroke': '#cddc39', 'stroke_width': 1.5},
+                    # Check-in and security
+                    'check_in': {'fill': '#90caf9', 'stroke': '#2196f3', 'stroke_width': 2},
+                    'baggage_drop': {'fill': '#a1887f', 'stroke': '#6d4c41', 'stroke_width': 2},
+                    'security_check': {'fill': '#ffcdd2', 'stroke': '#d32f2f', 'stroke_width': 2},
+                    'customs': {'fill': '#e1bee7', 'stroke': '#8e24aa', 'stroke_width': 2},
+                    'immigration': {'fill': '#ffe0b2', 'stroke': '#ef6c00', 'stroke_width': 2},
+                    # Terminal services
+                    'lounge': {'fill': '#9c27b0', 'stroke': '#6a1b9a', 'stroke_width': 2},
+                    'baggage_claim': {'fill': '#795548', 'stroke': '#5d4037', 'stroke_width': 2},
+                    'lost_property': {'fill': '#607d8b', 'stroke': '#455a64', 'stroke_width': 2},
+                    'information': {'fill': '#03a9f4', 'stroke': '#0288d1', 'stroke_width': 2},
+                    'currency_exchange': {'fill': '#4caf50', 'stroke': '#388e3c', 'stroke_width': 2},
+                    # Terminal amenities
+                    'toilets': {'fill': '#e3f2fd', 'stroke': '#1976d2', 'stroke_width': 1.5},
+                    'shower': {'fill': '#b3e5fc', 'stroke': '#0288d1', 'stroke_width': 1.5},
+                    'nursing_room': {'fill': '#fce4ec', 'stroke': '#c2185b', 'stroke_width': 1.5},
+                    'prayer_room': {'fill': '#f3e5f5', 'stroke': '#7b1fa2', 'stroke_width': 1.5},
+                    'smoking_area': {'fill': '#efebe9', 'stroke': '#5d4037', 'stroke_width': 1.5},
+                    # Accessibility features
+                    'wheelchair_rental': {'fill': '#1976d2', 'stroke': '#0d47a1', 'stroke_width': 2},
+                    'animal_relief_area': {'fill': '#a5d6a7', 'stroke': '#4caf50', 'stroke_width': 1.5},
+                    # Transportation connections
+                    'taxi': {'fill': '#fdd835', 'stroke': '#f57f17', 'stroke_width': 2},
+                    'car_rental': {'fill': '#ff6f00', 'stroke': '#e65100', 'stroke_width': 2},
+                    'bus_station': {'fill': '#673ab7', 'stroke': '#4527a0', 'stroke_width': 2},
+                    'parking': {'fill': '#757575', 'stroke': '#424242', 'stroke_width': 1.5},
+                    'valet_parking': {'fill': '#546e7a', 'stroke': '#37474f', 'stroke_width': 2},
+                    # Food & beverage
+                    'restaurant': {'fill': '#ff5722', 'stroke': '#d84315', 'stroke_width': 2},
+                    'fast_food': {'fill': '#ff9800', 'stroke': '#e65100', 'stroke_width': 2},
+                    'cafe': {'fill': '#795548', 'stroke': '#4e342e', 'stroke_width': 2},
+                    'bar': {'fill': '#9c27b0', 'stroke': '#6a1b9a', 'stroke_width': 2},
+                    'vending_machine': {'fill': '#00acc1', 'stroke': '#00838f', 'stroke_width': 1.5},
+                    'default': {'fill': '#aed581', 'stroke': '#8bc34a', 'stroke_width': 1}
+                }
+            },
+            'barrier': {
+                'tags': {
+                    'barrier': ['checkpoint', 'gate', 'turnstile', 'full-height_turnstile']
+                },
+                'styles': {
+                    'checkpoint': {'fill': '#ff9999', 'stroke': '#cc0000', 'stroke_width': 2.5},
+                    'gate': {'fill': '#cccccc', 'stroke': '#666666', 'stroke_width': 2},
+                    'turnstile': {'fill': '#b0b0b0', 'stroke': '#606060', 'stroke_width': 1.5},
+                    'full-height_turnstile': {'fill': '#a0a0a0', 'stroke': '#505050', 'stroke_width': 2},
+                    'default': {'fill': '#cccccc', 'stroke': '#666666', 'stroke_width': 1.5}
+                }
+            },
+            'shop': {
+                'tags': {
+                    'shop': ['duty_free', 'convenience']
+                },
+                'styles': {
+                    'duty_free': {'fill': '#ff9800', 'stroke': '#e65100', 'stroke_width': 2},
+                    'convenience': {'fill': '#4fc3f7', 'stroke': '#0288d1', 'stroke_width': 1.5},
+                    'default': {'fill': '#ffa726', 'stroke': '#ef6c00', 'stroke_width': 1.5}
+                }
+            },
+            'railway': {
+                'tags': {
+                    'railway': ['station'],
+                    'station': ['airport']
+                },
+                'styles': {
+                    'airport_station': {'fill': '#3f51b5', 'stroke': '#1a237e', 'stroke_width': 2.5},
+                    'station': {'fill': '#5c6bc0', 'stroke': '#283593', 'stroke_width': 2},
+                    'default': {'fill': '#7986cb', 'stroke': '#3949ab', 'stroke_width': 1.5}
                 }
             }
         }
@@ -645,8 +792,8 @@ class TorontoTileBuilder:
                     'circle',
                     cx=x, cy=y, r=5,
                     class_=f'water water-{water_type}',
-                    fill=style['fill'],
-                    stroke=style['stroke']
+                    fill=style.get('fill', '#aad3df'),
+                    stroke=style.get('stroke', '#4d90c4')
                 )
             elif feature_type == 'parks':
                 parks_type = self.determine_parks_type(properties)
@@ -848,6 +995,126 @@ class TorontoTileBuilder:
                         stroke=style['stroke'],
                         stroke_width=style.get('stroke_width', 1)
                     )
+            elif feature_type == 'aeroway':
+                aeroway_type = self.determine_aeroway_type(properties)
+                style = self.feature_types['aeroway']['styles'].get(aeroway_type, 
+                        self.feature_types['aeroway']['styles']['default'])
+                
+                # Use different shapes for different aeroway features
+                if aeroway_type == 'gate':
+                    # Square for gates
+                    size = 8
+                    element = self.create_svg_element(
+                        'rect',
+                        x=x-size, y=y-size, width=size*2, height=size*2,
+                        class_=f'aeroway aeroway-{aeroway_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 2)
+                    )
+                elif aeroway_type in ['navigationaid', 'windsock']:
+                    # Triangle for navigation aids
+                    element = self.create_svg_element(
+                        'polygon',
+                        points=f"{x},{y-10} {x+8},{y+8} {x-8},{y+8}",
+                        class_=f'aeroway aeroway-{aeroway_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1.5)
+                    )
+                elif aeroway_type == 'helipad':
+                    # Circle with H for helipads
+                    element = self.create_svg_element(
+                        'circle',
+                        cx=x, cy=y, r=12,
+                        class_=f'aeroway aeroway-{aeroway_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 2)
+                    )
+                else:
+                    # Circle for other aeroway features
+                    element = self.create_svg_element(
+                        'circle',
+                        cx=x, cy=y, r=8,
+                        class_=f'aeroway aeroway-{aeroway_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+            elif feature_type == 'amenity':
+                # Amenity points (seating, benches, etc.)
+                amenity_type = properties.get('amenity', 'default')
+                style = self.feature_types['amenity']['styles'].get(amenity_type, 
+                        self.feature_types['amenity']['styles']['default'])
+                
+                if amenity_type == 'seating':
+                    # Rectangle for seating areas
+                    element = self.create_svg_element(
+                        'rect',
+                        x=x-8, y=y-5, width=16, height=10,
+                        class_=f'amenity amenity-{amenity_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1.5),
+                        rx=2, ry=2
+                    )
+                elif amenity_type == 'bench':
+                    # Small rectangle for benches
+                    element = self.create_svg_element(
+                        'rect',
+                        x=x-6, y=y-3, width=12, height=6,
+                        class_=f'amenity amenity-{amenity_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+                else:
+                    # Circle for other amenities
+                    element = self.create_svg_element(
+                        'circle',
+                        cx=x, cy=y, r=6,
+                        class_=f'amenity amenity-{amenity_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 1)
+                    )
+            elif feature_type == 'barrier':
+                # Barrier points (checkpoints, gates, turnstiles)
+                barrier_type = self.determine_barrier_type(properties)
+                style = self.feature_types['barrier']['styles'].get(barrier_type, 
+                        self.feature_types['barrier']['styles']['default'])
+                
+                if barrier_type == 'checkpoint':
+                    # Diamond shape for checkpoints
+                    element = self.create_svg_element(
+                        'polygon',
+                        points=f"{x},{y-10} {x+10},{y} {x},{y+10} {x-10},{y}",
+                        class_=f'barrier barrier-{barrier_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 2.5)
+                    )
+                elif barrier_type == 'turnstile':
+                    # Cross shape for turnstiles
+                    element = self.create_svg_element(
+                        'path',
+                        d=f"M{x-8},{y} L{x+8},{y} M{x},{y-8} L{x},{y+8}",
+                        class_=f'barrier barrier-{barrier_type}',
+                        fill="none",
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 2)
+                    )
+                else:
+                    # Square for gates and other barriers
+                    element = self.create_svg_element(
+                        'rect',
+                        x=x-6, y=y-6, width=12, height=12,
+                        class_=f'barrier barrier-{barrier_type}',
+                        fill=style['fill'],
+                        stroke=style['stroke'],
+                        stroke_width=style.get('stroke_width', 2)
+                    )
             else:
                 element = self.create_svg_element(
                     'circle',
@@ -1035,6 +1302,67 @@ class TorontoTileBuilder:
                 
                 if 'dasharray' in style:
                     element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'aeroway':
+                # Linear aeroway features (taxiways, taxilanes)
+                aeroway_type = self.determine_aeroway_type(properties)
+                style = self.feature_types['aeroway']['styles'].get(aeroway_type, 
+                        self.feature_types['aeroway']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polyline',
+                    points=" ".join(points),
+                    class_=f'aeroway aeroway-{aeroway_type}',
+                    fill="none",
+                    stroke=style.get('stroke', '#999999'),
+                    stroke_width=style.get('stroke_width', 2),
+                    stroke_linecap="round",
+                    stroke_linejoin="round"
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'indoor':
+                # Linear indoor features (corridors, walls)
+                indoor_type = self.determine_indoor_type(properties)
+                style = self.feature_types['indoor']['styles'].get(indoor_type, 
+                        self.feature_types['indoor']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polyline',
+                    points=" ".join(points),
+                    class_=f'indoor indoor-{indoor_type}',
+                    fill="none",
+                    stroke=style.get('stroke', '#cccccc'),
+                    stroke_width=style.get('stroke_width', 2),
+                    stroke_linecap="round",
+                    stroke_linejoin="round"
+                )
+                
+                # Add level information if available
+                if 'level' in properties:
+                    element.set('data-level', str(properties['level']))
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'barrier':
+                # Linear barrier features (fences, walls)
+                barrier_type = self.determine_barrier_type(properties)
+                style = self.feature_types['barrier']['styles'].get(barrier_type, 
+                        self.feature_types['barrier']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polyline',
+                    points=" ".join(points),
+                    class_=f'barrier barrier-{barrier_type}',
+                    fill="none",
+                    stroke=style.get('stroke', '#666666'),
+                    stroke_width=style.get('stroke_width', 2),
+                    stroke_linecap="round",
+                    stroke_linejoin="round"
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
             else:
                 # Default line rendering for non-roads
                 element = self.create_svg_element(
@@ -1062,8 +1390,8 @@ class TorontoTileBuilder:
                     'polygon',
                     points=" ".join(exterior_points),
                     class_=f'water water-{water_type}',
-                    fill=style['fill'],
-                    stroke=style['stroke'],
+                    fill=style.get('fill', '#aad3df'),
+                    stroke=style.get('stroke', '#4d90c4'),
                     stroke_width=style.get('stroke_width', 1)
                 )
             elif feature_type == 'parks':
@@ -1208,6 +1536,78 @@ class TorontoTileBuilder:
                 
                 if 'dasharray' in style:
                     element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'aeroway':
+                # Areas with aeroway features (runways, aprons, terminals)
+                aeroway_type = self.determine_aeroway_type(properties)
+                style = self.feature_types['aeroway']['styles'].get(aeroway_type, 
+                        self.feature_types['aeroway']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'aeroway aeroway-{aeroway_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1.5)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'indoor':
+                # Indoor areas (corridors, rooms, etc.)
+                indoor_type = self.determine_indoor_type(properties)
+                style = self.feature_types['indoor']['styles'].get(indoor_type, 
+                        self.feature_types['indoor']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'indoor indoor-{indoor_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1)
+                )
+                
+                # Add level information if available
+                if 'level' in properties:
+                    element.set('data-level', str(properties['level']))
+                    
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'amenity':
+                # Amenity areas (seating areas, waiting areas)
+                amenity_type = properties.get('amenity', 'default')
+                style = self.feature_types['amenity']['styles'].get(amenity_type, 
+                        self.feature_types['amenity']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'amenity amenity-{amenity_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
+            elif feature_type == 'barrier':
+                # Barrier areas (checkpoint areas, turnstile zones)
+                barrier_type = self.determine_barrier_type(properties)
+                style = self.feature_types['barrier']['styles'].get(barrier_type, 
+                        self.feature_types['barrier']['styles']['default'])
+                
+                element = self.create_svg_element(
+                    'polygon',
+                    points=" ".join(exterior_points),
+                    class_=f'barrier barrier-{barrier_type}',
+                    fill=style['fill'],
+                    stroke=style['stroke'],
+                    stroke_width=style.get('stroke_width', 1.5)
+                )
+                
+                if 'dasharray' in style:
+                    element.set('stroke-dasharray', style['dasharray'])
             elif feature_type == 'buildings':
                 building_type = self.determine_building_type(properties)
                 style = self.feature_types['buildings']['styles'].get(building_type, 
@@ -1221,6 +1621,14 @@ class TorontoTileBuilder:
                     stroke=style['stroke'],
                     stroke_width=style.get('stroke_width', 1)
                 )
+                
+                # Add level information if available (for multi-level terminals)
+                if 'level' in properties:
+                    element.set('data-level', str(properties['level']))
+                # For terminals specifically, check aeroway=terminal with level
+                if building_type == 'terminal' and properties.get('aeroway') == 'terminal':
+                    if 'level' in properties:
+                        element.set('data-terminal-level', str(properties['level']))
                 
                 if 'dasharray' in style:
                     element.set('stroke-dasharray', style['dasharray'])
@@ -1622,6 +2030,87 @@ class TorontoTileBuilder:
             
         return 'default'  # Generic accessible transport
     
+    def determine_aeroway_type(self, properties):
+        """Determine specific type of aeroway feature"""
+        aeroway = properties.get('aeroway')
+        
+        if not aeroway:
+            return 'default'
+            
+        # Direct mapping of aeroway values
+        if aeroway in ['aerodrome', 'apron', 'gate', 'hangar', 'helipad', 'heliport',
+                       'holding_position', 'jet_bridge', 'navigationaid', 'parking_position', 
+                       'runway', 'taxilane', 'taxiway', 'terminal', 'windsock']:
+            return aeroway
+            
+        return 'default'
+    
+    def determine_indoor_type(self, properties):
+        """Determine specific type of indoor feature"""
+        indoor = properties.get('indoor')
+        
+        # Check for specific room types first
+        room_type = properties.get('room')
+        if room_type:
+            if room_type == 'gate_area':
+                return 'gate_area'
+            elif room_type == 'security':
+                return 'security'
+            elif room_type == 'waiting_area':
+                return 'waiting_area'
+            elif indoor == 'room':
+                return 'room'
+        
+        if not indoor:
+            return 'default'
+            
+        # Direct mapping of indoor values
+        if indoor in ['area', 'corridor', 'room', 'wall', 'level', 'yes']:
+            return indoor
+            
+        return 'default'
+    
+    def determine_amenity_type(self, properties):
+        """Determine specific amenity type from tags"""
+        amenity = properties.get('amenity')
+        if amenity in ['seating', 'bench', 'waiting_area', 'shelter', 
+                      'check_in', 'baggage_drop', 'security_check', 
+                      'customs', 'immigration', 'lounge', 'baggage_claim',
+                      'lost_property', 'information', 'currency_exchange', 
+                      'toilets', 'shower', 'nursing_room', 'prayer_room', 
+                      'smoking_area', 'wheelchair_rental', 'animal_relief_area',
+                      'taxi', 'car_rental', 'bus_station', 'parking',
+                      'valet_parking', 'restaurant', 'fast_food', 'cafe', 
+                      'bar', 'vending_machine']:
+            return amenity
+        return 'default'
+    
+    def determine_barrier_type(self, properties):
+        """Determine specific barrier type from tags"""
+        barrier = properties.get('barrier')
+        if barrier in ['checkpoint', 'gate', 'turnstile', 'full-height_turnstile']:
+            return barrier
+        return 'default'
+    
+    def determine_shop_type(self, properties):
+        """Determine specific shop type from tags"""
+        shop = properties.get('shop')
+        if shop in ['duty_free', 'convenience']:
+            return shop
+        return 'default'
+    
+    def determine_railway_type(self, properties):
+        """Determine specific railway type from tags"""
+        railway = properties.get('railway')
+        station = properties.get('station')
+        
+        if railway == 'station' and station == 'airport':
+            return 'airport_station'
+        elif railway == 'station':
+            return 'station'
+        
+        return 'default'
+    
     def generate_aria_label(self, feature_type, properties):
         """Generate accessible label for feature"""
         
@@ -1658,6 +2147,7 @@ class TorontoTileBuilder:
                 'public': 'Public building',
                 'train_station': 'Train station',
                 'transportation': 'Transportation building',
+                'terminal': 'Terminal building',
                 'barn': 'Barn',
                 'bridge': 'Bridge structure',
                 'bunker': 'Bunker',
@@ -2056,6 +2546,208 @@ class TorontoTileBuilder:
             # Add level information
             if properties.get('level'):
                 label_parts.append(f"level {properties['level']}")
+        elif feature_type == 'aeroway':
+            aeroway_type = self.determine_aeroway_type(properties)
+            aeroway_labels = {
+                'aerodrome': 'Airport',
+                'apron': 'Aircraft apron',
+                'gate': 'Airport gate',
+                'hangar': 'Aircraft hangar',
+                'helipad': 'Helipad',
+                'heliport': 'Heliport',
+                'holding_position': 'Aircraft holding position',
+                'jet_bridge': 'Jet bridge',
+                'navigationaid': 'Navigation aid',
+                'parking_position': 'Aircraft parking position',
+                'runway': 'Runway',
+                'taxilane': 'Taxilane',
+                'taxiway': 'Taxiway',
+                'terminal': 'Airport terminal',
+                'windsock': 'Windsock',
+                'default': 'Airport feature'
+            }
+            label_parts.append(aeroway_labels.get(aeroway_type, 'Airport feature'))
+            
+            # Add gate number
+            if aeroway_type == 'gate' and properties.get('ref'):
+                label_parts.append(f"Gate {properties['ref']}")
+            
+            # Add gate type (jet bridge, bus, walk)
+            if aeroway_type == 'gate' and properties.get('gate:type'):
+                gate_type = properties['gate:type']
+                if gate_type == 'jet_bridge':
+                    label_parts.append('Jet bridge gate')
+                elif gate_type == 'bus':
+                    label_parts.append('Bus gate')
+                elif gate_type == 'walk':
+                    label_parts.append('Walk-out gate')
+            
+            # Add wheelchair accessibility for gates
+            if aeroway_type == 'gate' and 'wheelchair' in properties:
+                if properties['wheelchair'] == 'yes':
+                    label_parts.append('Wheelchair accessible')
+                elif properties['wheelchair'] == 'no':
+                    label_parts.append('Not wheelchair accessible')
+                elif properties['wheelchair'] == 'limited':
+                    label_parts.append('Limited wheelchair access')
+            
+            # Add runway information
+            if aeroway_type == 'runway' and properties.get('ref'):
+                label_parts.append(f"Runway {properties['ref']}")
+            
+            # Add terminal information
+            if aeroway_type == 'terminal':
+                if properties.get('building') == 'terminal':
+                    label_parts.append('Terminal building')
+                if properties.get('aerodrome:terminal'):
+                    label_parts.append(f"Terminal {properties['aerodrome:terminal']}")
+            
+            # Add airline information for gates
+            if aeroway_type == 'gate' and properties.get('airline'):
+                label_parts.append(f"Airline: {properties['airline']}")
+            
+            # Add IATA/ICAO codes for airports
+            if aeroway_type == 'aerodrome':
+                if properties.get('iata'):
+                    label_parts.append(f"IATA: {properties['iata']}")
+                if properties.get('icao'):
+                    label_parts.append(f"ICAO: {properties['icao']}")
+        elif feature_type == 'indoor':
+            indoor_type = self.determine_indoor_type(properties)
+            indoor_labels = {
+                'area': 'Indoor area',
+                'corridor': 'Indoor corridor',
+                'room': 'Room',
+                'wall': 'Indoor wall',
+                'level': 'Indoor level',
+                'gate_area': 'Gate waiting area',
+                'security': 'Security area',
+                'waiting_area': 'Waiting area',
+                'yes': 'Indoor space',
+                'default': 'Indoor feature'
+            }
+            label_parts.append(indoor_labels.get(indoor_type, 'Indoor feature'))
+            
+            # Add room information
+            if properties.get('room'):
+                label_parts.append(f"Room type: {properties['room']}")
+            if properties.get('ref'):
+                label_parts.append(f"Room {properties['ref']}")
+            
+            # Add level information
+            if properties.get('level'):
+                level = properties['level']
+                if level == '0':
+                    label_parts.append('Ground floor')
+                elif level == '-1':
+                    label_parts.append('Basement')
+                elif level.startswith('-'):
+                    label_parts.append(f"Basement level {level[1:]}")
+                else:
+                    label_parts.append(f"Floor {level}")
+            
+            # Add specific room types
+            if properties.get('room') == 'gate_area':
+                label_parts.append('Gate waiting area')
+            elif properties.get('room') == 'security':
+                label_parts.append('Security checkpoint')
+            elif properties.get('room') == 'shop':
+                label_parts.append('Shop')
+            elif properties.get('room') == 'restaurant':
+                label_parts.append('Restaurant')
+        elif feature_type == 'amenity':
+            amenity_type = properties.get('amenity', 'default')
+            amenity_labels = {
+                'seating': 'Seating area',
+                'bench': 'Bench',
+                'waiting_area': 'Waiting area',
+                'shelter': 'Shelter',
+                'check_in': 'Check-in counter',
+                'baggage_drop': 'Baggage drop-off',
+                'security_check': 'Security checkpoint',
+                'customs': 'Customs area',
+                'immigration': 'Immigration control',
+                'lounge': 'Airport lounge',
+                'baggage_claim': 'Baggage claim area',
+                'lost_property': 'Lost and found',
+                'information': 'Information desk',
+                'currency_exchange': 'Currency exchange',
+                'toilets': 'Restrooms',
+                'shower': 'Shower facilities',
+                'nursing_room': 'Nursing room',
+                'prayer_room': 'Prayer room',
+                'smoking_area': 'Smoking area',
+                'wheelchair_rental': 'Wheelchair rental',
+                'animal_relief_area': 'Service animal relief area',
+                'taxi': 'Taxi stand',
+                'car_rental': 'Car rental counter',
+                'bus_station': 'Bus terminal',
+                'parking': 'Parking area',
+                'valet_parking': 'Valet parking',
+                'restaurant': 'Restaurant',
+                'fast_food': 'Fast food outlet',
+                'cafe': 'Cafe',
+                'bar': 'Bar',
+                'vending_machine': 'Vending machine',
+                'default': 'Amenity'
+            }
+            label_parts.append(amenity_labels.get(amenity_type, 'Amenity'))
+            
+            # Add capacity information if available
+            if properties.get('capacity'):
+                label_parts.append(f"Capacity: {properties['capacity']}")
+            
+            # Add wheelchair accessibility
+            if properties.get('wheelchair') == 'yes':
+                label_parts.append('Wheelchair accessible')
+            elif properties.get('wheelchair') == 'no':
+                label_parts.append('Not wheelchair accessible')
+            elif properties.get('wheelchair') == 'limited':
+                label_parts.append('Limited wheelchair access')
+            
+            # Add covered information
+            if properties.get('covered') == 'yes':
+                label_parts.append('Covered')
+            
+            # Add material information for benches
+            if amenity_type == 'bench' and properties.get('material'):
+                label_parts.append(f"Material: {properties['material']}")
+        elif feature_type == 'barrier':
+            barrier_type = properties.get('barrier', 'default')
+            barrier_labels = {
+                'checkpoint': 'Security checkpoint',
+                'gate': 'Gate',
+                'turnstile': 'Turnstile',
+                'full-height_turnstile': 'Full-height turnstile',
+                'default': 'Barrier'
+            }
+            label_parts.append(barrier_labels.get(barrier_type, 'Barrier'))
+            
+            # Add access information
+            if properties.get('access'):
+                label_parts.append(f"Access: {properties['access']}")
+        elif feature_type == 'shop':
+            shop_type = properties.get('shop', 'default')
+            shop_labels = {
+                'duty_free': 'Duty-free shop',
+                'convenience': 'Convenience store',
+                'default': 'Shop'
+            }
+            label_parts.append(shop_labels.get(shop_type, 'Shop'))
+        elif feature_type == 'railway':
+            railway_type = self.determine_railway_type(properties)
+            railway_labels = {
+                'airport_station': 'Airport train station',
+                'station': 'Train station',
+                'default': 'Railway facility'
+            }
+            label_parts.append(railway_labels.get(railway_type, 'Railway facility'))
+            
+            # Add station information
+            if properties.get('network'):
+                label_parts.append(f"Network: {properties['network']}")
+            if properties.get('operator'):
+                label_parts.append(f"Operator: {properties['operator']}")
         
         # Add name if available
         name = properties.get('name')

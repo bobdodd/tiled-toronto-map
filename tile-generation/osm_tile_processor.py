@@ -26,7 +26,13 @@ class OSMHandler(osmium.SimpleHandler):
             'sensory_accessibility': [],
             'accessible_facilities': [],
             'mobility_access': [],
-            'accessible_transport': []
+            'accessible_transport': [],
+            'aeroway': [],
+            'indoor': [],
+            'amenity': [],
+            'barrier': [],
+            'shop': [],
+            'railway': []
         }
         
     def is_in_bounds(self, lat, lon):
@@ -110,13 +116,13 @@ class OSMHandler(osmium.SimpleHandler):
             tags.get('changing_table') in ['yes', 'no'] or
             tags.get('elevator') in ['yes', 'no'] or
             tags.get('escalator') in ['yes', 'no'] or
-            tags.get('conveying') in ['yes', 'no'] or
+            tags.get('conveying') in ['yes', 'no', 'moving_walkway'] or
             tags.get('automatic_door') in ['yes', 'no'] or
             'door:width' in tags or
             'kerb:height' in tags or
             'incline' in tags or
-            tags.get('highway') == 'elevator' or
-            tags.get('highway') == 'escalator'):
+            tags.get('highway') in ['elevator', 'escalator'] or
+            tags.get('tactile_paving') == 'yes'):
             self.features['accessible_facilities'].append({
                 'geometry': Point(n.location.lon, n.location.lat),
                 'properties': {**tags, 'osm_id': n.id}
@@ -147,6 +153,42 @@ class OSMHandler(osmium.SimpleHandler):
             tags.get('tram:wheelchair') == 'yes' or
             tags.get('train:wheelchair') == 'yes'):
             self.features['accessible_transport'].append({
+                'geometry': Point(n.location.lon, n.location.lat),
+                'properties': {**tags, 'osm_id': n.id}
+            })
+            
+        # Amenity features (check-in, security, seating, terminal services, etc.)
+        if tags.get('amenity') in ['seating', 'bench', 'waiting_area', 'shelter', 
+                                   'check_in', 'baggage_drop', 'security_check', 
+                                   'customs', 'immigration', 'lounge', 'baggage_claim',
+                                   'lost_property', 'information', 'currency_exchange', 
+                                   'toilets', 'shower', 'nursing_room', 'prayer_room', 
+                                   'smoking_area', 'wheelchair_rental', 'animal_relief_area',
+                                   'taxi', 'car_rental', 'bus_station', 'parking',
+                                   'valet_parking', 'restaurant', 'fast_food', 'cafe', 
+                                   'bar', 'vending_machine']:
+            self.features['amenity'].append({
+                'geometry': Point(n.location.lon, n.location.lat),
+                'properties': {**tags, 'osm_id': n.id}
+            })
+            
+        # Barrier features (checkpoints, gates, turnstiles)
+        if tags.get('barrier') in ['checkpoint', 'gate', 'turnstile', 'full-height_turnstile']:
+            self.features['barrier'].append({
+                'geometry': Point(n.location.lon, n.location.lat),
+                'properties': {**tags, 'osm_id': n.id}
+            })
+            
+        # Shop features (duty-free, convenience stores)
+        if tags.get('shop') in ['duty_free', 'convenience']:
+            self.features['shop'].append({
+                'geometry': Point(n.location.lon, n.location.lat),
+                'properties': {**tags, 'osm_id': n.id}
+            })
+            
+        # Railway features (airport train stations)
+        if tags.get('railway') == 'station' and tags.get('station') == 'airport':
+            self.features['railway'].append({
                 'geometry': Point(n.location.lon, n.location.lat),
                 'properties': {**tags, 'osm_id': n.id}
             })
@@ -378,13 +420,13 @@ class OSMHandler(osmium.SimpleHandler):
               tags.get('changing_table') in ['yes', 'no'] or
               tags.get('elevator') in ['yes', 'no'] or
               tags.get('escalator') in ['yes', 'no'] or
-              tags.get('conveying') in ['yes', 'no'] or
+              tags.get('conveying') in ['yes', 'no', 'moving_walkway'] or
               tags.get('automatic_door') in ['yes', 'no'] or
               'door:width' in tags or
               'kerb:height' in tags or
               'incline' in tags or
-              tags.get('highway') == 'elevator' or
-              tags.get('highway') == 'escalator'):
+              tags.get('highway') in ['elevator', 'escalator'] or
+              tags.get('tactile_paving') == 'yes'):
             # Can be lines (inclines) or areas (elevator shafts)
             if w.is_closed():
                 try:
@@ -458,6 +500,114 @@ class OSMHandler(osmium.SimpleHandler):
                     'geometry': line,
                     'properties': {**tags, 'osm_id': w.id}
                 })
+                
+        # Aeroway features (runways, taxiways, terminals, etc.)
+        elif tags.get('aeroway') in ['runway', 'taxiway', 'taxilane', 'apron', 'terminal', 
+                                     'gate', 'hangar', 'helipad', 'heliport', 'navigationaid',
+                                     'holding_position', 'parking_position', 'windsock', 'jet_bridge']:
+            if w.is_closed() and tags.get('aeroway') not in ['runway', 'taxiway', 'taxilane', 'jet_bridge']:
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['aeroway'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+            else:
+                # Linear features (runways, taxiways, jet bridges)
+                self.features['aeroway'].append({
+                    'geometry': line,
+                    'properties': {**tags, 'osm_id': w.id}
+                })
+                
+        # Indoor features
+        elif (tags.get('indoor') in ['area', 'corridor', 'room', 'wall', 'level', 'yes'] or
+              tags.get('room') in ['gate_area', 'security', 'shop', 'restaurant', 'waiting_area', 'office']):
+            if w.is_closed() and tags.get('indoor') != 'wall':
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['indoor'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+            else:
+                # Linear features (walls, corridors)
+                self.features['indoor'].append({
+                    'geometry': line,
+                    'properties': {**tags, 'osm_id': w.id}
+                })
+                
+        # Amenity features (check-in, security, seating areas, terminal services, etc.)
+        elif tags.get('amenity') in ['seating', 'bench', 'waiting_area', 'shelter', 
+                                     'check_in', 'baggage_drop', 'security_check', 
+                                     'customs', 'immigration', 'lounge', 'baggage_claim',
+                                     'lost_property', 'information', 'currency_exchange', 
+                                     'toilets', 'shower', 'nursing_room', 'prayer_room', 
+                                     'smoking_area', 'wheelchair_rental', 'animal_relief_area',
+                                     'taxi', 'car_rental', 'bus_station', 'parking',
+                                     'valet_parking', 'restaurant', 'fast_food', 'cafe', 
+                                     'bar', 'vending_machine']:
+            if w.is_closed():
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['amenity'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+                    
+        # Barrier features (checkpoints, gates, turnstiles)
+        elif tags.get('barrier') in ['checkpoint', 'gate', 'turnstile', 'full-height_turnstile']:
+            # Barriers can be lines (walls, fences) or points/areas
+            if w.is_closed():
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['barrier'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+            else:
+                # Linear barriers
+                self.features['barrier'].append({
+                    'geometry': line,
+                    'properties': {**tags, 'osm_id': w.id}
+                })
+                
+        # Shop features (duty-free shops, convenience stores)
+        elif tags.get('shop') in ['duty_free', 'convenience']:
+            if w.is_closed():
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['shop'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
+                    
+        # Railway features (airport train stations)
+        elif tags.get('railway') == 'station' and tags.get('station') == 'airport':
+            if w.is_closed():
+                try:
+                    geom = wkb.create_polygon(w)
+                    poly = loads(geom, hex=True)
+                    self.features['railway'].append({
+                        'geometry': poly,
+                        'properties': {**tags, 'osm_id': w.id}
+                    })
+                except Exception:
+                    pass
     
     def area(self, a):
         """Process area features (multipolygons)"""

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tile Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .stat h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 14px;
+        }
+        .stat .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        #tile-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .tile {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tile:hover {
+            background: #e9ecef;
+            transform: scale(1.05);
+        }
+        .tile.eastern {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .bounds-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Toronto SVG Tiles Debug Tool</h1>
+        
+        <div class="controls">
+            <button onclick="loadTileIndex()">Reload Tile Index</button>
+            <button onclick="clearCache()">Clear Browser Cache</button>
+            <button onclick="testRandomTile()">Test Random Tile</button>
+        </div>
+
+        <div id="status"></div>
+        <div id="stats" class="stats"></div>
+        <div id="bounds-info" class="bounds-info"></div>
+        
+        <h2>Available Tiles</h2>
+        <div id="tile-list"></div>
+    </div>
+
+    <script>
+        let tileIndex = null;
+
+        async function loadTileIndex() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<p>Loading tile index...</p>';
+            
+            try {
+                // Force bypass cache
+                const response = await fetch('/maps/tiles/tile-index.json?t=' + Date.now());
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                tileIndex = await response.json();
+                displayTileInfo();
+                status.innerHTML = '<p style="color: green;">✓ Tile index loaded successfully</p>';
+            } catch (error) {
+                status.innerHTML = `<div class="error">Error loading tile index: ${error.message}</div>`;
+                console.error('Error:', error);
+            }
+        }
+
+        function displayTileInfo() {
+            if (!tileIndex) return;
+
+            // Display stats
+            const stats = document.getElementById('stats');
+            const easternTiles = tileIndex.tiles.filter(t => t.lng >= -79.34).length;
+            const mainTiles = tileIndex.tiles.filter(t => t.lng < -79.34).length;
+            
+            stats.innerHTML = `
+                <div class="stat">
+                    <h3>Total Tiles</h3>
+                    <div class="value">${tileIndex.tile_count || tileIndex.tiles.length}</div>
+                </div>
+                <div class="stat">
+                    <h3>Main Grid Tiles</h3>
+                    <div class="value">${mainTiles}</div>
+                </div>
+                <div class="stat">
+                    <h3>Eastern Extension</h3>
+                    <div class="value">${easternTiles}</div>
+                </div>
+                <div class="stat">
+                    <h3>Total Features</h3>
+                    <div class="value">${tileIndex.tiles.reduce((sum, t) => sum + (t.features || 0), 0).toLocaleString()}</div>
+                </div>
+            `;
+
+            // Display bounds
+            const boundsInfo = document.getElementById('bounds-info');
+            if (tileIndex.bounds) {
+                boundsInfo.innerHTML = `
+                    <strong>Coverage Area:</strong><br>
+                    North: ${tileIndex.bounds.north}°<br>
+                    South: ${tileIndex.bounds.south}°<br>
+                    East: ${tileIndex.bounds.east}°<br>
+                    West: ${tileIndex.bounds.west}°<br>
+                    <br>
+                    Area: ~${((tileIndex.bounds.north - tileIndex.bounds.south) * 111).toFixed(1)}km × 
+                          ${((tileIndex.bounds.east - tileIndex.bounds.west) * 111 * 0.7).toFixed(1)}km
+                `;
+            }
+
+            // Display tile list
+            const tileList = document.getElementById('tile-list');
+            tileList.innerHTML = '';
+            
+            const sortedTiles = [...tileIndex.tiles].sort((a, b) => {
+                if (a.lat !== b.lat) return b.lat - a.lat;
+                return a.lng - b.lng;
+            });
+
+            sortedTiles.forEach(tile => {
+                const div = document.createElement('div');
+                div.className = tile.lng >= -79.34 ? 'tile eastern' : 'tile';
+                div.innerHTML = `
+                    <strong>${tile.id}</strong><br>
+                    ${tile.features || 0} features<br>
+                    ${((tile.size || 0) / 1024).toFixed(1)}KB
+                `;
+                div.onclick = () => testTile(tile.id);
+                tileList.appendChild(div);
+            });
+        }
+
+        async function testTile(tileId) {
+            const url = `/maps/tiles/tiles/${tileId}.svg.gz`;
+            const status = document.getElementById('status');
+            
+            try {
+                status.innerHTML = `<p>Testing tile ${tileId}...</p>`;
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    status.innerHTML = `<p style="color: green;">✓ Tile ${tileId} loaded successfully (${response.status})</p>`;
+                } else {
+                    status.innerHTML = `<div class="error">✗ Tile ${tileId} failed: HTTP ${response.status}</div>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<div class="error">✗ Tile ${tileId} error: ${error.message}</div>`;
+            }
+        }
+
+        function testRandomTile() {
+            if (!tileIndex || tileIndex.tiles.length === 0) {
+                alert('Load tile index first!');
+                return;
+            }
+            const randomTile = tileIndex.tiles[Math.floor(Math.random() * tileIndex.tiles.length)];
+            testTile(randomTile.id);
+        }
+
+        function clearCache() {
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            alert('Cache cleared! Reload the page to see changes.');
+        }
+
+        // Load on startup
+        loadTileIndex();
+    </script>
+</body>
+</html>

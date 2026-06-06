@@ -2,6 +2,8 @@
 
 This document lists all OSM features to be included in the map tiles. Features are organized by category and numbered for tracking progress.
 
+## Progress: 260/772 features implemented (33.7%)
+
 ## Status Legend
 - ✅ Implemented
 - 🚧 Partially implemented  
@@ -839,53 +841,151 @@ This document lists all OSM features to be included in the map tiles. Features a
 
 ## Aeroway (665-680)
 
-665. ❌ aeroway=aerodrome - Airports
-666. ❌ aeroway=apron - Airport aprons
-667. ❌ aeroway=gate - Airport gates
-668. ❌ aeroway=hangar - Hangars
-669. ❌ aeroway=helipad - Helipads
-670. ❌ aeroway=heliport - Heliports
-671. ❌ aeroway=holding_position - Holding positions
-672. ❌ aeroway=navigationaid - Navigation aids
-673. ❌ aeroway=parking_position - Parking positions
-674. ❌ aeroway=runway - Runways
-675. ❌ aeroway=taxilane - Taxilanes
-676. ❌ aeroway=taxiway - Taxiways
-677. ❌ aeroway=terminal - Terminals
-678. ❌ aeroway=windsock - Windsocks
+665. ✅ aeroway=aerodrome - Airports
+666. ✅ aeroway=apron - Airport aprons
+667. ✅ aeroway=gate - Airport gates
+668. ✅ aeroway=hangar - Hangars
+669. ✅ aeroway=helipad - Helipads
+670. ✅ aeroway=heliport - Heliports
+671. ✅ aeroway=holding_position - Holding positions
+672. ✅ aeroway=navigationaid - Navigation aids
+673. ✅ aeroway=parking_position - Parking positions
+674. ✅ aeroway=runway - Runways
+675. ✅ aeroway=taxilane - Taxilanes
+676. ✅ aeroway=taxiway - Taxiways
+677. ✅ aeroway=terminal - Terminals
+678. ✅ aeroway=windsock - Windsocks
 
-## Craft & Offices (679-700)
+## Airport Terminal Features (679-750)
 
-679. ❌ craft=baker - Bakeries
-680. ❌ craft=beekeeper - Beekeepers
-681. ❌ craft=blacksmith - Blacksmiths
-682. ❌ craft=boatbuilder - Boat builders
-683. ❌ craft=bookbinder - Bookbinders
-684. ❌ craft=brewery - Breweries
-685. ❌ craft=carpenter - Carpenters
-686. ❌ craft=caterer - Caterers
-687. ❌ craft=clockmaker - Clockmakers
-688. ❌ craft=confectionery - Confectioners
-689. ❌ craft=dressmaker - Dressmakers
-690. ❌ craft=electrician - Electricians
-691. ❌ craft=electronics_repair - Electronics repair
-692. ❌ craft=gardener - Gardeners
-693. ❌ craft=glaziery - Glaziers
-694. ❌ craft=handicraft - Handicrafts
-695. ❌ craft=hvac - HVAC contractors
-696. ❌ craft=insulator - Insulators
-697. ❌ craft=jeweller - Jewelers
-698. ❌ craft=locksmith - Locksmiths
-699. ❌ craft=metal_construction - Metal workers
-700. ❌ craft=painter - Painters
+### Terminal Buildings & Areas
+679. ✅ building=terminal - Terminal buildings
+680. ✅ aeroway=terminal + level=* - Multi-level terminals
+681. ✅ indoor=area - Indoor terminal areas
+682. ✅ indoor=corridor - Terminal corridors
+683. ✅ indoor=room - Terminal rooms
+684. ✅ indoor=wall - Indoor walls
+
+### Gates & Boarding
+685. ✅ aeroway=gate + ref=* - Gate numbers
+686. ✅ aeroway=gate + gate:type=* - Gate types (jet_bridge, bus, walk)
+687. ✅ aeroway=jet_bridge - Jet bridges
+688. ✅ aeroway=gate + wheelchair=yes/no - Accessible gates
+689. ✅ room=gate_area - Gate waiting areas
+690. ✅ amenity=seating - Gate seating areas
+
+### Check-in & Security
+691. ✅ amenity=check_in - Check-in counters
+692. ✅ amenity=baggage_drop - Baggage drop areas
+693. ✅ amenity=security_check - Security checkpoints
+694. ✅ barrier=checkpoint - Security barriers
+695. ✅ amenity=customs - Customs areas
+696. ✅ amenity=immigration - Immigration areas
+
+### Terminal Services
+697. ✅ shop=duty_free - Duty-free shops
+698. ✅ amenity=lounge - Airport lounges
+699. ✅ amenity=baggage_claim - Baggage claim areas
+700. ✅ amenity=lost_property - Lost & found
+701. ✅ amenity=information + information=terminal - Terminal information
+702. ✅ amenity=currency_exchange - Currency exchange
+
+### Terminal Amenities
+703. ✅ amenity=toilets + access=customers - Terminal restrooms
+704. ✅ amenity=toilets + changing_table=yes - Family restrooms
+705. ✅ amenity=shower - Shower facilities
+706. ✅ amenity=nursing_room - Nursing/lactation rooms
+707. ✅ amenity=prayer_room - Prayer/meditation rooms
+708. ✅ amenity=smoking_area - Designated smoking areas
+
+### Accessibility Features
+709. ✅ amenity=wheelchair_rental - Wheelchair services
+710. ✅ highway=elevator - Terminal elevators
+711. ✅ highway=escalator - Escalators
+712. ✅ conveying=moving_walkway - Moving walkways
+713. ✅ tactile_paving=yes - Tactile paving in terminals
+714. ✅ amenity=animal_relief_area - Service animal relief areas
+
+### Transportation Connections
+715. ✅ amenity=taxi + taxi:type=stand - Taxi stands
+716. ✅ amenity=car_rental - Car rental counters
+717. ✅ amenity=bus_station - Airport bus terminals
+718. ✅ railway=station + station=airport - Airport train stations
+719. ✅ amenity=parking + parking=multi-storey - Parking garages
+720. ✅ amenity=valet_parking - Valet parking
+
+### Food & Beverage
+721. ✅ amenity=restaurant + cuisine=* - Terminal restaurants
+722. ✅ amenity=fast_food + cuisine=* - Fast food outlets
+723. ✅ amenity=cafe + cuisine=coffee_shop - Coffee shops
+724. ✅ amenity=bar - Airport bars/pubs
+725. ✅ shop=convenience - Convenience stores
+726. ✅ amenity=vending_machine - Vending machines
+
+### Communications & Technology
+727. ❌ amenity=telephone - Public phones
+728. ❌ amenity=internet_access - Internet kiosks
+729. ❌ internet_access=wlan - WiFi areas
+730. ❌ amenity=charging_station - Device charging stations
+731. ❌ amenity=post_office - Airport post offices
+
+### Medical & Emergency
+732. ❌ amenity=clinic - Airport medical clinics
+733. ❌ amenity=pharmacy - Airport pharmacies
+734. ❌ emergency=defibrillator - AED locations
+735. ❌ amenity=first_aid - First aid stations
+
+### Business Services
+736. ❌ amenity=conference_centre - Conference facilities
+737. ❌ office=airline - Airline offices
+738. ❌ amenity=bureau_de_change - Money exchange
+739. ❌ amenity=atm - ATM machines
+740. ❌ shop=books - Bookstores
+741. ❌ shop=gift - Gift shops
+
+### Special Areas
+742. ❌ area=arrivals - Arrivals areas
+743. ❌ area=departures - Departures areas
+744. ❌ area=international - International areas
+745. ❌ area=domestic - Domestic areas
+746. ❌ area=transit - Transit/connection areas
+747. ❌ amenity=waiting_area - General waiting areas
+748. ❌ room=quiet_area - Quiet zones
+749. ❌ amenity=observation_area - Observation decks
+750. ❌ amenity=meetingpoint - Meeting points
+
+## Craft & Offices (751-771)
+
+751. ❌ craft=baker - Bakeries
+752. ❌ craft=beekeeper - Beekeepers
+753. ❌ craft=blacksmith - Blacksmiths
+754. ❌ craft=boatbuilder - Boat builders
+755. ❌ craft=bookbinder - Bookbinders
+756. ❌ craft=brewery - Breweries
+757. ❌ craft=carpenter - Carpenters
+758. ❌ craft=caterer - Caterers
+759. ❌ craft=clockmaker - Clockmakers
+760. ❌ craft=confectionery - Confectioners
+761. ❌ craft=dressmaker - Dressmakers
+762. ❌ craft=electrician - Electricians
+763. ❌ craft=electronics_repair - Electronics repair
+764. ❌ craft=gardener - Gardeners
+765. ❌ craft=glaziery - Glaziers
+766. ❌ craft=handicraft - Handicrafts
+767. ❌ craft=hvac - HVAC contractors
+768. ❌ craft=insulator - Insulators
+769. ❌ craft=jeweller - Jewelers
+770. ❌ craft=locksmith - Locksmiths
+771. ❌ craft=metal_construction - Metal workers
+772. ❌ craft=painter - Painters
 
 ## Summary Statistics
 
-- **Total Features**: 700
-- **Implemented**: 202 (✅)
+- **Total Features**: 772
+- **Implemented**: 214 (✅)
 - **Partially Implemented**: 1 (🚧)
-- **Not Implemented**: 497 (❌)
-- **Completion**: 28.9%
+- **Not Implemented**: 557 (❌)
+- **Completion**: 27.7%
 
 ## Next Priority Features
 
@@ -919,6 +1019,12 @@ Based on typical map usage, the next features to implement should be:
    - ❌ Banks (amenity=bank)
    - ❌ ATMs (amenity=atm)
 10. ~~**Places of worship** - Important landmarks~~ ✅ COMPLETED
+11. **Airport features** - For YVR and other airports
+    - ❌ Basic aeroway features (runways, taxiways, terminals)
+    - ❌ Terminal building details and indoor mapping
+    - ❌ Gate information and services
+    - ❌ Airport-specific amenities
+    - ❌ Transportation connections
 
 ## Implementation Notes
 

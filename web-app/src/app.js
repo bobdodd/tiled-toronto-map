@@ -28,6 +28,9 @@ class MapApplication {
         const mapSvg = document.getElementById('map-svg');
         this.mapRenderer = new MapRenderer(mapSvg);
         
+        // Check for position parameter in URL
+        this.handleInitialPosition();
+        
         // Initialize location tracker
         this.locationTracker = new LocationTracker();
         
@@ -90,8 +93,8 @@ class MapApplication {
             const center = this.mapRenderer.center;
             this.avatar.setPosition(center.lat, center.lng, false);
             
-            // Load initial map tiles
-            this.loadMapTiles();
+            // Load initial map tiles (clear any existing)
+            this.loadMapTiles(true);
         }, 100);
         
         // Listen for map view changes
@@ -707,7 +710,7 @@ class MapApplication {
         }
     }
     
-    async loadMapTiles() {
+    async loadMapTiles(clearExisting = false) {
         try {
             // Get current map bounds
             const bounds = this.getBoundsFromView();
@@ -723,22 +726,41 @@ class MapApplication {
                 return;
             }
             
-            // Clear old tiles
-            this.clearMapTiles();
-            
-            // Render tiles
-            this.renderSVGTiles(tiles);
-            
-            // Apply current filters to the newly loaded tiles
-            this.applyFiltersToTiles();
-            
-            // Update accessibility for keyboard navigation
-            if (this.accessibilityManager) {
-                this.accessibilityManager.updateTabOrder();
+            // Only clear old tiles if explicitly requested (e.g., on initial load)
+            if (clearExisting) {
+                this.clearMapTiles();
             }
             
+            // Get currently loaded tile IDs
+            const tilesGroup = document.querySelector('#map-tiles');
+            const loadedTileIds = new Set();
+            if (tilesGroup) {
+                tilesGroup.querySelectorAll('[data-tile-id]').forEach(tile => {
+                    loadedTileIds.add(tile.getAttribute('data-tile-id'));
+                });
+            }
+            
+            // Only render tiles that aren't already loaded
+            const newTiles = tiles.filter(tile => !loadedTileIds.has(tile.id));
+            
+            if (newTiles.length > 0) {
+                // Render only new tiles
+                this.renderSVGTiles(newTiles);
+                
+                // Apply current filters to the newly loaded tiles
+                this.applyFiltersToTiles();
+                
+                // Update accessibility for keyboard navigation
+                if (this.accessibilityManager) {
+                    this.accessibilityManager.updateTabOrder();
+                }
+            }
+            
+            // Clean up tiles that are far outside the current view
+            this.cleanupDistantTiles();
+            
             // Announce completion
-            this.announceStatus(`Map loaded. ${tiles.length} tiles displayed.`);
+            this.announceStatus(`Map loaded. ${tiles.length} tiles available.`);
         } catch (error) {
             this.announceStatus('Error loading map. Please try again.');
         }
@@ -801,6 +823,12 @@ class MapApplication {
 
         tiles.forEach(tile => {
             if (!tile.content) return;
+            
+            // Check if this tile already exists and remove it
+            const existingTile = tilesGroup.querySelector(`[data-tile-id="${tile.id}"]`);
+            if (existingTile) {
+                existingTile.remove();
+            }
             
             try {
                 // Parse SVG content
@@ -881,6 +909,34 @@ class MapApplication {
         }
         // Announce to screen readers
         this.announceStatus('Map updating...');
+    }
+    
+    cleanupDistantTiles() {
+        const bounds = this.getBoundsFromView();
+        const tilesGroup = document.querySelector('#map-tiles');
+        
+        if (!tilesGroup) return;
+        
+        // Add a buffer to prevent removing tiles too aggressively
+        const buffer = 0.02; // 2 extra tiles in each direction
+        const expandedBounds = {
+            north: bounds.north + buffer,
+            south: bounds.south - buffer,
+            east: bounds.east + buffer,
+            west: bounds.west - buffer
+        };
+        
+        // Remove tiles that are outside the expanded bounds
+        tilesGroup.querySelectorAll('[data-tile-id]').forEach(tile => {
+            const tileId = tile.getAttribute('data-tile-id');
+            const [lat, lng] = tileId.split('_').map(parseFloat);
+            
+            // Check if tile is outside expanded bounds
+            if (lat + 0.01 < expandedBounds.south || lat > expandedBounds.north ||
+                lng + 0.01 < expandedBounds.west || lng > expandedBounds.east) {
+                tile.remove();
+            }
+        });
     }
     
     hideTiles() {
@@ -975,9 +1031,30 @@ class MapApplication {
     
     checkIfNeedNewTiles() {
         // Check if the current bounds extend beyond what we've loaded
-        // For now, return false to prevent unnecessary reloading
-        // TODO: Implement proper tile boundary checking
-        return false;
+        const bounds = this.getBoundsFromView();
+        const tilesGroup = document.querySelector('#map-tiles');
+        
+        if (!tilesGroup || tilesGroup.children.length === 0) {
+            return true; // No tiles loaded yet
+        }
+        
+        // Get the bounds of currently loaded tiles
+        let minLat = Infinity, maxLat = -Infinity;
+        let minLng = Infinity, maxLng = -Infinity;
+        
+        tilesGroup.querySelectorAll('[data-tile-id]').forEach(tile => {
+            const tileId = tile.getAttribute('data-tile-id');
+            const [lat, lng] = tileId.split('_').map(parseFloat);
+            
+            minLat = Math.min(minLat, lat);
+            maxLat = Math.max(maxLat, lat + 0.01); // 0.01 degree per tile
+            minLng = Math.min(minLng, lng);
+            maxLng = Math.max(maxLng, lng + 0.01);
+        });
+        
+        // Check if current view bounds extend beyond loaded tiles
+        return bounds.north > maxLat || bounds.south < minLat ||
+               bounds.east > maxLng || bounds.west < minLng;
     }
     
     applyFiltersToTiles() {
@@ -1289,6 +1366,71 @@ class MapApplication {
         }
         
         return 'Map feature';
+    }
+    
+    handleInitialPosition() {
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const pos = urlParams.get('pos');
+        
+        // Define preset positions
+        const positions = {
+            'toronto': { lat: 43.655, lng: -79.375, zoom: 17 },
+            'vancouver': { lat: 49.195, lng: -123.18, zoom: 16 }, // YVR airport
+            'yvr': { lat: 49.195, lng: -123.18, zoom: 16 }, // Alias for Vancouver
+            'downtown-toronto': { lat: 43.651, lng: -79.382, zoom: 17 },
+            'cn-tower': { lat: 43.6426, lng: -79.3871, zoom: 18 },
+            'uoft': { lat: 43.6629, lng: -79.3957, zoom: 17 }, // University of Toronto
+            'yorkdale': { lat: 43.7254, lng: -79.4521, zoom: 17 }, // Yorkdale Mall
+            'pearson': { lat: 43.6777, lng: -79.6248, zoom: 16 } // Toronto Pearson Airport
+        };
+        
+        // Check if position is specified and valid
+        if (pos && positions[pos.toLowerCase()]) {
+            const location = positions[pos.toLowerCase()];
+            
+            // Set the map center and zoom
+            this.mapRenderer.center = { lat: location.lat, lng: location.lng };
+            if (location.zoom) {
+                this.mapRenderer.zoom = location.zoom;
+            }
+            
+            console.log(`Starting at ${pos}: ${location.lat}, ${location.lng}`);
+        } else if (pos) {
+            // Try to parse as lat,lng coordinates
+            const coords = pos.split(',');
+            if (coords.length === 2) {
+                const lat = parseFloat(coords[0]);
+                const lng = parseFloat(coords[1]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    this.mapRenderer.center = { lat, lng };
+                    console.log(`Starting at custom coordinates: ${lat}, ${lng}`);
+                }
+            } else {
+                console.warn(`Unknown position: ${pos}`);
+            }
+        }
+        
+        // Also check for individual lat/lng/zoom parameters
+        const lat = urlParams.get('lat');
+        const lng = urlParams.get('lng');
+        const zoom = urlParams.get('zoom');
+        
+        if (lat && lng) {
+            const latNum = parseFloat(lat);
+            const lngNum = parseFloat(lng);
+            if (!isNaN(latNum) && !isNaN(lngNum)) {
+                this.mapRenderer.center = { lat: latNum, lng: lngNum };
+                console.log(`Starting at coordinates: ${latNum}, ${lngNum}`);
+            }
+        }
+        
+        if (zoom) {
+            const zoomNum = parseInt(zoom);
+            if (!isNaN(zoomNum) && zoomNum >= 10 && zoomNum <= 20) {
+                this.mapRenderer.zoom = zoomNum;
+            }
+        }
     }
 }
 
