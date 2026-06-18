@@ -1763,3 +1763,18 @@ main {
 .avatar-pulse {
     pointer-events: none;
 }
+
+/* Overlay filter highlight — POI / accessibility filters mark features
+   (a path, a building) without hiding them. Strong, high-contrast outline. */
+#map-tiles .filter-highlight :is(polygon, polyline, circle, path, rect) {
+    stroke: #b5179e;
+    stroke-width: 4;
+    paint-order: stroke;
+}
+
+@media (prefers-contrast: high) {
+    #map-tiles .filter-highlight :is(polygon, polyline, circle, path, rect) {
+        stroke: #ff0;
+        stroke-width: 5;
+    }
+}
