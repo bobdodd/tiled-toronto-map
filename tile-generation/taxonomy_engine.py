@@ -87,29 +87,59 @@ class Taxonomy:
             return tags.get(feature["subtypeFrom"])
         return feature["id"]
 
+    def _enrich(self, feature, tags):
+        category = feature["category"]
+        subtype = self._subtype(feature, tags)
+        svg_class = f"{category} {category}-{subtype}" if subtype else category
+        return {
+            "id": feature["id"],
+            "category": category,
+            "subtype": subtype,
+            "svgClass": svg_class,
+            "layer": self.categories.get(category, {}).get("layer", "base"),
+            "label": feature.get("label"),
+            "ui": feature.get("ui", {}),
+            "status": feature.get("status"),
+        }
+
     def classify(self, tags, geometry):
-        """Return the first matching feature (enriched), or None.
+        """First matching feature (enriched), or None — single-class convenience.
 
         geometry is one of 'node' | 'way' | 'area'.
         """
         for feature in self.features:
             if geometry not in feature.get("geometry", ["node", "way", "area"]):
                 continue
+            if _match_ok(tags, feature["match"]):
+                return self._enrich(feature, tags)
+        return None
+
+    def classify_all(self, tags, geometry):
+        """All matches, split for the multi-aspect layering model:
+
+          base     — the first 'base'-layer match; renders the feature's geometry.
+          overlays — every 'poi'/'accessibility' match; carried as filterable
+                     classes/data on the SAME element (nothing dropped).
+          primary  — base, or the first overlay when there's no base (a POI node).
+
+        Returns None if nothing matches.
+        """
+        base = None
+        overlays = []
+        for feature in self.features:
+            if geometry not in feature.get("geometry", ["node", "way", "area"]):
+                continue
             if not _match_ok(tags, feature["match"]):
                 continue
-            category = feature["category"]
-            subtype = self._subtype(feature, tags)
-            svg_class = f"{category} {category}-{subtype}" if subtype else category
-            return {
-                "id": feature["id"],
-                "category": category,
-                "subtype": subtype,
-                "svgClass": svg_class,
-                "label": feature.get("label"),
-                "ui": feature.get("ui", {}),
-                "status": feature.get("status"),
-            }
-        return None
+            entry = self._enrich(feature, tags)
+            if entry["layer"] == "base":
+                if base is None:
+                    base = entry
+            else:
+                overlays.append(entry)
+        if base is None and not overlays:
+            return None
+        return {"base": base, "overlays": overlays, "primary": base or overlays[0]}
 
 
 # A fixed fixture so the self-test exercises the ENGINE, independent of the
