@@ -1,0 +1,906 @@
+{
+  "_doc": {
+    "purpose": "Single source of truth for the map feature taxonomy. Drives tile generation (osm_tile_processor classifies OSM tags through this) AND the web app (filters/rotor/labels read it). SVG class = '<category> <category>-<subtype>'.",
+    "matchDSL": {
+      "a feature is": "{ id, category, match, geometry, label, ui, status, and ONE of subtype | subtypeFrom }",
+      "match": "an object = AND of conditions; an array of objects = OR of rules. First matching feature (in list order) wins, so put specific/priority features before general ones.",
+      "conditions": {
+        "key: \"v\"": "tag equals v",
+        "key: true": "tag present (any value)",
+        "key: [\"a\",\"b\"]": "tag value in set",
+        "key: {\">\": 8}": "numeric compare (>, >=, <, <=); leading number is parsed from values like \"8%\", \"0.9\", \"3 cm\"",
+        "key: {\"not\": \"v\"}": "tag value is not v"
+      },
+      "subtype": "literal subtype string",
+      "subtypeFrom": "use the raw value of this tag as the subtype",
+      "geometry": "subset of [node, way, area] this feature can match (default: all)",
+      "status": "implemented (generator collects it today) | planned (UI offers it; not collected yet)"
+    },
+    "note": "Full manifest (Phase 2b step 2). Covers all 164 web-app classMap filter ids plus the generator's structural wildcard entries (building=*, the highway road set, water/waterway, vegetation, landuse, park) appended last so specific POIs win over generic base-map fills. The web app's classMap maps each filter id to an SVG class; this manifest produces those classes from OSM tags. Some web-app classMap selectors use a SHORT class token (e.g. '.restaurant', '.bank', '.museum') that differs from the engine's '<category> <category>-<subtype>' output (e.g. 'amenity amenity-restaurant'); the web app already carries both the short alias and the canonical class on rendered elements. Each feature id below equals the web-app filter id verbatim so the two stay in lockstep."
+  },
+
+  "categories": {
+    "amenity":       { "label": "Amenities" },
+    "shop":          { "label": "Shops" },
+    "tourism":       { "label": "Tourism & culture" },
+    "building":      { "label": "Buildings" },
+    "road":          { "label": "Roads & paths" },
+    "park":          { "label": "Parks & recreation" },
+    "vegetation":    { "label": "Vegetation" },
+    "landuse":       { "label": "Land use" },
+    "water":         { "label": "Water" },
+    "religious":     { "label": "Places of worship" },
+    "parking":       { "label": "Parking" },
+    "barrier":       { "label": "Barriers" },
+    "aeroway":       { "label": "Aviation" },
+    "indoor":        { "label": "Indoor spaces" },
+    "railway":       { "label": "Railways" },
+    "transit":       { "label": "Public transit" },
+    "historic":      { "label": "Historic" },
+    "man_made":      { "label": "Man-made structures" },
+    "natural":       { "label": "Natural features" },
+    "accessibility": { "label": "Accessibility" },
+    "facility":      { "label": "Accessible facilities" },
+    "sensory":       { "label": "Sensory accessibility" },
+    "mobility":      { "label": "Mobility access" },
+    "transport":     { "label": "Accessible transport" }
+  },
+
+  "features": [
+
+    { "id": "accessible-parking", "category": "accessibility",
+      "match": { "amenity": "parking", "wheelchair": "yes" }, "subtype": "parking",
+      "geometry": ["node", "area"], "label": "Accessible parking",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "disabled-parking", "category": "transport",
+      "match": [ { "capacity:disabled": true }, { "parking:disabled": "yes" } ], "subtype": "disabled_parking",
+      "geometry": ["node", "area"], "label": "Disabled parking capacity",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "priority-disabled", "category": "transport",
+      "match": { "priority": "disabled" }, "subtype": "priority_access",
+      "geometry": ["node", "way", "area"], "label": "Priority disabled access",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "accessible-bus", "category": "transport",
+      "match": { "bus:wheelchair": "yes" }, "subtype": "accessible_bus",
+      "geometry": ["node"], "label": "Wheelchair accessible buses",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "accessible-subway", "category": "transport",
+      "match": { "subway:wheelchair": "yes" }, "subtype": "accessible_subway",
+      "geometry": ["node"], "label": "Wheelchair accessible subway",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "accessible-tram", "category": "transport",
+      "match": { "tram:wheelchair": "yes" }, "subtype": "accessible_tram",
+      "geometry": ["node"], "label": "Wheelchair accessible trams",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "accessible-train", "category": "transport",
+      "match": { "train:wheelchair": "yes" }, "subtype": "accessible_train",
+      "geometry": ["node"], "label": "Wheelchair accessible trains",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "accessible-toilets", "category": "facility",
+      "match": { "toilets:wheelchair": "yes" }, "subtype": "accessible_toilet",
+      "geometry": ["node", "area"], "label": "Accessible toilets",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "changing-tables", "category": "facility",
+      "match": { "changing_table": "yes" }, "subtype": "changing_table",
+      "geometry": ["node", "area"], "label": "Changing tables",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "automatic-doors", "category": "facility",
+      "match": { "automatic_door": "yes" }, "subtype": "automatic_door",
+      "geometry": ["node"], "label": "Automatic doors",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "wide-doors", "category": "facility",
+      "match": { "door:width": true }, "subtype": "wide_door",
+      "geometry": ["node"], "label": "Wide doorways",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "low-kerbs", "category": "facility",
+      "match": { "kerb:height": true }, "subtype": "low_kerb",
+      "geometry": ["node"], "label": "Low kerbs",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "terminal-elevators", "category": "facility",
+      "match": { "highway": "elevator", "indoor": "yes" }, "subtype": "elevator",
+      "geometry": ["node", "area"], "label": "Terminal elevators",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "elevators", "category": "facility",
+      "match": [ { "elevator": "yes" }, { "highway": "elevator" } ], "subtype": "elevator",
+      "geometry": ["node", "area"], "label": "Elevators",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "escalators", "category": "facility",
+      "match": [ { "escalator": "yes" }, { "highway": "escalator" } ], "subtype": "escalator",
+      "geometry": ["node", "way"], "label": "Escalators",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "moving-walkways", "category": "facility",
+      "match": { "conveying": "yes" }, "subtype": "moving_walkway",
+      "geometry": ["way"], "label": "Moving walkways",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "steep-inclines", "category": "facility",
+      "match": [ { "incline": { ">": 8.33 } }, { "incline": "steep" } ], "subtype": "steep_incline",
+      "geometry": ["node", "way"], "label": "Steep inclines (over 8%)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "moderate-inclines", "category": "facility",
+      "match": { "incline": { ">": 5, "<=": 8.33 } }, "subtype": "moderate_incline",
+      "geometry": ["node", "way"], "label": "Moderate inclines (5-8%)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "gentle-inclines", "category": "facility",
+      "match": { "incline": { "<=": 5 } }, "subtype": "gentle_incline",
+      "geometry": ["node", "way"], "label": "Gentle inclines (up to 5%)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "accessible-medical", "category": "facility",
+      "match": { "healthcare": true, "wheelchair": "yes" }, "subtype": "accessible_medical",
+      "geometry": ["node", "area"], "label": "Accessible medical facilities",
+      "ui": { "filterGroup": "Emergency & Safety", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "wheelchair-yes", "category": "mobility",
+      "match": [ { "wheelchair": "yes" }, { "wheelchair": "designated" } ], "subtype": "wheelchair_yes",
+      "geometry": ["node", "way", "area"], "label": "Wheelchair accessible locations",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "wheelchair-no", "category": "mobility",
+      "match": { "wheelchair": "no" }, "subtype": "wheelchair_no",
+      "geometry": ["node", "way", "area"], "label": "Not wheelchair accessible locations",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "wheelchair-limited", "category": "mobility",
+      "match": { "wheelchair": "limited" }, "subtype": "wheelchair_limited",
+      "geometry": ["node", "way", "area"], "label": "Limited wheelchair accessibility",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "ramps", "category": "mobility",
+      "match": [ { "ramp": "yes" }, { "ramp:wheelchair": "yes" }, { "ramp:stroller": "yes" }, { "ramp:bicycle": "yes" } ], "subtype": "ramp",
+      "geometry": ["node", "way"], "label": "Ramps (all types)",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "handrails", "category": "mobility",
+      "match": [ { "handrail": "yes" }, { "handrail:center": "yes" }, { "handrail:left": "yes" }, { "handrail:right": "yes" } ], "subtype": "handrail",
+      "geometry": ["node", "way"], "label": "Handrails",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "tactile-paving-terminal", "category": "sensory",
+      "match": { "tactile_paving": "yes", "indoor": "yes" }, "subtype": "tactile_paving",
+      "geometry": ["node", "way"], "label": "Tactile paving in terminals",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "tactile-paving", "category": "sensory",
+      "match": { "tactile_paving": "yes" }, "subtype": "tactile_paving",
+      "geometry": ["node", "way"], "label": "Tactile paving",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "audio-signals", "category": "sensory",
+      "match": [ { "traffic_signals:sound": "yes" }, { "traffic_signals:vibration": "yes" }, { "acoustic": "voice_description" } ], "subtype": "audio_signal",
+      "geometry": ["node"], "label": "Audio crossing signals",
+      "ui": { "filterGroup": "Audio & Visual Aids", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "tactile-maps", "category": "sensory",
+      "match": [ { "braille": "yes" }, { "tactile_map": "yes" } ], "subtype": "tactile_map",
+      "geometry": ["node"], "label": "Tactile maps",
+      "ui": { "filterGroup": "Audio & Visual Aids", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "digital-clocks", "category": "sensory",
+      "match": { "amenity": "clock", "display": "digital" }, "subtype": "digital_clock",
+      "geometry": ["node"], "label": "Digital clocks",
+      "ui": { "filterGroup": "Audio & Visual Aids", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "info-points", "category": "sensory",
+      "match": [ { "audio_loop": "yes" }, { "sign_language": "yes" }, { "tourism": "information", "information": "office" } ], "subtype": "info_point",
+      "geometry": ["node"], "label": "Information points",
+      "ui": { "filterGroup": "Audio & Visual Aids", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "crossings", "category": "facility",
+      "match": [ { "highway": "crossing" }, { "footway": "crossing" } ], "subtype": "crossing",
+      "geometry": ["node", "way"], "label": "Pedestrian crossings",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "curb-cuts", "category": "facility",
+      "match": [ { "kerb": "lowered" }, { "kerb": "flush" } ], "subtype": "curb_cut",
+      "geometry": ["node"], "label": "Curb cuts and ramps",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "steps", "category": "mobility",
+      "match": { "highway": "steps" }, "subtype": "steps",
+      "geometry": ["way"], "label": "Steps and handrails",
+      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "benches", "category": "amenity",
+      "match": { "amenity": "bench" }, "subtype": "bench",
+      "geometry": ["node"], "label": "Benches and rest areas",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "shelters", "category": "amenity",
+      "match": { "amenity": "shelter" }, "subtype": "shelter",
+      "geometry": ["node", "area"], "label": "Shelters",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "drinking-water", "category": "amenity",
+      "match": { "amenity": "drinking_water" }, "subtype": "drinking_water",
+      "geometry": ["node"], "label": "Drinking water",
+      "ui": { "filterGroup": "Public Facilities", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "defibrillators", "category": "amenity",
+      "match": { "emergency": "defibrillator" }, "subtype": "defibrillator",
+      "geometry": ["node"], "label": "Defibrillators",
+      "ui": { "filterGroup": "Emergency & Safety", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "emergency-phones", "category": "amenity",
+      "match": { "emergency": "phone" }, "subtype": "emergency_phone",
+      "geometry": ["node"], "label": "Emergency phones",
+      "ui": { "filterGroup": "Emergency & Safety", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "hospitals", "category": "amenity",
+      "match": { "amenity": "hospital" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Hospitals",
+      "ui": { "filterGroup": "Healthcare", "rotorGroup": "Healthcare" }, "status": "planned" },
+
+    { "id": "clinics", "category": "amenity",
+      "match": { "amenity": "clinic" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Clinics",
+      "ui": { "filterGroup": "Healthcare", "rotorGroup": "Healthcare" }, "status": "planned" },
+
+    { "id": "doctors", "category": "amenity",
+      "match": { "amenity": "doctors" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Doctors",
+      "ui": { "filterGroup": "Healthcare", "rotorGroup": "Healthcare" }, "status": "planned" },
+
+    { "id": "dentists", "category": "amenity",
+      "match": { "amenity": "dentist" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Dentists",
+      "ui": { "filterGroup": "Healthcare", "rotorGroup": "Healthcare" }, "status": "planned" },
+
+    { "id": "pharmacies", "category": "amenity",
+      "match": { "amenity": "pharmacy" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Pharmacies",
+      "ui": { "filterGroup": "Healthcare", "rotorGroup": "Healthcare" }, "status": "planned" },
+
+    { "id": "veterinary", "category": "amenity",
+      "match": { "amenity": "veterinary" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Veterinary clinics",
+      "ui": { "filterGroup": "Healthcare", "rotorGroup": "Healthcare" }, "status": "planned" },
+
+    { "id": "banks", "category": "amenity",
+      "match": { "amenity": "bank" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Banks",
+      "ui": { "filterGroup": "Financial Services", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "atms", "category": "amenity",
+      "match": { "amenity": "atm" }, "subtypeFrom": "amenity",
+      "geometry": ["node"], "label": "ATMs",
+      "ui": { "filterGroup": "Financial Services", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "post-offices", "category": "amenity",
+      "match": { "amenity": "post_office" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Post offices",
+      "ui": { "filterGroup": "Financial Services", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "currency-exchange", "category": "amenity",
+      "match": [ { "amenity": "bureau_de_change" }, { "amenity": "currency_exchange" } ], "subtype": "currency_exchange",
+      "geometry": ["node", "area"], "label": "Currency exchange",
+      "ui": { "filterGroup": "Financial Services", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "terminal-restaurants", "category": "amenity",
+      "match": { "amenity": "restaurant", "indoor": "yes" }, "subtype": "restaurant",
+      "geometry": ["node", "area"], "label": "Terminal restaurants",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "fast-food-outlets", "category": "amenity",
+      "match": { "amenity": "fast_food", "indoor": "yes" }, "subtype": "fast_food",
+      "geometry": ["node", "area"], "label": "Fast food outlets",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "coffee-shops", "category": "amenity",
+      "match": { "amenity": "cafe", "indoor": "yes" }, "subtype": "cafe",
+      "geometry": ["node", "area"], "label": "Coffee shops",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "airport-bars", "category": "amenity",
+      "match": { "amenity": "bar", "indoor": "yes" }, "subtype": "bar",
+      "geometry": ["node", "area"], "label": "Airport bars and pubs",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "restaurants", "category": "amenity",
+      "match": { "amenity": "restaurant" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Restaurants",
+      "ui": { "filterGroup": "Sustenance & Food", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "cafes", "category": "amenity",
+      "match": { "amenity": "cafe" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Cafes",
+      "ui": { "filterGroup": "Sustenance & Food", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "fast-food", "category": "amenity",
+      "match": { "amenity": "fast_food" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Fast food",
+      "ui": { "filterGroup": "Sustenance & Food", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "bars", "category": "amenity",
+      "match": { "amenity": "bar" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Bars",
+      "ui": { "filterGroup": "Sustenance & Food", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "pubs", "category": "amenity",
+      "match": { "amenity": "pub" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Pubs",
+      "ui": { "filterGroup": "Sustenance & Food", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "food-courts", "category": "amenity",
+      "match": { "amenity": "food_court" }, "subtype": "food_court",
+      "geometry": ["node", "area"], "label": "Food courts",
+      "ui": { "filterGroup": "Sustenance & Food", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "hotels", "category": "tourism",
+      "match": { "tourism": "hotel" }, "subtypeFrom": "tourism",
+      "geometry": ["node", "area"], "label": "Hotels",
+      "ui": { "filterGroup": "Accommodation", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "hostels", "category": "tourism",
+      "match": { "tourism": "hostel" }, "subtypeFrom": "tourism",
+      "geometry": ["node", "area"], "label": "Hostels",
+      "ui": { "filterGroup": "Accommodation", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "guest-houses", "category": "tourism",
+      "match": { "tourism": "guest_house" }, "subtypeFrom": "tourism",
+      "geometry": ["node", "area"], "label": "Guest houses",
+      "ui": { "filterGroup": "Accommodation", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "campsites", "category": "tourism",
+      "match": { "tourism": "camp_site" }, "subtype": "camp_site",
+      "geometry": ["node", "area"], "label": "Campsites",
+      "ui": { "filterGroup": "Accommodation", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "attractions", "category": "tourism",
+      "match": { "tourism": "attraction" }, "subtypeFrom": "tourism",
+      "geometry": ["node", "area"], "label": "Tourist attractions",
+      "ui": { "filterGroup": "Attractions & Culture", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "museums", "category": "tourism",
+      "match": { "tourism": "museum" }, "subtypeFrom": "tourism",
+      "geometry": ["node", "area"], "label": "Museums",
+      "ui": { "filterGroup": "Attractions & Culture", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "galleries", "category": "tourism",
+      "match": { "tourism": "gallery" }, "subtypeFrom": "tourism",
+      "geometry": ["node", "area"], "label": "Art galleries",
+      "ui": { "filterGroup": "Attractions & Culture", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "viewpoints", "category": "tourism",
+      "match": { "tourism": "viewpoint" }, "subtypeFrom": "tourism",
+      "geometry": ["node"], "label": "Scenic viewpoints",
+      "ui": { "filterGroup": "Attractions & Culture", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "tourist-info", "category": "tourism",
+      "match": { "tourism": "information" }, "subtype": "information",
+      "geometry": ["node", "area"], "label": "Tourist information",
+      "ui": { "filterGroup": "Tourist Services", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "cinemas", "category": "amenity",
+      "match": { "amenity": "cinema" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Cinemas",
+      "ui": { "filterGroup": "Entertainment", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "theatres", "category": "amenity",
+      "match": { "amenity": "theatre" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Theatres",
+      "ui": { "filterGroup": "Entertainment", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "libraries", "category": "amenity",
+      "match": { "amenity": "library" }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Libraries",
+      "ui": { "filterGroup": "Education", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "schools", "category": "amenity",
+      "match": [ { "amenity": "school" }, { "amenity": "university" }, { "amenity": "college" } ], "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Schools",
+      "ui": { "filterGroup": "Education", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "community-centres", "category": "amenity",
+      "match": { "amenity": "community_centre" }, "subtype": "community_centre",
+      "geometry": ["node", "area"], "label": "Community centres",
+      "ui": { "filterGroup": "Community & Arts", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "arts-centres", "category": "amenity",
+      "match": { "amenity": "arts_centre" }, "subtype": "arts_centre",
+      "geometry": ["node", "area"], "label": "Arts centres",
+      "ui": { "filterGroup": "Community & Arts", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "sports-centres", "category": "park",
+      "match": { "leisure": "sports_centre" }, "subtype": "sports_centre",
+      "geometry": ["node", "area"], "label": "Sports centres",
+      "ui": { "filterGroup": "Sports & Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
+
+    { "id": "swimming-pools", "category": "park",
+      "match": { "leisure": "swimming_pool" }, "subtype": "swimming_pool",
+      "geometry": ["node", "area"], "label": "Swimming pools",
+      "ui": { "filterGroup": "Sports & Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
+
+    { "id": "golf-courses", "category": "park",
+      "match": { "leisure": "golf_course" }, "subtype": "golf_course",
+      "geometry": ["area"], "label": "Golf courses",
+      "ui": { "filterGroup": "Sports & Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
+
+    { "id": "stadiums", "category": "park",
+      "match": { "leisure": "stadium" }, "subtype": "stadium",
+      "geometry": ["node", "area"], "label": "Stadiums",
+      "ui": { "filterGroup": "Sports & Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
+
+    { "id": "police-stations", "category": "amenity",
+      "match": { "amenity": "police" }, "subtype": "police",
+      "geometry": ["node", "area"], "label": "Police stations",
+      "ui": { "filterGroup": "Emergency", "rotorGroup": "Emergency" }, "status": "planned" },
+
+    { "id": "fire-stations", "category": "amenity",
+      "match": { "amenity": "fire_station" }, "subtype": "fire_station",
+      "geometry": ["node", "area"], "label": "Fire stations",
+      "ui": { "filterGroup": "Emergency", "rotorGroup": "Emergency" }, "status": "planned" },
+
+    { "id": "emergency-phones-civil", "category": "amenity",
+      "match": { "emergency": "phone" }, "subtype": "emergency_phone",
+      "geometry": ["node"], "label": "Emergency phones",
+      "ui": { "filterGroup": "Emergency", "rotorGroup": "Emergency" }, "status": "planned" },
+
+    { "id": "emergency-defibrillators", "category": "amenity",
+      "match": { "emergency": "defibrillator" }, "subtype": "emergency_defibrillator",
+      "geometry": ["node"], "label": "Emergency defibrillators",
+      "ui": { "filterGroup": "Emergency", "rotorGroup": "Emergency" }, "status": "planned" },
+
+    { "id": "monuments", "category": "historic",
+      "match": { "historic": "monument" }, "subtypeFrom": "historic",
+      "geometry": ["node", "area"], "label": "Monuments",
+      "ui": { "filterGroup": "Historic", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "memorials", "category": "historic",
+      "match": { "historic": "memorial" }, "subtypeFrom": "historic",
+      "geometry": ["node", "area"], "label": "Memorials",
+      "ui": { "filterGroup": "Historic", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "archaeological-sites", "category": "historic",
+      "match": { "historic": "archaeological_site" }, "subtype": "archaeological_site",
+      "geometry": ["node", "area"], "label": "Archaeological sites",
+      "ui": { "filterGroup": "Historic", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "castles", "category": "historic",
+      "match": { "historic": "castle" }, "subtypeFrom": "historic",
+      "geometry": ["node", "area"], "label": "Castles",
+      "ui": { "filterGroup": "Historic", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "ruins", "category": "historic",
+      "match": [ { "historic": "ruins" }, { "ruins": "yes" } ], "subtype": "ruins",
+      "geometry": ["node", "area"], "label": "Historic ruins",
+      "ui": { "filterGroup": "Historic", "rotorGroup": "Tourism" }, "status": "planned" },
+
+    { "id": "bridges", "category": "man_made",
+      "match": [ { "man_made": "bridge" }, { "bridge": "yes" } ], "subtype": "bridge",
+      "geometry": ["way", "area"], "label": "Bridges",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
+
+    { "id": "tunnels", "category": "man_made",
+      "match": { "tunnel": "yes" }, "subtype": "tunnel",
+      "geometry": ["way"], "label": "Tunnels",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
+
+    { "id": "towers", "category": "man_made",
+      "match": { "man_made": "tower" }, "subtype": "tower",
+      "geometry": ["node", "area"], "label": "Towers",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
+
+    { "id": "masts", "category": "man_made",
+      "match": { "man_made": "mast" }, "subtype": "mast",
+      "geometry": ["node"], "label": "Masts and antennas",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
+
+    { "id": "piers", "category": "man_made",
+      "match": { "man_made": "pier" }, "subtype": "pier",
+      "geometry": ["way", "area"], "label": "Piers",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
+
+    { "id": "breakwaters", "category": "man_made",
+      "match": { "man_made": "breakwater" }, "subtype": "breakwater",
+      "geometry": ["way"], "label": "Breakwaters",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
+
+    { "id": "fences", "category": "barrier",
+      "match": { "barrier": "fence" }, "subtype": "fence",
+      "geometry": ["way"], "label": "Fences",
+      "ui": { "filterGroup": "Barriers", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "walls", "category": "barrier",
+      "match": { "barrier": "wall" }, "subtype": "wall",
+      "geometry": ["way"], "label": "Walls",
+      "ui": { "filterGroup": "Barriers", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "hedges", "category": "barrier",
+      "match": { "barrier": "hedge" }, "subtype": "hedge",
+      "geometry": ["way"], "label": "Hedges",
+      "ui": { "filterGroup": "Barriers", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "gates", "category": "barrier",
+      "match": { "barrier": "gate" }, "subtype": "gate",
+      "geometry": ["node"], "label": "Gates",
+      "ui": { "filterGroup": "Barriers", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "bollards", "category": "barrier",
+      "match": { "barrier": "bollard" }, "subtype": "bollard",
+      "geometry": ["node"], "label": "Bollards",
+      "ui": { "filterGroup": "Barriers", "rotorGroup": "Accessibility" }, "status": "planned" },
+
+    { "id": "worship", "category": "religious",
+      "match": [ { "amenity": "place_of_worship" }, { "building": ["church", "mosque", "temple", "synagogue", "chapel", "cathedral", "shrine", "monastery"] } ], "subtype": "place_of_worship",
+      "geometry": ["node", "area"], "label": "Places of worship",
+      "ui": { "filterGroup": "Worship", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "addresses", "category": "amenity",
+      "match": { "addr:housenumber": true }, "subtype": "address",
+      "geometry": ["node", "area"], "label": "Addresses",
+      "ui": { "filterGroup": "Addresses", "rotorGroup": "Buildings" }, "status": "planned" },
+
+    { "id": "transit", "category": "transit",
+      "match": [ { "highway": "bus_stop" }, { "railway": "subway_entrance" } ], "subtype": "stop",
+      "geometry": ["node"], "label": "Transit stops",
+      "ui": { "filterGroup": "Public Transit", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "transit-platforms", "category": "transit",
+      "match": [ { "public_transport": "platform" }, { "railway": "platform" } ], "subtype": "platform",
+      "geometry": ["node", "way", "area"], "label": "Transit platforms",
+      "ui": { "filterGroup": "Public Transit", "rotorGroup": "Transportation" }, "status": "planned" },
+
+    { "id": "railways", "category": "railway",
+      "match": { "railway": ["rail", "light_rail", "subway", "tram", "monorail", "narrow_gauge", "funicular"] }, "subtypeFrom": "railway",
+      "geometry": ["way"], "label": "Railway systems",
+      "ui": { "filterGroup": "Public Transit", "rotorGroup": "Transportation" }, "status": "planned" },
+
+    { "id": "enhanced-highways", "category": "road",
+      "match": { "highway": ["motorway", "trunk", "primary", "secondary", "motorway_link", "trunk_link", "primary_link", "secondary_link"] }, "subtypeFrom": "highway",
+      "geometry": ["way"], "label": "Major highways",
+      "ui": { "filterGroup": "Roads & Highways", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "airports", "category": "railway",
+      "match": { "railway": "station", "station": "airport" }, "subtype": "airport_station",
+      "geometry": ["node", "area"], "label": "Airport facilities",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "runways", "category": "aeroway",
+      "match": { "aeroway": "runway" }, "subtype": "runway",
+      "geometry": ["way"], "label": "Airport runways",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "taxiways", "category": "aeroway",
+      "match": { "aeroway": ["taxiway", "taxilane"] }, "subtypeFrom": "aeroway",
+      "geometry": ["way"], "label": "Taxiways and taxilanes",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "airport-aprons", "category": "aeroway",
+      "match": { "aeroway": "apron" }, "subtype": "apron",
+      "geometry": ["area"], "label": "Airport aprons",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "airport-terminals", "category": "aeroway",
+      "match": { "aeroway": "terminal" }, "subtype": "terminal",
+      "geometry": ["node", "area"], "label": "Airport terminals",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "airport-gates", "category": "aeroway",
+      "match": { "aeroway": "gate" }, "subtype": "gate",
+      "geometry": ["node"], "label": "Airport gates",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "helipads", "category": "aeroway",
+      "match": { "aeroway": ["helipad", "heliport"] }, "subtypeFrom": "aeroway",
+      "geometry": ["node", "area"], "label": "Helipads and heliports",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "hangars", "category": "aeroway",
+      "match": { "aeroway": "hangar" }, "subtype": "hangar",
+      "geometry": ["node", "area"], "label": "Aircraft hangars",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "windsocks", "category": "aeroway",
+      "match": { "aeroway": ["windsock", "navigationaid", "holding_position", "parking_position"] }, "subtypeFrom": "aeroway",
+      "geometry": ["node", "way"], "label": "Navigation aids and markers",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "jet-bridges", "category": "aeroway",
+      "match": { "aeroway": "jet_bridge" }, "subtype": "jet_bridge",
+      "geometry": ["way", "area"], "label": "Jet bridges",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "terminal-buildings", "category": "building",
+      "match": { "building": "terminal" }, "subtype": "terminal",
+      "geometry": ["area"], "label": "Terminal buildings",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "indoor-areas", "category": "indoor",
+      "match": { "indoor": ["area", "yes"] }, "subtype": "area",
+      "geometry": ["area"], "label": "Indoor areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "indoor-corridors", "category": "indoor",
+      "match": { "indoor": "corridor" }, "subtype": "corridor",
+      "geometry": ["way", "area"], "label": "Indoor corridors",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "gate-areas", "category": "indoor",
+      "match": { "room": "gate_area" }, "subtype": "gate_area",
+      "geometry": ["area"], "label": "Gate waiting areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "indoor-rooms", "category": "indoor",
+      "match": { "indoor": "room" }, "subtype": "room",
+      "geometry": ["area"], "label": "Indoor rooms",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "indoor-walls", "category": "indoor",
+      "match": { "indoor": "wall" }, "subtype": "wall",
+      "geometry": ["way"], "label": "Indoor walls",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "seating-areas", "category": "amenity",
+      "match": [ { "amenity": "seating" }, { "amenity": "waiting_area" } ], "subtype": "seating",
+      "geometry": ["node", "area"], "label": "Seating areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "check-in-counters", "category": "amenity",
+      "match": { "amenity": "check_in" }, "subtype": "check_in",
+      "geometry": ["node", "area"], "label": "Check-in counters",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "baggage-drop", "category": "amenity",
+      "match": { "amenity": "baggage_drop" }, "subtype": "baggage_drop",
+      "geometry": ["node", "area"], "label": "Baggage drop-off areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "security-checkpoints", "category": "amenity",
+      "match": [ { "amenity": "security_check" }, { "barrier": "checkpoint" } ], "subtype": "security_check",
+      "geometry": ["node", "area"], "label": "Security checkpoints",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "customs-areas", "category": "amenity",
+      "match": { "amenity": "customs" }, "subtype": "customs",
+      "geometry": ["node", "area"], "label": "Customs areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "immigration-control", "category": "amenity",
+      "match": { "amenity": "immigration" }, "subtype": "immigration",
+      "geometry": ["node", "area"], "label": "Immigration control",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "security-barriers", "category": "barrier",
+      "match": { "barrier": ["gate", "turnstile", "full-height_turnstile"] }, "subtypeFrom": "barrier",
+      "geometry": ["node"], "label": "Security barriers and gates",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "duty-free-shops", "category": "shop",
+      "match": { "shop": "duty_free" }, "subtype": "duty_free",
+      "geometry": ["node", "area"], "label": "Duty-free shops",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "airport-lounges", "category": "amenity",
+      "match": { "amenity": "lounge" }, "subtype": "lounge",
+      "geometry": ["node", "area"], "label": "Airport lounges",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "baggage-claim", "category": "amenity",
+      "match": { "amenity": "baggage_claim" }, "subtype": "baggage_claim",
+      "geometry": ["node", "area"], "label": "Baggage claim areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "lost-property", "category": "amenity",
+      "match": { "amenity": "lost_property" }, "subtype": "lost_property",
+      "geometry": ["node", "area"], "label": "Lost and found",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "terminal-information", "category": "amenity",
+      "match": { "amenity": "information" }, "subtype": "information",
+      "geometry": ["node", "area"], "label": "Terminal information desks",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "family-restrooms", "category": "amenity",
+      "match": { "amenity": "toilets", "toilets:family": "yes" }, "subtype": "toilets",
+      "geometry": ["node", "area"], "label": "Family restrooms",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "terminal-restrooms", "category": "amenity",
+      "match": { "amenity": "toilets" }, "subtype": "toilets",
+      "geometry": ["node", "area"], "label": "Terminal restrooms",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "shower-facilities", "category": "amenity",
+      "match": { "amenity": "shower" }, "subtype": "shower",
+      "geometry": ["node", "area"], "label": "Shower facilities",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "nursing-rooms", "category": "amenity",
+      "match": { "amenity": "nursing_room" }, "subtype": "nursing_room",
+      "geometry": ["node", "area"], "label": "Nursing rooms",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "prayer-rooms", "category": "amenity",
+      "match": { "amenity": "prayer_room" }, "subtype": "prayer_room",
+      "geometry": ["node", "area"], "label": "Prayer rooms",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "smoking-areas", "category": "amenity",
+      "match": { "amenity": "smoking_area" }, "subtype": "smoking_area",
+      "geometry": ["node", "area"], "label": "Designated smoking areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "wheelchair-rental", "category": "amenity",
+      "match": { "amenity": "wheelchair_rental" }, "subtype": "wheelchair_rental",
+      "geometry": ["node", "area"], "label": "Wheelchair rental services",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "animal-relief-areas", "category": "amenity",
+      "match": { "amenity": "animal_relief_area" }, "subtype": "animal_relief_area",
+      "geometry": ["node", "area"], "label": "Service animal relief areas",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "taxi-stands", "category": "amenity",
+      "match": { "amenity": "taxi" }, "subtype": "taxi",
+      "geometry": ["node", "area"], "label": "Taxi stands",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "car-rental", "category": "amenity",
+      "match": { "amenity": "car_rental" }, "subtype": "car_rental",
+      "geometry": ["node", "area"], "label": "Car rental counters",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "airport-bus-terminals", "category": "amenity",
+      "match": { "amenity": "bus_station" }, "subtype": "bus_station",
+      "geometry": ["node", "area"], "label": "Airport bus terminals",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "airport-train-stations", "category": "railway",
+      "match": { "railway": "station", "station": "airport" }, "subtype": "airport_station",
+      "geometry": ["node", "area"], "label": "Airport train stations",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "parking-garages", "category": "amenity",
+      "match": { "amenity": "parking", "parking": "multi-storey" }, "subtype": "parking",
+      "geometry": ["node", "area"], "label": "Parking garages",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "valet-parking", "category": "amenity",
+      "match": { "amenity": "valet_parking" }, "subtype": "valet_parking",
+      "geometry": ["node", "area"], "label": "Valet parking services",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "convenience-stores", "category": "shop",
+      "match": { "shop": "convenience" }, "subtype": "convenience",
+      "geometry": ["node", "area"], "label": "Convenience stores",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "vending-machines", "category": "amenity",
+      "match": { "amenity": "vending_machine" }, "subtype": "vending_machine",
+      "geometry": ["node"], "label": "Vending machines",
+      "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
+
+    { "id": "water-bodies", "category": "water",
+      "match": [ { "natural": "water" }, { "natural": "bay" }, { "landuse": ["reservoir", "basin"] }, { "amenity": "fountain" } ], "subtype": "water_body",
+      "geometry": ["area"], "label": "Water bodies",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "beaches", "category": "natural",
+      "match": { "natural": "beach" }, "subtype": "beach",
+      "geometry": ["node", "area"], "label": "Beaches",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "coastlines", "category": "water",
+      "match": { "natural": "coastline" }, "subtype": "coastline",
+      "geometry": ["way"], "label": "Coastlines",
+      "ui": { "filterGroup": "Waterways", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "forests", "category": "vegetation",
+      "match": { "landuse": "forest" }, "subtype": "forest",
+      "geometry": ["area"], "label": "Forests",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "woods", "category": "vegetation",
+      "match": { "natural": "wood" }, "subtype": "wood",
+      "geometry": ["area"], "label": "Woods",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "grasslands", "category": "vegetation",
+      "match": [ { "natural": "grassland" }, { "landuse": "meadow" } ], "subtype": "grassland",
+      "geometry": ["area"], "label": "Grasslands",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "trees", "category": "vegetation",
+      "match": [ { "natural": "tree" }, { "natural": "tree_row" } ], "subtypeFrom": "natural",
+      "geometry": ["node", "way"], "label": "Trees",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "cliffs", "category": "natural",
+      "match": { "natural": "cliff" }, "subtype": "cliff",
+      "geometry": ["way"], "label": "Cliffs",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "planned" },
+
+    { "id": "peaks", "category": "natural",
+      "match": { "natural": "peak" }, "subtype": "peak",
+      "geometry": ["node"], "label": "Mountain peaks",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "planned" },
+
+    { "id": "rivers", "category": "water",
+      "match": { "waterway": "river" }, "subtype": "river",
+      "geometry": ["way", "area"], "label": "Rivers",
+      "ui": { "filterGroup": "Waterways", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "streams", "category": "water",
+      "match": { "waterway": "stream" }, "subtype": "stream",
+      "geometry": ["way"], "label": "Streams",
+      "ui": { "filterGroup": "Waterways", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "canals", "category": "water",
+      "match": { "waterway": "canal" }, "subtype": "canal",
+      "geometry": ["way", "area"], "label": "Canals",
+      "ui": { "filterGroup": "Waterways", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "ditches", "category": "water",
+      "match": { "waterway": ["ditch", "drain"] }, "subtypeFrom": "waterway",
+      "geometry": ["way"], "label": "Ditches",
+      "ui": { "filterGroup": "Waterways", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "parks", "category": "park",
+      "match": [ { "leisure": ["park", "garden", "playground", "dog_park", "recreation_ground", "common", "track", "pitch", "water_park", "marina", "nature_reserve"] }, { "landuse": ["recreation_ground", "village_green"] } ], "subtypeFrom": "leisure",
+      "geometry": ["node", "area"], "label": "Parks and recreation",
+      "ui": { "filterGroup": "Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
+
+    { "id": "buildings", "category": "building",
+      "match": { "building": true }, "subtypeFrom": "building",
+      "geometry": ["area"], "label": "Buildings",
+      "ui": { "filterGroup": "Buildings", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "roads", "category": "road",
+      "match": { "highway": ["tertiary", "residential", "service", "unclassified", "pedestrian", "footway", "cycleway", "path", "living_street", "track", "steps", "corridor", "sidewalk", "bridleway", "bus_guideway", "escape", "raceway", "road", "busway", "tertiary_link", "service_link"] }, "subtypeFrom": "highway",
+      "geometry": ["way"], "label": "Roads",
+      "ui": { "filterGroup": "Roads & Highways", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "landuse-generic", "category": "landuse",
+      "match": { "landuse": ["residential", "commercial", "industrial", "retail", "construction", "brownfield", "cemetery", "conservation"] }, "subtypeFrom": "landuse",
+      "geometry": ["area"], "label": "Land use",
+      "ui": { "filterGroup": "Buildings", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "vegetation-generic", "category": "vegetation",
+      "match": [ { "natural": ["scrub", "heath", "fell", "bare_rock", "scree"] }, { "landuse": ["grass", "orchard", "vineyard", "allotments", "farmland"] } ], "subtypeFrom": "natural",
+      "geometry": ["area"], "label": "Vegetation",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "water-generic", "category": "water",
+      "match": [ { "natural": "wetland" }, { "waterway": ["rapids", "waterfall", "dam", "weir", "lock_gate"] } ], "subtypeFrom": "waterway",
+      "geometry": ["way", "area"], "label": "Water features",
+      "ui": { "filterGroup": "Waterways", "rotorGroup": "Natural" }, "status": "implemented" },
+
+    { "id": "sport-generic", "category": "park",
+      "match": { "sport": true }, "subtype": "sport",
+      "geometry": ["node", "way", "area"], "label": "Sports facilities",
+      "ui": { "filterGroup": "Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
+
+    { "id": "parking-generic", "category": "parking",
+      "match": { "amenity": ["parking", "bicycle_parking", "motorcycle_parking"] }, "subtypeFrom": "amenity",
+      "geometry": ["node", "area"], "label": "Parking",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "shops", "category": "shop",
+      "match": { "shop": true }, "subtypeFrom": "shop",
+      "geometry": ["node", "area"], "label": "Shops",
+      "ui": { "filterGroup": "Retail", "rotorGroup": "Commerce" }, "status": "planned" },
+
+    { "id": "barriers", "category": "barrier",
+      "match": { "barrier": true }, "subtypeFrom": "barrier",
+      "geometry": ["node", "way"], "label": "Barriers and obstacles",
+      "ui": { "filterGroup": "Emergency & Safety", "rotorGroup": "Accessibility" }, "status": "implemented" }
+  ]
+}
