@@ -2031,46 +2031,62 @@ class TileBuilder:
         return gz_file
 
     def process_osm_data(self, osm_file):
-        """Process OSM data and generate tiles"""
-        print("Processing OSM data into tiles...")
-        
-        # Import our OSM processor + the taxonomy (loaded once, shared per tile)
+        """Process the OSM extract into tiles.
+
+        The extract is parsed ONCE for the whole region (it used to be re-parsed
+        per tile — ~80x slower); features are then bucketed into the tiles their
+        bounding box overlaps, and each tile renders from its own list.
+        """
+        from collections import defaultdict
         from osm_tile_processor import OSMHandler
         from taxonomy_engine import Taxonomy
+
         taxonomy = Taxonomy.load()
+        print("Parsing OSM extract once for the whole region...", flush=True)
+        handler = OSMHandler(self.bounds, taxonomy)
+        handler.apply_file(str(osm_file), locations=True)
+        features = handler.features
+        print(f"Collected {len(features)} features; bucketing into tiles...", flush=True)
+
+        size = self.tile_size
+        south, west = self.bounds['south'], self.bounds['west']
+        n_lat = max(1, round((self.bounds['north'] - south) / size))
+        n_lng = max(1, round((self.bounds['east'] - west) / size))
+
+        # One pass: assign each feature to every tile its bbox overlaps. Inclusive
+        # floor — a feature is in tiles floor(min)..floor(max); over-including a
+        # tile a feature merely touches is harmless (the tile clip-path trims it),
+        # whereas under-including would leave a gap at a tile edge.
+        buckets = defaultdict(list)
+        for f in features:
+            minlon, minlat, maxlon, maxlat = f['geometry'].bounds
+            i0 = int(math.floor((minlat - south) / size))
+            i1 = int(math.floor((maxlat - south) / size))
+            j0 = int(math.floor((minlon - west) / size))
+            j1 = int(math.floor((maxlon - west) / size))
+            for i in range(max(i0, 0), min(i1, n_lat - 1) + 1):
+                for j in range(max(j0, 0), min(j1, n_lng - 1) + 1):
+                    buckets[(i, j)].append(f)
 
         tiles_created = 0
         tiles_skipped = 0
-
-        # Generate tile grid
-        lat = self.bounds['south']
-        while lat < self.bounds['north']:
-            lng = self.bounds['west']
-            while lng < self.bounds['east']:
-
-                # Get bounds for this tile
-                tile_bounds = self.get_tile_bounds(lat, lng)
-
-                # Process OSM data for this tile
-                handler = OSMHandler(tile_bounds, taxonomy)
-                handler.apply_file(str(osm_file), locations=True)
-
-                # Check if we have any features
-                total_features = len(handler.features)
-                
-                if total_features > 0:
-                    svg = self.create_tile_svg(lat, lng, handler.features)
-                    if svg:
-                        gz_file = self.save_svg_tile(svg, lat, lng)
-                        tiles_created += 1
-                        print(f"\rCreated tile {tiles_created}: {gz_file.name} ({total_features} features)", end='')
+        for i in range(n_lat):
+            for j in range(n_lng):
+                tile_features = buckets.get((i, j))
+                if not tile_features:
+                    tiles_skipped += 1
+                    continue
+                lat = round(south + i * size, 4)
+                lng = round(west + j * size, 4)
+                svg = self.create_tile_svg(lat, lng, tile_features)
+                if svg:
+                    gz_file = self.save_svg_tile(svg, lat, lng)
+                    tiles_created += 1
+                    print(f"\rCreated tile {tiles_created}/{n_lat * n_lng}: {gz_file.name} ({len(tile_features)} features)", end='')
                 else:
                     tiles_skipped += 1
-                
-                lng += self.tile_size
-            lat += self.tile_size
-        
-        print(f"\nGenerated {tiles_created} SVG tiles (skipped {tiles_skipped} empty tiles)")
+
+        print(f"\nGenerated {tiles_created} SVG tiles (skipped {tiles_skipped} empty)")
         return tiles_created
 
     def create_tile_index(self):
