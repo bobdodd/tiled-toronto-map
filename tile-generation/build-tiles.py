@@ -2789,37 +2789,119 @@ class TileBuilder:
         svg.set('data-tile-lng', str(tile_lng))
         svg.set('data-bounds', json.dumps(bounds))
         
-        # Create feature groups
-        feature_groups = {}
-        for feature_type in self.feature_types:
-            group = self.create_svg_element(
-                'g',
-                id=feature_type,
-                class_='layer',
-                clip_path='url(#tile-clip)'
-            )
-            feature_groups[feature_type] = group
-            svg.append(group)
-        
-        # Add features to appropriate groups
+        # Group features into per-base-category layers, rendering each through
+        # its taxonomy classification (base geometry + filterable overlays).
+        layers = {}
+
+        def layer_for(category):
+            if category not in layers:
+                g = self.create_svg_element(
+                    'g', id=category, class_='layer', clip_path='url(#tile-clip)')
+                layers[category] = g
+                svg.append(g)
+            return layers[category]
+
         feature_count = 0
-        for feature_type, feature_list in features.items():
-            if feature_type in feature_groups:
-                for feature in feature_list:
-                    svg_element = self.feature_to_svg(
-                        feature_type, 
-                        feature['geometry'], 
-                        feature['properties'], 
-                        bounds
-                    )
-                    if svg_element is not None:
-                        feature_groups[feature_type].append(svg_element)
-                        feature_count += 1
-        
+        for feature in features:  # flat list from the processor
+            element = self.render_feature(feature, bounds)
+            if element is None:
+                continue
+            cls = feature['classification']
+            category = (cls['base'] or cls['primary'])['category']
+            layer_for(category).append(element)
+            feature_count += 1
+
         if feature_count == 0:
             return None  # Don't create empty tiles
-            
+
         return svg
+
+    # Category token -> the feature_types styling bucket (still keyed by the old
+    # plural/underscore names). Styling stays in the generator for now.
+    _CAT2BUCKET = {
+        'building': 'buildings', 'road': 'roads', 'park': 'parks',
+        'sensory': 'sensory_accessibility', 'facility': 'accessible_facilities',
+        'mobility': 'mobility_access', 'transport': 'accessible_transport',
+    }
+
+    def _style_for(self, category, subtype):
+        styles = self.feature_types.get(self._CAT2BUCKET.get(category, category), {}).get('styles', {})
+        return (styles.get(subtype) or styles.get('default')
+                or {'fill': '#d9d9d9', 'stroke': '#999999', 'stroke_width': 1})
+
+    def _svg_points(self, coords, bounds):
+        # shapely coords are (lon, lat); coord_to_svg takes (lat, lng)
+        return ' '.join(f"{x},{y}" for x, y in
+                        (self.coord_to_svg(c[1], c[0], bounds) for c in coords))
+
+    def _polygon_path(self, polygon, bounds):
+        segments = []
+        for ring in [polygon.exterior] + list(polygon.interiors):
+            pts = [self.coord_to_svg(c[1], c[0], bounds) for c in ring.coords]
+            if len(pts) < 3:
+                continue
+            segments.append(f"M {pts[0][0]},{pts[0][1]} "
+                            + ' '.join(f"L {x},{y}" for x, y in pts[1:]) + " Z")
+        return ' '.join(segments)
+
+    def _geometry_element(self, geom, bounds):
+        gtype = geom.geom_type
+        if gtype == 'Point':
+            x, y = self.coord_to_svg(geom.y, geom.x, bounds)
+            return self.create_svg_element('circle', cx=x, cy=y, r=5)
+        if gtype == 'LineString':
+            pts = self._svg_points(geom.coords, bounds)
+            return self.create_svg_element('polyline', points=pts, fill='none') if pts else None
+        if gtype == 'Polygon':
+            pts = self._svg_points(geom.exterior.coords, bounds)
+            return self.create_svg_element('polygon', points=pts) if pts else None
+        if gtype == 'MultiPolygon':
+            d = ' '.join(filter(None, (self._polygon_path(p, bounds) for p in geom.geoms)))
+            return self.create_svg_element('path', d=d) if d else None
+        return None
+
+    def render_feature(self, feature, bounds):
+        """Render one classified feature: its base geometry + style, wrapped in
+        a group carrying the primary class plus every overlay class (so the
+        path/footprint stays itself AND is filterable by each overlay), an img
+        role, and an accessible label that includes the overlay attributes."""
+        cls = feature['classification']
+        primary = cls['primary']
+        if primary is None:
+            return None
+        shape = self._geometry_element(feature['geometry'], bounds)
+        if shape is None:
+            return None
+
+        style = self._style_for(primary['category'], primary['subtype'])
+        if shape.get('fill') != 'none' and style.get('fill') is not None:
+            shape.set('fill', style['fill'])
+        if style.get('stroke') is not None:
+            shape.set('stroke', style['stroke'])
+        if style.get('stroke_width') is not None:
+            shape.set('stroke-width', str(style['stroke_width']))
+        if style.get('dasharray'):
+            shape.set('stroke-dasharray', style['dasharray'])
+
+        props = feature['properties']
+        # primary class + every overlay class, flattened + de-duplicated
+        tokens = []
+        for sc in [primary['svgClass']] + [o['svgClass'] for o in cls['overlays']]:
+            for tok in sc.split():
+                if tok not in tokens:
+                    tokens.append(tok)
+        bucket = self._CAT2BUCKET.get(primary['category'], primary['category'])
+        base_label = (self.generate_aria_label(bucket, props)
+                      or primary.get('label') or primary['category'].replace('-', ' ').title())
+        overlay_labels = [o['label'] for o in cls['overlays'] if o.get('label')]
+        aria = f"{base_label}. {', '.join(overlay_labels)}" if overlay_labels else base_label
+
+        group = self.create_svg_element('g', class_=' '.join(tokens), role='img', aria_label=aria)
+        group.set('data-osm-id', str(props.get('osm_id', '')))
+        if cls['overlays']:
+            group.set('data-overlays', ' '.join(o['id'] for o in cls['overlays']))
+        group.append(shape)
+        return group
 
     def save_svg_tile(self, svg, tile_lat, tile_lng):
         """Save SVG tile to compressed file"""
@@ -2854,27 +2936,29 @@ class TileBuilder:
         """Process OSM data and generate tiles"""
         print("Processing OSM data into tiles...")
         
-        # Import our OSM processor
+        # Import our OSM processor + the taxonomy (loaded once, shared per tile)
         from osm_tile_processor import OSMHandler
-        
+        from taxonomy_engine import Taxonomy
+        taxonomy = Taxonomy.load()
+
         tiles_created = 0
         tiles_skipped = 0
-        
+
         # Generate tile grid
         lat = self.bounds['south']
         while lat < self.bounds['north']:
             lng = self.bounds['west']
             while lng < self.bounds['east']:
-                
+
                 # Get bounds for this tile
                 tile_bounds = self.get_tile_bounds(lat, lng)
-                
+
                 # Process OSM data for this tile
-                handler = OSMHandler(tile_bounds)
+                handler = OSMHandler(tile_bounds, taxonomy)
                 handler.apply_file(str(osm_file), locations=True)
-                
+
                 # Check if we have any features
-                total_features = sum(len(features) for features in handler.features.values())
+                total_features = len(handler.features)
                 
                 if total_features > 0:
                     svg = self.create_tile_svg(lat, lng, handler.features)

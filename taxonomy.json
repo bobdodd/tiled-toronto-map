@@ -790,8 +790,8 @@
       "ui": { "filterGroup": "Aviation", "rotorGroup": "Commerce" }, "status": "implemented" },
 
     { "id": "water-bodies", "category": "water",
-      "match": [ { "natural": "water" }, { "natural": "bay" }, { "landuse": ["reservoir", "basin"] }, { "amenity": "fountain" } ], "subtype": "water_body",
-      "geometry": ["area"], "label": "Water bodies",
+      "match": [ { "natural": ["water", "bay", "beach"] }, { "landuse": ["reservoir", "basin"] }, { "amenity": "fountain" } ], "subtype": "water_body",
+      "geometry": ["node", "area"], "label": "Water bodies",
       "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
 
     { "id": "beaches", "category": "natural",
@@ -870,17 +870,17 @@
       "ui": { "filterGroup": "Roads & Highways", "rotorGroup": "Transportation" }, "status": "implemented" },
 
     { "id": "landuse-generic", "category": "landuse",
-      "match": { "landuse": ["residential", "commercial", "industrial", "retail", "construction", "brownfield", "cemetery", "conservation"] }, "subtypeFrom": "landuse",
+      "match": { "landuse": ["residential", "commercial", "industrial", "retail", "construction", "brownfield", "cemetery", "quarry", "landfill", "railway", "port", "depot", "garages", "religious", "education", "institutional", "military"] }, "subtypeFrom": "landuse",
       "geometry": ["area"], "label": "Land use",
       "ui": { "filterGroup": "Buildings", "rotorGroup": "Buildings" }, "status": "implemented" },
 
     { "id": "vegetation-generic", "category": "vegetation",
-      "match": [ { "natural": ["scrub", "heath", "fell", "bare_rock", "scree"] }, { "landuse": ["grass", "orchard", "vineyard", "allotments", "farmland"] } ], "subtypeFrom": "natural",
+      "match": [ { "natural": ["scrub", "heath", "fell", "bare_rock", "scree", "grassland", "tree_row", "mud"] }, { "landuse": ["grass", "orchard", "vineyard", "allotments", "farmland", "meadow", "greenfield", "conservation", "farmyard", "greenhouse_horticulture", "plant_nursery", "flowerbed"] } ], "subtypeFrom": "natural",
       "geometry": ["area"], "label": "Vegetation",
       "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
 
     { "id": "water-generic", "category": "water",
-      "match": [ { "natural": "wetland" }, { "waterway": ["rapids", "waterfall", "dam", "weir", "lock_gate"] } ], "subtypeFrom": "waterway",
+      "match": [ { "natural": ["wetland", "coastline"] }, { "waterway": ["rapids", "waterfall", "dam", "weir", "lock_gate", "drain", "ditch"] } ], "subtypeFrom": "waterway",
       "geometry": ["way", "area"], "label": "Water features",
       "ui": { "filterGroup": "Waterways", "rotorGroup": "Natural" }, "status": "implemented" },
 
@@ -890,8 +890,8 @@
       "ui": { "filterGroup": "Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
 
     { "id": "parking-generic", "category": "parking",
-      "match": { "amenity": ["parking", "bicycle_parking", "motorcycle_parking"] }, "subtypeFrom": "amenity",
-      "geometry": ["node", "area"], "label": "Parking",
+      "match": [ { "amenity": ["parking", "bicycle_parking", "motorcycle_parking"] }, { "parking": true } ], "subtypeFrom": "amenity",
+      "geometry": ["node", "way", "area"], "label": "Parking",
       "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility" }, "status": "implemented" },
 
     { "id": "shops", "category": "shop",

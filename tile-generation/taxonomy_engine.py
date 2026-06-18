@@ -75,6 +75,14 @@ class Taxonomy:
     def __init__(self, data):
         self.categories = data.get("categories", {})
         self.features = data.get("features", [])
+        # Every tag key referenced by any match rule — a cheap pre-filter so we
+        # skip the vast majority of elements (whose tags touch none of them)
+        # without scanning all features each time.
+        self.match_keys = set()
+        for f in self.features:
+            rules = f["match"] if isinstance(f["match"], list) else [f["match"]]
+            for r in rules:
+                self.match_keys.update(r.keys())
 
     @classmethod
     def load(cls, path=TAXONOMY_FILE):
@@ -107,6 +115,8 @@ class Taxonomy:
 
         geometry is one of 'node' | 'way' | 'area'.
         """
+        if self.match_keys.isdisjoint(tags):
+            return None
         for feature in self.features:
             if geometry not in feature.get("geometry", ["node", "way", "area"]):
                 continue
@@ -124,6 +134,8 @@ class Taxonomy:
 
         Returns None if nothing matches.
         """
+        if self.match_keys.isdisjoint(tags):
+            return None
         base = None
         overlays = []
         for feature in self.features:
