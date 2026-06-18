@@ -1,0 +1,232 @@
+# Tiled Toronto Map — Accessibility & Code Audit
+
+**Date:** 2026-06-18
+**Scope:** The shipped demo in `web-app/` (the canonical tree in the `tiled-toronto-map` repo).
+`demo-clean/` is older, gitignored scratch from the separate `Accessible-Maps` repo and was **not** audited.
+**Reviewed in full:** `web-app/index.html`, `web-app/styles/main.css`, and all eight JS modules in
+`web-app/src/` (`app.js`, `AccessibilityManager.js`, `FilterManager.js`, `FeatureRenderer.js`,
+`MapRenderer.js`, `SVGTileManager.js`, `LocationTracker.js`, `Avatar.js`).
+All findings below were grounded in source and the headline ones spot-verified.
+
+---
+
+## What's already good (keep)
+
+The accessibility *intent* here is real and worth preserving while fixing the wiring:
+
+- `@media (prefers-reduced-motion: reduce)` blocks for the compass and zoom controls.
+- `@media (prefers-contrast: high)` theme and a `@media (prefers-color-scheme: dark)` theme.
+- Compass/zoom targets explicitly sized to 48px against WCAG 2.2 SC 2.5.8 (with comments).
+- Declared `aria-live` regions and a deliberate `role="application"` + `role="document"`
+  "drop back to browse mode" escape-hatch pattern.
+- Visible focus indicators on the controls; the rotor's positive-`tabindex` approach is an
+  **intentional design choice** (narrows + orders keyboard nav) — *not* a bug.
+
+The recurring problem is that these are **half-wired**: the scaffolding is present, the
+connections are broken.
+
+---
+
+## TIER 1 — Core accessible-map promise is broken
+
+### 1. The Rotor is ~94% non-functional ✅ FIXED 2026-06-18
+- **Where:** `web-app/src/AccessibilityManager.js:442` (the `featureSelectors` map in `updateTabOrder`).
+- **Problem:** The rotor panel exposes ~165 **leaf** checkboxes (`rotor-restaurants`,
+  `rotor-museums`, `rotor-banks`, `rotor-cinemas`, …). `getSelectedRotorValues()` strips the
+  `rotor-` prefix to get a value (`restaurants`), but `featureSelectors` is keyed mostly by
+  **category names** (`commerce`, `tourism`, `healthcare`, …) plus a few leaf names. The guard
+  `if (featureSelectors[value])` silently skips any value with no key. Only ~10 leaf values
+  coincide with a key: `buildings, transit, shops, schools, parks, hospitals, pharmacies,
+  worship, addresses, barriers`. **Checking any of the other ~155 rotor categories does
+  nothing** — no `tabindex`, no navigable items, no feedback.
+- **Why it matters:** This is the map's headline screen-reader navigation feature. It is silent
+  for all but a handful of categories. The target `-feature` classes *do* exist in the SVG
+  (verified `restaurant-feature`, `museum-feature`, `bank-feature`, etc.), so this is a
+  key-mismatch, not a missing-render problem.
+- **Fix direction:** Either (a) re-key `featureSelectors` by the leaf names that the checkboxes
+  actually produce, or (b) drive the rotor from the same data model as `FilterManager` (which is
+  correctly keyed 1:1 — see note under Tier 4). Root cause worth recording: the rotor map is
+  keyed by *category*, the checkboxes are *leaf-level*.
+- **Resolution (2026-06-18):** Took option (b). `FilterManager.classMap` is now the single
+  source of truth (exposed as `this.classMap`); `updateTabOrder` derives each rotor target from
+  it by suffixing `-feature` (`.restaurant` → `.restaurant-feature`), with a 3-entry override
+  table for groups named differently (`transit` → `.transit-feature`, `airports` →
+  `.airport-feature`, `enhanced-highways` → `.enhanced-highway-feature`). Adding a filter
+  category now wires the rotor automatically — they can't drift again. Verified by simulation
+  against the 97 real `-feature` groups: **98** categories now resolve (was ~10). Also removed a
+  ~100-line dead `this.featureSelectors` map from the constructor (the stale duplicate, audit
+  Tier 4 / old #10).
+- **Remaining (separate task):** the other **66** leaf categories (airport interiors, indoor
+  rooms, individual wheelchair/mobility tags, per-mode transport) render no navigable
+  `-feature` group, so checking them in the rotor is a harmless no-op. Giving them feature groups
+  belongs with Tier 1 #4 (feature roles) in `FeatureRenderer`.
+
+### 2. The map itself is not keyboard-reachable ⬜
+- **Where:** `web-app/index.html:1163` — `<svg id="map-svg" role="document" focusable="true">`;
+  `web-app/index.html:1162` — `#map-container role="application"` (no `tabindex`).
+- **Problem:** `focusable="true"` is a legacy SVG/IE attribute that does **not** make an element
+  tab-reachable in modern browsers, and no JS adds a `tabindex` to the SVG or the container.
+  The keydown handler is bound to `#map-container` (`app.js:268`) so it only fires when a
+  descendant already has focus (a compass button). The `role="document"`-inside-`role="application"`
+  escape hatch is unreachable because its target can't be focused.
+- **Fix direction:** Add `tabindex="0"` (or programmatic) to the focusable map element; ensure the
+  keydown handler's host can actually receive focus.
+
+### 3. Arrow keys are gated behind Ctrl/Cmd, and bare arrows are swallowed ⬜
+- **Where:** `web-app/src/app.js:275-324`.
+- **Problem:** Panning only runs `if (hasModifier)` (Ctrl/Cmd). A bare `ArrowUp` enters the
+  `case`, skips the pan, but `handled` was initialised `true` (`app.js:270`) and is never reset,
+  so `e.preventDefault()` (`:322`) and `announceMapChange()` (`:323`) still run. Inside a
+  `role="application"` region a plain arrow press therefore cancels default/AT behaviour, moves
+  nothing, and announces an *unchanged* view.
+- **Why it matters:** Inside `role="application"` the SR hands raw arrows to the app — the whole
+  reason to use that role — so bare arrows should pan. The modifier requirement is undiscoverable
+  and the swallow is actively harmful.
+- **Fix direction:** Make bare arrows pan; only set `handled = true` when a pan actually happens.
+
+### 4. Map features have no reliable accessible name ⬜
+- **Where:** `web-app/src/FeatureRenderer.js:280` (and every `renderXxx` method).
+- **Problem:** Each feature is a `<g>` with an `aria-label` but **no `role`** (0 `setAttribute('role'…)`
+  in the file) and no `<title>`. `aria-label` on a roleless `<g>` is inconsistently exposed — many
+  SR/browser pairings ignore it. A name only becomes reliable when the rotor stamps `role="group"`
+  at runtime (`AccessibilityManager.js:506-507`), and per Tier 1 #1 that happens for ~10 categories.
+  Most features announce as nothing / "graphic".
+- **Fix direction:** At render time set `role="img"` (or `graphics-symbol`) on each feature `<g>`
+  *paired* with the existing `aria-label`, ideally plus a child `<title>` as a fallback. This
+  anchors the name independent of the rotor overlay.
+
+### 5. Positive-tabindex collision: two code paths disagree ⬜
+- **Where:** `web-app/src/app.js:1233` (`feature.setAttribute('tabindex', index + 1)`) vs
+  `web-app/src/AccessibilityManager.js:495` (`let tabIndex = 100; // come after UI controls`).
+- **Problem:** The tile path bases feature `tabindex` at 1, colliding with the static control
+  tabindexes **1–17** in the HTML (sidebar-toggle=1 … nav-center=17). The sibling rotor path
+  correctly starts at 100. With equal tabindex values, Tab order falls back to DOM order, so map
+  features interleave with the toolbar.
+- **Fix direction:** Base the tile path at 100 too (e.g. `index + 100`) so it matches the sibling
+  path and clears the control range.
+
+### 6. Three competing live regions; the declared ones go unused ⬜
+- **Where:** declared `#map-announcements` (`index.html:1263`) and `#location-info`
+  (`index.html:1243`); pan/zoom announcements routed to a dynamically-created
+  `#status-live-region` (`app.js:665`); `LocationTracker` builds its own `#location-live-region`
+  (`LocationTracker.js:156`).
+- **Problem:** Pan/zoom text goes to `#status-live-region`; rotor/filter text goes to
+  `#map-announcements`; location goes to a third region, leaving the page's purpose-built
+  `#location-info` dead. Multiple polite regions race each other, and several writers use
+  append-instead-of-clear (e.g. `AccessibilityManager.js:575` `textContent +=`), producing run-on
+  or dropped announcements.
+- **Fix direction:** Consolidate to the two declared regions; use a clear-then-set idiom so
+  identical consecutive messages re-announce and writers don't clobber each other.
+
+---
+
+## TIER 2 — Correctness bugs
+
+### 7. Latitude/longitude swapped on 6 point-marker render paths ⬜
+- **Where:** `web-app/src/FeatureRenderer.js:3301` (and `:3360, :3408, :3446, :3519, :3584`).
+- **Problem:** These call `toSVGCoordinates(coordinates[0], coordinates[1])` = `(lon, lat)`, but
+  the signature is `toSVGCoordinates(lat, lon)` (`:523`) and the correct helper passes
+  `(coordinates[1], coordinates[0])` (`:484`). GeoJSON is `[lon, lat]`. The **point-geometry**
+  variants of bridges, tunnels, towers, masts, piers and breakwaters render at the wrong location.
+- **Fix direction:** Swap the argument order on all six; a copy-paste divergence among the ~80
+  near-identical render methods.
+
+### 8. Dead "Everything" / category-cascade code ⬜
+- **Where:** `web-app/src/AccessibilityManager.js:135-140`.
+- **Problem:** Queries `input[name="rotor-quick"]` and `input[name="rotor-category"]`, but **no
+  `<input>` in the page has a `name` attribute** (the only `name=` is the viewport meta). The
+  "Everything" shortcut and the cascade never run.
+- **Fix direction:** Either add the `name` attributes the code expects, or drive these from the
+  checkbox `id`s like the rest.
+
+### 9. Tile failures are swallowed and reported as success ⬜
+- **Where:** `web-app/src/SVGTileManager.js:94` (`loadTile` catches → returns `null`),
+  `:222` (`cancelAllRequests` just `.clear()`s).
+- **Problem:** Failed tiles (404 / decompress error) are filtered out, then app.js announces
+  "Map loaded. N tiles available" counting only the survivors — failures are invisible.
+  `cancelAllRequests()` has no `AbortController`, so fast panning duplicates in-flight fetches
+  instead of cancelling them.
+- **Fix direction:** Surface partial-load failures to the user; add an `AbortController` for real
+  cancellation.
+
+### 10. Dead CSS from a shell-escaping artifact ⬜
+- **Where:** `web-app/styles/main.css:1727-1737`.
+- **Problem:** The WCAG-debug rules contain `opacity: 0.3 \!important;` (six `\!important`). The
+  literal backslash makes each declaration invalid, so all six rules are dropped by the parser.
+  Looks like the file was written through a shell that escaped `!`.
+- **Fix direction:** Remove the backslashes (or the whole debug block if unused).
+
+---
+
+## TIER 3 — Accessibility quality
+
+### 11. Tiny filter text and sub-24px targets ⬜
+- **Where:** `web-app/styles/main.css:1588` (`.filter-sub-accordion-header` 0.5625rem = 9px),
+  `:257` (category titles 10px); labels use `white-space: nowrap; text-overflow: ellipsis`.
+- **Problem:** Filter labels at 9–10px, clipped with ellipsis; checkbox rows are well under the
+  WCAG 2.2 SC 2.5.8 24×24px minimum. The filtering UI — the primary interaction — is hard to read
+  and hit, ironic next to the carefully-sized 48px compass.
+- **Fix direction:** Raise label sizes to a readable floor; enlarge the clickable row to ≥24px;
+  allow wrapping or full labels.
+
+### 12. Dark-mode / high-contrast cover ~10 of ~80 feature classes ⬜
+- **Where:** `web-app/styles/main.css:650-666` (dark) and `:804-833` (high-contrast).
+- **Problem:** Features get hardcoded `fill`/`stroke` attributes (CSS-overridable), but the
+  adaptive blocks only style `building, road, road-casing, park` (dark) plus a few more in
+  high-contrast. Every other class (water, forest, rivers, bridges `#8e9aaf`, all POIs…) keeps its
+  mid-tone colour, so most of the map doesn't adapt and fails the contrast floor in those modes.
+- **Fix direction:** Extend the dark/high-contrast overrides to every rendered feature class, or
+  drive feature colours from CSS custom properties that the media queries re-theme.
+
+### 13. Avatar pulse ignores reduced-motion (and a dead CSS keyframe) ⬜
+- **Where:** `web-app/src/Avatar.js:260` (SMIL `<animate repeatCount="indefinite">` on `r`);
+  `web-app/styles/main.css:1752` (`@keyframes avatarPulse`, never applied — no `animation:` ref).
+- **Problem:** The indefinite pulse runs for reduced-motion users; no `matchMedia` gate in JS, and
+  the CSS keyframe that *was* written is orphaned.
+- **Fix direction:** Gate the SMIL animation on `prefers-reduced-motion`; delete or wire up the
+  orphaned keyframe.
+
+### 14. `role="toolbar"` misused; no skip link ⬜
+- **Where:** `web-app/index.html:11`.
+- **Problem:** A text input, fieldsets, accordions and 300+ checkboxes inside `role="toolbar"`,
+  which implies a flat set of buttons with arrow-key roving — mis-setting AT expectations. There's
+  also no skip link past the huge sidebar to the map.
+- **Fix direction:** Use a `<nav>`/region landmark instead of `toolbar`; add a "skip to map" link.
+
+---
+
+## TIER 4 — Hygiene / maintainability
+
+- **Debug panel shipped** in the demo HTML (`index.html:1249`) with `style="display:none"` and
+  **New York default coords** (40.7128, −74.0060) on a Toronto map; `debug-tiles.html` is also
+  committed. ⬜
+- **~550 lines of duplicated markup** — the Filters and Rotor panels are near-identical trees
+  differing only by `filter-`/`rotor-` id prefix; most of the 100KB `index.html` is this
+  duplication, and it's where the two trees drift out of sync. ⬜
+- **Inline styles for show/hide** throughout (`element.style.display/.opacity/.cursor`); the filter
+  system toggles `display` inline — against the no-inline-styles principle. ⬜
+- **`order.indexOf(...) || 999`** sorts motorways as unknown (`FeatureRenderer.js:296` — `indexOf`
+  returns 0 for the first element, `0 || 999` → 999). ⬜
+- **Zoom range mismatch:** URL `?zoom` validated to 10–20 (`app.js:1430`) but renderer clamps
+  15–23 (`MapRenderer.js:67`). ⬜
+- **`handleResize` re-renders and wipes all tiles** (`MapRenderer.js:337`). ⬜
+- **Not `aria-hidden`:** the accordion `▼` arrow glyphs (every header) and two emoji `<text>`
+  markers (`FeatureRenderer.js:3320` bridge 🌉, `:3381` tunnel ⚫). ⬜
+- **`console.log`/`console.warn` on the normal load path** (`SVGTileManager.js:34, 123, 170`;
+  `app.js:1398-1424`). ⬜
+
+> **Useful contrast:** `FilterManager` is the *correct* model to emulate — its 164 filter keys map
+> 1:1 to the `filter-*` checkbox ids and all have a class mapping; show/hide logic is non-inverted
+> (`FilterManager.js:422`). The rotor's brokenness (Tier 1 #1) is precisely that it did *not* reuse
+> this model.
+
+---
+
+## Suggested fix order
+
+1. **#1 Rotor selector map** — restores the headline feature.
+2. **#2 + #3 Make the map focusable and ungate bare arrows** — restores keyboard navigation.
+3. **#4 Feature roles** — makes features reliably named.
+4. **#5 tabindex base** + **#6 live-region consolidation** — fixes order + announcements.
+5. **#7 lat/lon swap** + **#8 dead code** + **#10 dead CSS** — quick correctness wins.
+6. Tier 3 (contrast/targets/motion) then Tier 4 (hygiene).

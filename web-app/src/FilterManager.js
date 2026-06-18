@@ -222,8 +222,11 @@ export class FilterManager {
     }
     
     updateVisibility(featureType, visible) {
-        // Map feature types to CSS classes
-        const classMap = {
+        // Map feature types to CSS classes. Memoised on the instance so it also
+        // serves as the single source of truth the rotor derives its keyboard
+        // targets from (see AccessibilityManager.updateTabOrder) — adding a
+        // category here makes it work for BOTH filtering and rotor navigation.
+        this.classMap = this.classMap || {
             buildings: '.building',
             roads: '.road, .road-casing',  // Include both road and casing
             transit: '.transit-stop',
@@ -414,7 +417,7 @@ export class FilterManager {
             'coastlines': '.coastline'
         };
         
-        const selector = classMap[featureType];
+        const selector = this.classMap[featureType];
         if (!selector) return;
         
         const elements = document.querySelectorAll(selector);
