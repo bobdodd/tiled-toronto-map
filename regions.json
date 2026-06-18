@@ -1,0 +1,30 @@
+{
+  "_comment": "Single source of truth for map regions. Each region is an independent tile set: its own local directory, its own published location (/srv/tiles/<id>/ served at baseUrl), and its own geographic bounds. Add a region here, generate its tiles, publish — that's the whole workflow. SSH connection details (shared across regions) live in tile-studio/config.json.",
+  "activeRegion": "toronto",
+  "regions": [
+    {
+      "id": "toronto",
+      "label": "Toronto",
+      "localDir": "tile-generation/toronto-svg-tiles",
+      "remotePath": "/srv/tiles/toronto/",
+      "baseUrl": "https://tiles.a11ybob.com/toronto/",
+      "source": "tile-generation/toronto-svg-tiles/data/toronto-area.osm.pbf",
+      "bounds": { "north": 43.70, "south": 43.63, "east": -79.26, "west": -79.40 },
+      "center": { "lat": 43.655, "lng": -79.375 },
+      "defaultZoom": 17,
+      "tileSize": 0.01
+    },
+    {
+      "id": "vancouver",
+      "label": "Vancouver (YVR)",
+      "localDir": "tile-generation/vancouver-svg-tiles",
+      "remotePath": "/srv/tiles/vancouver/",
+      "baseUrl": "https://tiles.a11ybob.com/vancouver/",
+      "source": "tile-generation/toronto-svg-tiles/data/yvr-area.osm.pbf",
+      "bounds": { "north": 49.24, "south": 49.17, "east": -123.15, "west": -123.22 },
+      "center": { "lat": 49.195, "lng": -123.18 },
+      "defaultZoom": 16,
+      "tileSize": 0.01
+    }
+  ]
+}

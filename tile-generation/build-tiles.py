@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Toronto SVG Tile Generator
-Downloads OSM data for Greater Toronto Area and converts to accessible SVG tiles
+SVG Tile Generator
+Builds accessible SVG map tiles for a region defined in regions.json.
+Run: python build-tiles.py --region <id>   (default: regions.json activeRegion).
 """
 
 import os
 import sys
 import json
+import argparse
 import gzip
 import math
 import requests
@@ -27,30 +29,43 @@ except ImportError:
     from shapely.ops import transform
     import pyproj
 
-class TorontoTileBuilder:
-    def __init__(self):
-        self.output_dir = Path("toronto-svg-tiles")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+REGIONS_FILE = PROJECT_ROOT / "regions.json"
+
+
+def resolve_region(region_id=None):
+    """Look up a region in regions.json by id (default: its activeRegion)."""
+    if not REGIONS_FILE.exists():
+        sys.exit(f"regions.json not found at {REGIONS_FILE}")
+    data = json.loads(REGIONS_FILE.read_text())
+    by_id = {r["id"]: r for r in data.get("regions", [])}
+    if not by_id:
+        sys.exit("regions.json defines no regions.")
+    rid = region_id or data.get("activeRegion") or next(iter(by_id))
+    if rid not in by_id:
+        sys.exit(f"Unknown region '{rid}'. Available: {', '.join(by_id)}")
+    return by_id[rid]
+
+
+class TileBuilder:
+    def __init__(self, region):
+        self.region = region
+        # All geography and paths come from the region (regions.json) — nothing
+        # city-specific is baked into this builder.
+        self.output_dir = PROJECT_ROOT / region["localDir"]
         self.tiles_dir = self.output_dir / "tiles"
         self.data_dir = self.output_dir / "data"
-        
-        # Expanded to 36 tiles (6x6 grid) shifted north to avoid Lake Ontario
-        # This gives us approximately 6km x 6km area to explore with more land
-        # Center tile is now 43.650_-79.380 (one tile north of original)
-        self.gta_bounds = {
-            'north': 43.69,  # 4 tiles north of 43.65
-            'south': 43.63,  # 2 tiles south of 43.65
-            'east': -79.34,  # 4 tiles east of -79.38
-            'west': -79.40   # 2 tiles west of -79.38
-        }
-        
+        self.bounds = region["bounds"]
+        self.source = (PROJECT_ROOT / region["source"]) if region.get("source") else None
+
         # Tile size in degrees (roughly 1km squares)
-        self.tile_size = 0.01
-        
+        self.tile_size = region.get("tileSize", 0.01)
+
         # SVG viewport size
         self.svg_size = 1000
-        
+
         # Create directories
-        self.output_dir.mkdir(exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         self.tiles_dir.mkdir(exist_ok=True)
         self.data_dir.mkdir(exist_ok=True)
         
@@ -681,74 +696,42 @@ class TorontoTileBuilder:
             }
         }
 
-    def download_toronto_data(self):
-        """Download Toronto OSM data from Geofabrik"""
-        print("Checking for Toronto OSM data...")
-        
-        # Use the existing toronto-svg-tiles directory
-        existing_data_dir = Path("/Users/bob3/Desktop/Maps/toronto-svg-tiles/data")
-        osm_file = existing_data_dir / "toronto.osm.pbf"
-        
-        if osm_file.exists():
-            print(f"Using existing {osm_file}")
-            return osm_file
-        
-        # Fallback to downloading if needed
-        osm_file = self.data_dir / "toronto.osm.pbf"
-        if osm_file.exists():
-            print(f"Using existing {osm_file}")
-            return osm_file
-            
-        # Download Ontario data (includes Toronto)
-        url = "https://download.geofabrik.de/north-america/canada/ontario-latest.osm.pbf"
-        
-        print(f"Downloading from {url}...")
-        response = requests.get(url, stream=True)
-        total_size = int(response.headers.get('content-length', 0))
-        
-        with open(osm_file, 'wb') as f:
-            downloaded = 0
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size > 0:
-                        percent = (downloaded / total_size) * 100
-                        print(f"\rProgress: {percent:.1f}%", end='')
-        
-        print(f"\nDownloaded {osm_file}")
-        return osm_file
+    def get_region_pbf(self):
+        """Return the OSM extract for this region, building it if needed.
 
-    def extract_toronto_area(self, osm_file):
-        """Extract just the Toronto area from the larger Ontario file"""
-        print("Extracting Toronto area...")
-        
-        # Check existing location first
-        existing_data_dir = Path("/Users/bob3/Desktop/Maps/toronto-svg-tiles/data")
-        toronto_file = existing_data_dir / "toronto-area.osm.pbf"
-        
-        if toronto_file.exists():
-            print(f"Using existing {toronto_file}")
-            return toronto_file
-            
-        toronto_file = self.data_dir / "toronto-area.osm.pbf"
-        if toronto_file.exists():
-            print(f"Using existing {toronto_file}")
-            return toronto_file
-        
-        # Use osmium to extract bounding box
-        bounds = f"{self.gta_bounds['west']},{self.gta_bounds['south']},{self.gta_bounds['east']},{self.gta_bounds['north']}"
-        
-        cmd = f"osmium extract -b {bounds} {osm_file} -o {toronto_file}"
-        print(f"Running: {cmd}")
-        
-        result = os.system(cmd)
-        if result != 0:
-            print("Error: osmium extract failed. Install with: apt-get install osmium-tool")
-            sys.exit(1)
-            
-        print(f"Extracted to {toronto_file}")
-        return toronto_file
+        Fast path: the region's "source" extract already exists (the common
+        case). Otherwise, if the region defines "osmSource" (a larger .osm.pbf
+        to carve the bounds out of), extract it with osmium; else explain what
+        to provide.
+        """
+        if self.source and self.source.exists():
+            print(f"Using region extract: {self.source}")
+            return self.source
+
+        target = self.source or (self.data_dir / f"{self.region['id']}-area.osm.pbf")
+        osm_source = self.region.get("osmSource")
+        if not osm_source:
+            sys.exit(
+                f"No OSM data for region '{self.region['id']}'.\n"
+                f"  Either place an extract at: {target}\n"
+                f"  or set \"osmSource\" in regions.json (path to a larger "
+                f".osm.pbf to extract the region bounds from)."
+            )
+
+        big = Path(osm_source)
+        if not big.is_absolute():
+            big = PROJECT_ROOT / big
+        if not big.exists():
+            sys.exit(f"osmSource not found: {big}")
+
+        b = self.bounds
+        bbox = f"{b['west']},{b['south']},{b['east']},{b['north']}"
+        cmd = f"osmium extract --overwrite -b {bbox} {big} -o {target}"
+        print(f"Extracting region bounds: {cmd}")
+        if os.system(cmd) != 0:
+            sys.exit("Error: osmium extract failed (install osmium-tool).")
+        print(f"Extracted to {target}")
+        return target
 
     def get_tile_bounds(self, tile_lat, tile_lng):
         """Get the geographic bounds for a tile"""
@@ -775,7 +758,11 @@ class TorontoTileBuilder:
         """Create SVG element with attributes"""
         element = Element(tag)
         for key, value in attrs.items():
-            element.set(key.replace('_', '-'), str(value))
+            # A single trailing underscore is Python's escape for reserved words
+            # (class_ -> class); strip it before hyphenating the rest
+            # (stroke_width -> stroke-width). Previously this emitted "class-".
+            attr = key[:-1] if key.endswith('_') else key
+            element.set(attr.replace('_', '-'), str(value))
         return element
 
     def feature_to_svg(self, feature_type, geometry, properties, bounds):
@@ -2874,10 +2861,10 @@ class TorontoTileBuilder:
         tiles_skipped = 0
         
         # Generate tile grid
-        lat = self.gta_bounds['south']
-        while lat < self.gta_bounds['north']:
-            lng = self.gta_bounds['west']
-            while lng < self.gta_bounds['east']:
+        lat = self.bounds['south']
+        while lat < self.bounds['north']:
+            lng = self.bounds['west']
+            while lng < self.bounds['east']:
                 
                 # Get bounds for this tile
                 tile_bounds = self.get_tile_bounds(lat, lng)
@@ -2911,7 +2898,7 @@ class TorontoTileBuilder:
         tiles = list(self.tiles_dir.glob("*.svg.gz"))
         
         index = {
-            'bounds': self.gta_bounds,
+            'bounds': self.bounds,
             'tile_size': self.tile_size,
             'svg_size': self.svg_size,
             'total_tiles': len(tiles),
@@ -3030,35 +3017,53 @@ class TorontoTileBuilder:
 
     def build_tiles(self):
         """Main build process"""
-        print("Starting Toronto SVG tile generation...")
-        
-        # Step 1: Download data
-        osm_file = self.download_toronto_data()
-        
-        # Step 2: Extract Toronto area
-        toronto_file = self.extract_toronto_area(osm_file)
-        
-        # Step 3: Process into tiles
-        tile_count = self.process_osm_data(toronto_file)
-        
-        # Step 4: Create index
+        print(f"Building SVG tiles for region: {self.region['label']} ({self.region['id']})")
+
+        # Step 1: get the region's OSM extract
+        region_pbf = self.get_region_pbf()
+
+        # Step 2: Process into tiles
+        tile_count = self.process_osm_data(region_pbf)
+
+        # Step 3: Create index
         index = self.create_tile_index()
-        
-        # Step 5: Generate CSS
+
+        # Step 4: Generate CSS
         self.generate_sample_css()
-        
+
         print(f"\n✅ Build complete!")
         print(f"Generated {tile_count} SVG tiles")
         print(f"Total size: {sum(f.stat().st_size for f in self.tiles_dir.glob('*.svg.gz')) / 1024 / 1024:.1f} MB")
         print(f"Output directory: {self.output_dir}")
-        
+
         return self.output_dir
 
-if __name__ == "__main__":
-    builder = TorontoTileBuilder()
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Build accessible SVG map tiles for a region defined in regions.json.")
+    parser.add_argument("--region", help="Region id from regions.json (default: its activeRegion).")
+    parser.add_argument("--check", action="store_true",
+                        help="Resolve the region and print its config, without building.")
+    args = parser.parse_args()
+
+    region = resolve_region(args.region)
+
+    if args.check:
+        b = region["bounds"]
+        src = (PROJECT_ROOT / region["source"]) if region.get("source") else "(none)"
+        print(f"Region:    {region['label']} ({region['id']})")
+        print(f"Output:    {PROJECT_ROOT / region['localDir']}")
+        print(f"Source:    {src}")
+        print(f"Bounds:    N {b['north']}  S {b['south']}  E {b['east']}  W {b['west']}")
+        print(f"Tile size: {region.get('tileSize', 0.01)}")
+        return
+
+    builder = TileBuilder(region)
     output_dir = builder.build_tiles()
-    
-    print(f"\nNext steps:")
-    print(f"1. Upload {output_dir} to your SiteGround hosting")
-    print(f"2. Update your web app to use SVG tiles instead of OSM API")
-    print(f"3. Test accessibility features with screen readers")
+
+    print(f"\nNext: publish '{output_dir.name}' with Tile Studio (Publish pane).")
+
+
+if __name__ == "__main__":
+    main()
