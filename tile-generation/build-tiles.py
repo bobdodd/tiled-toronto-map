@@ -20,14 +20,14 @@ from xml.dom import minidom
 
 try:
     import osmium
-    from shapely.geometry import Point, LineString, Polygon
+    from shapely.geometry import Point, LineString, Polygon, box
     from shapely.ops import transform
     import pyproj
 except ImportError:
     print("Installing required packages...")
     os.system("pip install osmium-tool shapely pyproj requests")
     import osmium
-    from shapely.geometry import Point, LineString, Polygon
+    from shapely.geometry import Point, LineString, Polygon, box
     from shapely.ops import transform
     import pyproj
 
@@ -1994,7 +1994,18 @@ class TileBuilder:
         primary = cls['primary']
         if primary is None:
             return None, None
-        shape = self._geometry_element(feature['geometry'], bounds)
+        # Clip the geometry to this tile (+ a small margin so strokes that cross a
+        # boundary stay continuous; the viewer trims the margin). Each tile then
+        # carries only its own slice of a feature instead of the feature's full
+        # extent — a large node-count reduction, and it's what makes huge features
+        # (e.g. Lake Ontario) affordable instead of bloating every tile they touch.
+        margin = 0.0005
+        clip_box = box(bounds['west'] - margin, bounds['south'] - margin,
+                       bounds['east'] + margin, bounds['north'] + margin)
+        geom = feature['geometry'].intersection(clip_box)
+        if geom.is_empty:
+            return None, None
+        shape = self._geometry_element(geom, bounds)
         if shape is None:
             return None, None
 
@@ -2082,6 +2093,76 @@ class TileBuilder:
         
         return gz_file
 
+    # Accessibility-relevant OSM tags, indexed as filterable search fields.
+    _A11Y_KEYS = (
+        'wheelchair', 'wheelchair:description', 'toilets:wheelchair',
+        'tactile_paving', 'tactile_writing', 'braille',
+        'ramp', 'ramp:wheelchair', 'handrail', 'incline', 'kerb', 'step_count',
+        'automatic_door', 'door', 'entrance',
+        'hearing_loop', 'audio_loop', 'induction_loop', 'blind', 'deaf',
+    )
+    # Categories whose features are findable even without a name (POIs).
+    _SEARCH_POI_CATS = frozenset({
+        'amenity', 'shop', 'facility', 'sensory', 'mobility', 'transport',
+        'transit', 'historic', 'tourism', 'religious', 'man_made', 'park',
+    })
+
+    def write_search_index(self, features):
+        """Emit one NDJSON search document per findable feature — named things,
+        POIs (washrooms, post boxes, benches...) and addresses — for bulk-loading
+        into OpenSearch. OSM accessibility tags are indexed as filterable fields
+        and a geo_point is included for distance/sort. Built from the same single
+        parse as the tiles, so search and map can never drift apart."""
+        search_dir = self.output_dir / 'search'
+        search_dir.mkdir(exist_ok=True)
+        out = search_dir / 'map-features.ndjson'
+        n = 0
+        with open(out, 'w', encoding='utf-8') as fh:
+            for f in features:
+                props = f['properties']
+                cls = f['classification']
+                primary = cls.get('primary')
+                overlays = cls.get('overlays', [])
+                name = props.get('name')
+                addr = {k[5:]: v for k, v in props.items() if k.startswith('addr:')}
+                cats = {primary['category'] if primary else None} | {o['category'] for o in overlays}
+                is_poi = bool(cats & self._SEARCH_POI_CATS)
+                if not (name or addr.get('housenumber') or addr.get('street') or is_poi):
+                    continue  # generic unnamed base geometry — not findable
+                c = f['geometry'].centroid
+                if c.is_empty:
+                    continue
+                # Prefer a real "place" POI for display/category over the base type
+                # or a property-marker like the wheelchair-status (mobility) overlay.
+                lead = next((o for o in overlays
+                             if o['category'] in self._SEARCH_POI_CATS and o['category'] != 'mobility'),
+                            None) or primary
+                # Deduplicate labels (a POI node's primary IS its first overlay).
+                labels = list(dict.fromkeys(
+                    e['label'] for e in ([primary] + overlays) if e and e.get('label')))
+                addr_str = ' '.join(filter(None, (addr.get('housenumber'), addr.get('street'))))
+                access = {k.replace(':', '_'): props[k] for k in self._A11Y_KEYS if k in props}
+                doc = {
+                    'osm_id': props.get('osm_id'),
+                    'name': name,
+                    'display': name or (lead.get('label') if lead else None) or addr_str or 'Feature',
+                    'category': lead['category'] if lead else None,
+                    'subtype': lead.get('subtype') if lead else None,
+                    'types': labels,
+                    'text': ' '.join(filter(None, [name, addr_str] + labels)),
+                    'lat': round(c.y, 6),
+                    'lng': round(c.x, 6),
+                    'location': {'lat': round(c.y, 6), 'lon': round(c.x, 6)},
+                }
+                if addr:
+                    doc['address'] = addr
+                if access:
+                    doc['access'] = access
+                fh.write(json.dumps(doc, ensure_ascii=False) + '\n')
+                n += 1
+        print(f"Search index: wrote {n} documents -> {out}", flush=True)
+        return n
+
     def process_osm_data(self, osm_file):
         """Process the OSM extract into tiles.
 
@@ -2100,22 +2181,28 @@ class TileBuilder:
         features = handler.features
         print(f"Collected {len(features)} features; bucketing into tiles...", flush=True)
 
+        # Build the search index from the SAME parse (named things, POIs and
+        # addresses; accessibility tags as filterable fields) so it can never
+        # drift from the rendered map.
+        self.write_search_index(features)
+
         size = self.tile_size
         south, west = self.bounds['south'], self.bounds['west']
         n_lat = max(1, round((self.bounds['north'] - south) / size))
         n_lng = max(1, round((self.bounds['east'] - west) / size))
 
         # One pass: assign each feature to every tile its bbox overlaps. Inclusive
-        # floor — a feature is in tiles floor(min)..floor(max); over-including a
-        # tile a feature merely touches is harmless (the tile clip-path trims it),
-        # whereas under-including would leave a gap at a tile edge.
+        # floor with a small epsilon — lat/0.01 can land just below an integer in
+        # floating point, so a bare floor would under-include the top edge tile and
+        # leave a one-feature gap; over-including a tile a feature merely touches is
+        # harmless (the generation clip trims it).
         buckets = defaultdict(list)
         for f in features:
             minlon, minlat, maxlon, maxlat = f['geometry'].bounds
-            i0 = int(math.floor((minlat - south) / size))
-            i1 = int(math.floor((maxlat - south) / size))
-            j0 = int(math.floor((minlon - west) / size))
-            j1 = int(math.floor((maxlon - west) / size))
+            i0 = int(math.floor((minlat - south) / size - 1e-6))
+            i1 = int(math.floor((maxlat - south) / size + 1e-6))
+            j0 = int(math.floor((minlon - west) / size - 1e-6))
+            j1 = int(math.floor((maxlon - west) / size + 1e-6))
             for i in range(max(i0, 0), min(i1, n_lat - 1) + 1):
                 for j in range(max(j0, 0), min(j1, n_lng - 1) + 1):
                     buckets[(i, j)].append(f)

@@ -7,6 +7,7 @@ import { Avatar } from './Avatar.js';
 import { TaxonomyClient } from './TaxonomyClient.js';
 import { buildFilterUI } from './FilterUI.js';
 import { setupTooltip } from './Tooltip.js';
+import { SearchManager } from './SearchManager.js';
 
 class MapApplication {
     constructor() {
@@ -74,6 +75,15 @@ class MapApplication {
         // Sticky name tooltip on focus/hover (reads each feature's aria-label).
         // Delegates on #map-svg, so it covers tiles loaded later too.
         setupTooltip();
+
+        // Map search (places / POIs / addresses, with accessibility filters),
+        // backed by the OpenSearch map-features index via a same-origin proxy.
+        // Selecting a result recentres and moves focus onto the actual feature.
+        this.searchManager = new SearchManager({
+            getCenter: () => this.mapRenderer.center,
+            onSelect: (result) => this.goToSearchResult(result),
+            announce: (msg) => this.announceStatus(msg),
+        });
 
         // Set up keyboard navigation
         this.setupKeyboardNavigation();
@@ -663,6 +673,83 @@ class MapApplication {
             // This shouldn't happen, but just in case
             this.announceStatus('No location available');
         }
+    }
+
+    // Search result chosen → recentre on it and move keyboard/screen-reader
+    // focus onto the actual feature in the tile, so the sticky tooltip and focus
+    // outline behave exactly as for ordinary keyboard navigation. Features carry
+    // role="img" + aria-label from the generator, so focusing one announces its
+    // name. Addresses with no drawn feature simply recentre.
+    async goToSearchResult(result) {
+        if (!result || !Number.isFinite(result.lat) || !Number.isFinite(result.lng)) return;
+
+        // Pull in to a readable street-level zoom if we're currently zoomed out.
+        if (this.mapRenderer.zoom < 18) this.mapRenderer.setZoom(18);
+        this.mapRenderer.setCenter(result.lat, result.lng);
+        this.announceStatus(`Showing ${result.display}`);
+
+        const el = await this.waitForFeature(String(result.id), 3000);
+        if (el) {
+            this.focusFeatureElement(el);
+        }
+        // else: the point is recentred but has no labelled feature to focus
+        // (e.g. a bare address node). The recentre is the result.
+    }
+
+    // Resolve the tile feature element for an OSM id, waiting for its tile to
+    // render if needed (setCenter triggers an async tile load). Returns null if
+    // it never appears within the timeout.
+    waitForFeature(osmId, timeoutMs) {
+        const escId = (window.CSS && CSS.escape) ? CSS.escape(osmId) : osmId.replace(/"/g, '\\"');
+        const selector = `#map-tiles [data-osm-id="${escId}"]`;
+        const pick = () => this.bestFeatureMatch(document.querySelectorAll(selector));
+
+        return new Promise((resolve) => {
+            const existing = pick();
+            if (existing) { resolve(existing); return; }
+
+            const tiles = document.getElementById('map-tiles');
+            if (!tiles) { resolve(null); return; }
+
+            const observer = new MutationObserver(() => {
+                const found = pick();
+                if (found) { observer.disconnect(); clearTimeout(timer); resolve(found); }
+            });
+            observer.observe(tiles, { childList: true, subtree: true });
+
+            const timer = setTimeout(() => { observer.disconnect(); resolve(null); }, timeoutMs);
+        });
+    }
+
+    // A feature clipped across tiles can appear in several loaded tiles. Prefer
+    // an instance currently within the viewport so focus lands on something the
+    // user can see.
+    bestFeatureMatch(nodeList) {
+        const nodes = Array.from(nodeList);
+        if (nodes.length === 0) return null;
+        const vp = this.mapRenderer.svg.getBoundingClientRect();
+        const onScreen = nodes.find((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 &&
+                   r.right > vp.left && r.left < vp.right &&
+                   r.bottom > vp.top && r.top < vp.bottom;
+        });
+        return onScreen || nodes[0];
+    }
+
+    // Move focus onto a feature element. It gets a positive tabindex in a
+    // dedicated "search target" band (above the compass, below the map-feature
+    // band) so its place in the Tab circuit is well-defined; any previous search
+    // target is cleared first. Focusing fires the map's focusin handler, which
+    // draws the outline, and the sticky tooltip, which reads the aria-label.
+    focusFeatureElement(el) {
+        document.querySelectorAll('#map-tiles [data-search-focus]').forEach((prev) => {
+            prev.removeAttribute('tabindex');
+            prev.removeAttribute('data-search-focus');
+        });
+        el.setAttribute('tabindex', '8500');
+        el.setAttribute('data-search-focus', '');
+        el.focus({ preventScroll: true });
     }
 
     setMockLocation() {

@@ -23,20 +23,23 @@
                 <span class="label">Track Location</span>
             </button>
             
-            <!-- Navigation Accordion -->
+            <!-- Search Accordion -->
             <div class="accordion-item">
                 <button class="accordion-header" aria-expanded="false" aria-controls="navigation-content" tabindex="3">
-                    <span class="icon" aria-hidden="true">🧭</span>
-                    <span class="label">Navigation</span>
+                    <span class="icon" aria-hidden="true">🔍</span>
+                    <span class="label">Search</span>
                     <span class="accordion-arrow">▼</span>
                 </button>
                 <div id="navigation-content" class="accordion-content" hidden>
                     <div id="destination-search">
-                        <label for="destination-input">Destination:</label>
-                        <input type="text" id="destination-input" placeholder="Enter destination address" tabindex="4">
+                        <label for="destination-input">Search the map</label>
+                        <!-- No placeholder: muted placeholder text fails AAA 1.4.6
+                             contrast and vanishes on input. A visible hint below
+                             the field, wired with aria-describedby, replaces it. -->
+                        <input type="text" id="destination-input" aria-describedby="search-hint" tabindex="4">
                         <button id="search-button" tabindex="5">Search</button>
+                        <span id="search-hint" class="search-hint">Find a place, address, or feature — a library, a washroom, “123 Main Street”. Tick a box to show only accessible results.</span>
                     </div>
-                    <div id="directions-list" role="list"></div>
                 </div>
             </div>
             
