@@ -486,6 +486,21 @@ main {
     outline-offset: -3px;
 }
 
+/* ---- Non-text contrast: feature boundaries (WCAG 1.4.11) ----
+   The soft OSM fills are kept, but every area feature and road casing gets a
+   mid-GREY boundary that clears 3:1 on the light map background (#e5e3df ~5:1
+   at #5f5f5f). Grey is deliberate: macOS "Invert colours" just flips a grey's
+   luminance so the boundary's contrast survives, whereas a coloured edge can
+   invert into a low-contrast hue (green -> magenta). Road COLOURS are left
+   alone (they carry meaning) — the casing provides their boundary. The high-
+   contrast media query darkens these further. */
+#map-tiles :is(g.building, g.landuse, g.park, g.vegetation, g.water, g.parking,
+               g.religious, g.natural, g.aeroway, g.indoor, g.man_made,
+               g.barrier, g.railway) [stroke]:not([stroke="none"]),
+#map-tiles g.road-casings [stroke]:not([stroke="none"]) {
+    stroke: #5f5f5f;
+}
+
 
 /* Navigation styles within accordion */
 
@@ -806,9 +821,8 @@ main {
         border-top: 2px solid #fff;
     }
     
-    #map-svg {
-        background: #000;
-    }
+    /* Map background for high contrast is set with the feature-boundary block
+       at the end of this file (#ffffff — soft fills + dark edges, invert-safe). */
     
     /* Map FEATURE colours for high contrast are themed in the consolidated block
        at the end of this file (targets the shapes, covers every category). */
@@ -2029,28 +2043,19 @@ body.tooltip-below .poi-tooltip::after {
 }
 
 @media (prefers-contrast: high) {
+    /* KEEP the soft OSM fills; carry the contrast on strong GREY-DARK boundaries
+       instead. A coloured high-contrast edge (the bright green I had before)
+       inverts into a low-contrast hue under macOS "Invert colours" — grey just
+       flips luminance and survives. Near-white background + near-black edges =
+       the maximum luminance boundary; under invert it reads as a dark map with
+       light edges. Road colours are kept (the casing carries their boundary). */
     #map-container,
-    #map-svg { background: #000; }
+    #map-svg { background: #ffffff; }
 
-    #map-tiles {
-        --c-misc-fill:  #000000;  --c-misc-stroke:  #ffffff;
-        --c-water-fill: #0033aa;  --c-water-stroke: #66aaff;
-        --c-bldg-fill:  #000000;  --c-bldg-stroke:  #ffffff;
-        --c-park-fill:  #002b00;  --c-park-stroke:  #00cc00;
-        --c-veg-fill:   #002000;  --c-veg-stroke:   #00aa00;
-        --c-land-fill:  #000000;  --c-land-stroke:  #cccccc;
-        --c-road:       #ffffff;  --c-road-casing:  #000000;
+    #map-tiles :is(g.building, g.landuse, g.park, g.vegetation, g.water, g.parking,
+                   g.religious, g.natural, g.aeroway, g.indoor, g.man_made,
+                   g.barrier, g.railway) [stroke]:not([stroke="none"]),
+    #map-tiles g.road-casings [stroke]:not([stroke="none"]) {
+        stroke: #1a1a1a;
     }
-
-    /* On black, give every filled area a light edge so boundaries read. */
-    #map-tiles [fill]:not([fill="none"])     { fill: var(--c-misc-fill); stroke: var(--c-misc-stroke); }
-    #map-tiles [stroke]:not([stroke="none"]) { stroke: var(--c-misc-stroke); }
-
-    #map-tiles g.water [fill]:not([fill="none"])            { fill: var(--c-water-fill); stroke: var(--c-water-stroke); }
-    #map-tiles g.building [fill]:not([fill="none"])         { fill: var(--c-bldg-fill); stroke: var(--c-bldg-stroke); }
-    #map-tiles g.park [fill]:not([fill="none"])             { fill: var(--c-park-fill); stroke: var(--c-park-stroke); }
-    #map-tiles g.vegetation [fill]:not([fill="none"])       { fill: var(--c-veg-fill); stroke: var(--c-veg-stroke); }
-    #map-tiles g.landuse [fill]:not([fill="none"])          { fill: var(--c-land-fill); stroke: var(--c-land-stroke); }
-    #map-tiles g.road [stroke]:not([stroke="none"])         { stroke: var(--c-road); stroke-width: 2.5; }
-    #map-tiles g.road-casings [stroke]:not([stroke="none"]) { stroke: var(--c-road-casing); }
 }
