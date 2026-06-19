@@ -75,6 +75,10 @@ class Taxonomy:
     def __init__(self, data):
         self.categories = data.get("categories", {})
         self.features = data.get("features", [])
+        # category -> { subtype -> human label } for subtype-specific accessible
+        # names (e.g. building -> {retail: "Retail building"}). The single source
+        # of the type wording, replacing the generator's old hand-coded tables.
+        self.subtype_labels = data.get("subtypeLabels", {})
         # Every tag key referenced by any match rule — a cheap pre-filter so we
         # skip the vast majority of elements (whose tags touch none of them)
         # without scanning all features each time.
@@ -99,13 +103,22 @@ class Taxonomy:
         category = feature["category"]
         subtype = self._subtype(feature, tags)
         svg_class = f"{category} {category}-{subtype}" if subtype else category
+        # A subtype-specific accessible label, if the manifest defines one for
+        # this category/subtype (subtypeLabels) — e.g. building+retail ->
+        # "Retail building". Falls back to the category's "default" entry, then
+        # to the feature's generic label. This is the single source of the type
+        # wording the generator bakes into each feature's aria-label.
+        cat_labels = self.subtype_labels.get(category)
+        label = feature.get("label")
+        if cat_labels and subtype is not None:
+            label = cat_labels.get(subtype) or cat_labels.get("default") or label
         return {
             "id": feature["id"],
             "category": category,
             "subtype": subtype,
             "svgClass": svg_class,
             "layer": self.categories.get(category, {}).get("layer", "base"),
-            "label": feature.get("label"),
+            "label": label,
             "ui": feature.get("ui", {}),
             "status": feature.get("status"),
         }
