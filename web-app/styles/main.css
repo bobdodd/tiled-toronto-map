@@ -670,25 +670,11 @@ main {
         background: #1a1a1a;
     }
     
-    /* Adjust map feature colors for dark mode */
-    .building {
-        fill: #3a3a3a;
-        stroke: #555;
-    }
-    
-    .road {
-        stroke: #4a4a4a;
-    }
-    
-    .road-casing {
-        stroke: #2a2a2a;
-    }
-    
-    .park {
-        fill: #2d4a2d;
-        stroke: #3a5a3a;
-    }
-    
+    /* Map FEATURE colours for dark mode are themed in one consolidated block at
+       the end of this file (targets the shapes, covers every category). These
+       old g-level rules were ineffective — a shape's own fill/stroke attribute
+       wins over a value inherited from its <g>. */
+
     .location-info,
     .debug-panel {
         background: rgba(30, 30, 30, 0.95);
@@ -824,39 +810,9 @@ main {
         background: #000;
     }
     
-    /* High contrast map features */
-    .building {
-        fill: #000;
-        stroke: #fff;
-        stroke-width: 2;
-    }
-    
-    .road {
-        stroke: #fff;
-        stroke-width: 3;
-    }
-    
-    .road-casing {
-        stroke: #000;
-        stroke-width: 5;
-    }
-    
-    .park {
-        fill: #000;
-        stroke: #fff;
-        stroke-width: 2;
-    }
-    
-    .transit-stop,
-    .shop,
-    .school,
-    .worship,
-    .address {
-        fill: #fff;
-        stroke: #000;
-        stroke-width: 2;
-    }
-    
+    /* Map FEATURE colours for high contrast are themed in the consolidated block
+       at the end of this file (targets the shapes, covers every category). */
+
     /* Focus outlines more prominent */
     *:focus {
         outline: 3px solid #ff0;
@@ -2023,4 +1979,78 @@ body.tooltip-below .poi-tooltip::after {
     .nav-s:hover { transform: translateX(-50%); }
     .nav-e:hover,
     .nav-w:hover { transform: translateY(-50%); }
+}
+
+/* ============================================================================
+   Map feature theming — dark mode & high contrast (audit #12).
+
+   Tiles bake each feature's colour as a fill/stroke ATTRIBUTE on the shape, so
+   we recolour the SHAPES — NOT the wrapping <g>, whose inherited value the
+   shape's own attribute would just override (why the old .building{fill} rules
+   did nothing). Each category gets a pair of rules keyed off what the shape
+   already does:
+     [fill]:not([fill="none"])     -> an area  -> recolour fill
+     [stroke]:not([stroke="none"]) -> a line   -> recolour stroke
+   so a road (fill="none") only ever takes the stroke colour, never a fill. A
+   catch-all themes anything not named, so EVERY feature adapts. These rules live
+   ONLY inside the media queries, so the default light map is untouched. Palette
+   is the custom-property block at the top of each mode — tweak there.
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+    #map-container,
+    #map-svg { background: #16191d; }
+
+    #map-tiles {
+        --c-misc-fill:  #31363c;  --c-misc-stroke:  #4a5058;
+        --c-water-fill: #15323f;  --c-water-stroke: #1f4a5e;
+        --c-bldg-fill:  #2b2f36;  --c-bldg-stroke:  #454b54;
+        --c-park-fill:  #1f3a24;  --c-park-stroke:  #2c5233;
+        --c-veg-fill:   #1c3320;  --c-veg-stroke:   #284a2e;
+        --c-land-fill:  #26241f;  --c-land-stroke:  #34302a;
+        --c-road:       #6b7280;  --c-road-casing:  #20242a;
+    }
+
+    #map-tiles [fill]:not([fill="none"])     { fill: var(--c-misc-fill); }
+    #map-tiles [stroke]:not([stroke="none"]) { stroke: var(--c-misc-stroke); }
+
+    #map-tiles g.water [fill]:not([fill="none"])            { fill: var(--c-water-fill); }
+    #map-tiles g.water [stroke]:not([stroke="none"])        { stroke: var(--c-water-stroke); }
+    #map-tiles g.building [fill]:not([fill="none"])         { fill: var(--c-bldg-fill); }
+    #map-tiles g.building [stroke]:not([stroke="none"])     { stroke: var(--c-bldg-stroke); }
+    #map-tiles g.park [fill]:not([fill="none"])             { fill: var(--c-park-fill); }
+    #map-tiles g.park [stroke]:not([stroke="none"])         { stroke: var(--c-park-stroke); }
+    #map-tiles g.vegetation [fill]:not([fill="none"])       { fill: var(--c-veg-fill); }
+    #map-tiles g.vegetation [stroke]:not([stroke="none"])   { stroke: var(--c-veg-stroke); }
+    #map-tiles g.landuse [fill]:not([fill="none"])          { fill: var(--c-land-fill); }
+    #map-tiles g.landuse [stroke]:not([stroke="none"])      { stroke: var(--c-land-stroke); }
+    #map-tiles g.road [stroke]:not([stroke="none"])         { stroke: var(--c-road); }
+    #map-tiles g.road-casings [stroke]:not([stroke="none"]) { stroke: var(--c-road-casing); }
+}
+
+@media (prefers-contrast: high) {
+    #map-container,
+    #map-svg { background: #000; }
+
+    #map-tiles {
+        --c-misc-fill:  #000000;  --c-misc-stroke:  #ffffff;
+        --c-water-fill: #0033aa;  --c-water-stroke: #66aaff;
+        --c-bldg-fill:  #000000;  --c-bldg-stroke:  #ffffff;
+        --c-park-fill:  #002b00;  --c-park-stroke:  #00cc00;
+        --c-veg-fill:   #002000;  --c-veg-stroke:   #00aa00;
+        --c-land-fill:  #000000;  --c-land-stroke:  #cccccc;
+        --c-road:       #ffffff;  --c-road-casing:  #000000;
+    }
+
+    /* On black, give every filled area a light edge so boundaries read. */
+    #map-tiles [fill]:not([fill="none"])     { fill: var(--c-misc-fill); stroke: var(--c-misc-stroke); }
+    #map-tiles [stroke]:not([stroke="none"]) { stroke: var(--c-misc-stroke); }
+
+    #map-tiles g.water [fill]:not([fill="none"])            { fill: var(--c-water-fill); stroke: var(--c-water-stroke); }
+    #map-tiles g.building [fill]:not([fill="none"])         { fill: var(--c-bldg-fill); stroke: var(--c-bldg-stroke); }
+    #map-tiles g.park [fill]:not([fill="none"])             { fill: var(--c-park-fill); stroke: var(--c-park-stroke); }
+    #map-tiles g.vegetation [fill]:not([fill="none"])       { fill: var(--c-veg-fill); stroke: var(--c-veg-stroke); }
+    #map-tiles g.landuse [fill]:not([fill="none"])          { fill: var(--c-land-fill); stroke: var(--c-land-stroke); }
+    #map-tiles g.road [stroke]:not([stroke="none"])         { stroke: var(--c-road); stroke-width: 2.5; }
+    #map-tiles g.road-casings [stroke]:not([stroke="none"]) { stroke: var(--c-road-casing); }
 }

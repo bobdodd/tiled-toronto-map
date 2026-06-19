@@ -254,7 +254,14 @@ export class Avatar {
         pulseCircle.setAttribute('stroke-width', '2');
         pulseCircle.setAttribute('opacity', '0.6');
         pulseCircle.setAttribute('class', 'avatar-pulse');
-        
+
+        // Reduced motion: a CSS rule can't stop a SMIL <animate>, so simply don't
+        // create the indefinite pulse — leave a static marker ring instead.
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            this.element.insertBefore(pulseCircle, this.element.firstChild);
+            return;
+        }
+
         // Add animation
         const animate = document.createElementNS(this.SVG_NS, 'animate');
         animate.setAttribute('attributeName', 'r');
