@@ -28,6 +28,7 @@ export class SVGTileManager {
         this.tileBaseUrl = TILE_BASE + 'tiles/';
         this.indexUrl = TILE_BASE + 'tile-index.json';
         this.tileIndex = null;
+        this.tileVersion = null;
         this.tileCache = new Map();
         this.maxCacheSize = 20;
         this.tileSize = 0.01; // 0.01 degrees per tile (roughly 1km)
@@ -43,7 +44,11 @@ export class SVGTileManager {
             const indexUrl = `${this.indexUrl}?t=${Date.now()}`;
             const response = await fetch(indexUrl);
             this.tileIndex = await response.json();
-            console.log(`Loaded tile index: ${this.tileIndex.tiles?.length || 0} tiles available`);
+            // Content version (from the index, fetched fresh above) appended to
+            // tile URLs so a tile republish busts the browser cache for everyone
+            // — without it, the 24h max-age on stable tile URLs hides updates.
+            this.tileVersion = this.tileIndex.version || null;
+            console.log(`Loaded tile index: ${this.tileIndex.tiles?.length || 0} tiles available (v${this.tileVersion || 'none'})`);
             return this.tileIndex;
         } catch (error) {
             console.error('Failed to load tile index:', error);
@@ -60,7 +65,7 @@ export class SVGTileManager {
 
     getTileUrl(tileId) {
         const tileUrl = this.tileBaseUrl + tileId + '.svg.gz';
-        return tileUrl;
+        return this.tileVersion ? `${tileUrl}?v=${encodeURIComponent(this.tileVersion)}` : tileUrl;
     }
 
     getTilesForBounds(bounds) {
@@ -131,7 +136,7 @@ export class SVGTileManager {
             }
             
             // If not valid SVG and URL suggests gzip, try manual decompression
-            if (url.endsWith('.gz')) {
+            if (/\.gz(\?|$)/.test(url)) {
                 console.log(`Content doesn't look like SVG, attempting manual decompression for ${tileId}`);
                 const arrayBuffer = await response.arrayBuffer();
                 const decompressed = await this.decompressGzip(arrayBuffer);
@@ -146,7 +151,7 @@ export class SVGTileManager {
             }
         } catch (textError) {
             // If reading as text failed, try manual decompression
-            if (url.endsWith('.gz')) {
+            if (/\.gz(\?|$)/.test(url)) {
                 try {
                     const arrayBuffer = await response.arrayBuffer();
                     const decompressed = await this.decompressGzip(arrayBuffer);

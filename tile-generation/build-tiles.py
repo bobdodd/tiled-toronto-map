@@ -12,6 +12,7 @@ import argparse
 import gzip
 import math
 import copy
+import hashlib
 import requests
 from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, tostring
@@ -2174,12 +2175,20 @@ class TileBuilder:
                 except ValueError:
                     continue
         
+        # Content-derived version: a short hash of the tile set (names + sizes).
+        # The viewer appends it to tile URLs (?v=…) so a republish with changed
+        # tiles busts the browser cache, while identical rebuilds keep the same
+        # version (tiles stay cached). Changes only when tile content changes.
+        sig = ''.join(f"{t['file']}:{t['size_bytes']};"
+                      for t in sorted(index['tiles'], key=lambda x: x['file']))
+        index['version'] = hashlib.md5(sig.encode()).hexdigest()[:12]
+
         # Save index
         index_file = self.output_dir / "tile-index.json"
         with open(index_file, 'w') as f:
             json.dump(index, f, indent=2)
-        
-        print(f"Created tile index: {index_file}")
+
+        print(f"Created tile index: {index_file} (version {index['version']})")
         return index
 
     def generate_sample_css(self):
