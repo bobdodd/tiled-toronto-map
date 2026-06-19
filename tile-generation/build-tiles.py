@@ -11,6 +11,7 @@ import json
 import argparse
 import gzip
 import math
+import copy
 import requests
 from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, tostring
@@ -1890,6 +1891,7 @@ class TileBuilder:
         # Group features into per-base-category layers, rendering each through
         # its taxonomy classification (base geometry + filterable overlays).
         layers = {}
+        casing_layers = {}
 
         def layer_for(category):
             if category not in layers:
@@ -1899,13 +1901,28 @@ class TileBuilder:
                 svg.append(g)
             return layers[category]
 
+        def casings_for(category):
+            # A visual-only sub-layer holding every casing for this category,
+            # inserted UNDER all the fills so e.g. road intersections stay
+            # seamless. aria-hidden + pointer-events:none so it never steals the
+            # name or the hover target from the per-feature fill groups.
+            if category not in casing_layers:
+                cg = self.create_svg_element('g', class_=f'{category}-casings')
+                cg.set('aria-hidden', 'true')
+                cg.set('pointer-events', 'none')
+                layer_for(category).insert(0, cg)
+                casing_layers[category] = cg
+            return casing_layers[category]
+
         feature_count = 0
         for feature in features:  # flat list from the processor
-            element = self.render_feature(feature, bounds)
+            element, casing = self.render_feature(feature, bounds)
             if element is None:
                 continue
             cls = feature['classification']
             category = (cls['base'] or cls['primary'])['category']
+            if casing is not None:
+                casings_for(category).append(casing)
             layer_for(category).append(element)
             feature_count += 1
 
@@ -1950,6 +1967,15 @@ class TileBuilder:
         if gtype == 'LineString':
             pts = self._svg_points(geom.coords, bounds)
             return self.create_svg_element('polyline', points=pts, fill='none') if pts else None
+        if gtype == 'MultiLineString':
+            segs = []
+            for line in geom.geoms:
+                pts = [self.coord_to_svg(c[1], c[0], bounds) for c in line.coords]
+                if len(pts) >= 2:
+                    segs.append(f"M {pts[0][0]},{pts[0][1]} "
+                                + ' '.join(f"L {x},{y}" for x, y in pts[1:]))
+            d = ' '.join(segs)
+            return self.create_svg_element('path', d=d, fill='none') if d else None
         if gtype == 'Polygon':
             pts = self._svg_points(geom.exterior.coords, bounds)
             return self.create_svg_element('polygon', points=pts) if pts else None
@@ -1966,20 +1992,45 @@ class TileBuilder:
         cls = feature['classification']
         primary = cls['primary']
         if primary is None:
-            return None
+            return None, None
         shape = self._geometry_element(feature['geometry'], bounds)
         if shape is None:
-            return None
+            return None, None
 
         style = self._style_for(primary['category'], primary['subtype'])
-        if shape.get('fill') != 'none' and style.get('fill') is not None:
-            shape.set('fill', style['fill'])
-        if style.get('stroke') is not None:
-            shape.set('stroke', style['stroke'])
-        if style.get('stroke_width') is not None:
-            shape.set('stroke-width', str(style['stroke_width']))
-        if style.get('dasharray'):
-            shape.set('stroke-dasharray', style['dasharray'])
+        # Two styling schemas. Line features (roads, paths, footways, cycleways,
+        # rail) use color/width/casing/dasharray and are stroked, optionally over
+        # a wider casing drawn underneath. Area/point features use fill/stroke/
+        # stroke-width. The casing (returned separately) goes in a sub-layer under
+        # ALL the fills so road intersections stay seamless.
+        casing = None
+        is_line = shape.tag in ('polyline', 'path') and ('color' in style or 'casing' in style)
+        if is_line:
+            color = style.get('color', style.get('stroke', '#ffffff'))
+            width = style.get('width', style.get('stroke_width', 2))
+            if style.get('casing'):
+                casing = copy.deepcopy(shape)
+                casing.set('fill', 'none')
+                casing.set('stroke', style['casing'])
+                casing.set('stroke-width', str(style.get('casing_width', width + 2)))
+                casing.set('stroke-linecap', 'round')
+                casing.set('stroke-linejoin', 'round')
+            shape.set('fill', 'none')
+            shape.set('stroke', color)
+            shape.set('stroke-width', str(width))
+            shape.set('stroke-linecap', 'round')
+            shape.set('stroke-linejoin', 'round')
+            if style.get('dasharray'):
+                shape.set('stroke-dasharray', style['dasharray'])
+        else:
+            if shape.get('fill') != 'none' and style.get('fill') is not None:
+                shape.set('fill', style['fill'])
+            if style.get('stroke') is not None:
+                shape.set('stroke', style['stroke'])
+            if style.get('stroke_width') is not None:
+                shape.set('stroke-width', str(style['stroke_width']))
+            if style.get('dasharray'):
+                shape.set('stroke-dasharray', style['dasharray'])
 
         props = feature['properties']
         # primary class + every overlay class, flattened + de-duplicated
@@ -1999,7 +2050,7 @@ class TileBuilder:
         if cls['overlays']:
             group.set('data-overlays', ' '.join(o['id'] for o in cls['overlays']))
         group.append(shape)
-        return group
+        return group, casing
 
     def save_svg_tile(self, svg, tile_lat, tile_lng):
         """Save SVG tile to compressed file"""
