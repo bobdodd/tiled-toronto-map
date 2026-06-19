@@ -1157,35 +1157,6 @@ class TileBuilder:
             
         return 'default'
     
-    def determine_amenity_type(self, properties):
-        """Determine specific amenity type from tags"""
-        amenity = properties.get('amenity')
-        if amenity in ['seating', 'bench', 'waiting_area', 'shelter', 
-                      'check_in', 'baggage_drop', 'security_check', 
-                      'customs', 'immigration', 'lounge', 'baggage_claim',
-                      'lost_property', 'information', 'currency_exchange', 
-                      'toilets', 'shower', 'nursing_room', 'prayer_room', 
-                      'smoking_area', 'wheelchair_rental', 'animal_relief_area',
-                      'taxi', 'car_rental', 'bus_station', 'parking',
-                      'valet_parking', 'restaurant', 'fast_food', 'cafe', 
-                      'bar', 'vending_machine']:
-            return amenity
-        return 'default'
-    
-    def determine_barrier_type(self, properties):
-        """Determine specific barrier type from tags"""
-        barrier = properties.get('barrier')
-        if barrier in ['checkpoint', 'gate', 'turnstile', 'full-height_turnstile']:
-            return barrier
-        return 'default'
-    
-    def determine_shop_type(self, properties):
-        """Determine specific shop type from tags"""
-        shop = properties.get('shop')
-        if shop in ['duty_free', 'convenience']:
-            return shop
-        return 'default'
-    
     def determine_railway_type(self, properties):
         """Determine specific railway type from tags"""
         railway = properties.get('railway')
