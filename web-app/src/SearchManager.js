@@ -28,13 +28,15 @@ const API_URL = (() => {
 
 // User-facing accessibility filters → the OSM tags the index stores. Kept short
 // and concrete; the API maps each to "tag present and not an explicit 'no'".
+// Only tags that are actually populated across Toronto get a checkbox — a dead
+// filter is worse than no filter. (An accessible toilet is best found by
+// searching "washroom"/"toilet" and ticking Wheelchair accessible; OSM rarely
+// uses a dedicated toilets:wheelchair tag here.)
 const A11Y_FILTERS = [
     { tag: 'wheelchair', label: 'Wheelchair accessible' },
-    { tag: 'toilets:wheelchair', label: 'Accessible toilet' },
     { tag: 'tactile_paving', label: 'Tactile paving' },
     { tag: 'ramp', label: 'Ramp' },
     { tag: 'handrail', label: 'Handrail' },
-    { tag: 'automatic_door', label: 'Automatic door' },
 ];
 
 // Human phrases for the access values we surface on a result. Only positive
