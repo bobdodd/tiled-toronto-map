@@ -362,13 +362,15 @@ export class AccessibilityManager {
             return;
         }
 
-        // Make ONLY the selected categories keyboard-navigable, in document order.
-        // Positive tabindex is intentional (it narrows + orders map navigation — see
-        // the project's rotor design); start at 100 to come after the UI controls.
+        // Make ONLY the selected categories keyboard-navigable. Positive tabindex
+        // is intentional: it authors the navigation path/circuit through the map
+        // graph (which need not match DOM order) and narrows nav to the rotor's
+        // selection. Start at 9000 — the "map" band, after the header (banner) and
+        // map-controls (complementary) bands — so Tab flows controls -> features.
         // The tile feature groups already carry role="img" + aria-label from the
         // generator, so focusing one announces its name.
         const elements = document.querySelectorAll('#map-tiles ' + selectors.join(', '));
-        let tabIndex = 100;
+        let tabIndex = 9000;
         let count = 0;
         elements.forEach((el) => {
             // Skip features hidden by a base filter.

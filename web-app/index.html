@@ -8,7 +8,7 @@
 </head>
 <body>
     <!-- Control Sidebar -->
-    <div id="control-sidebar" class="control-sidebar" role="toolbar" aria-label="Map controls">
+    <div id="control-sidebar" class="control-sidebar" role="banner">
         <div class="sidebar-header">
             <h1 class="sidebar-title">Map</h1>
             <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="true" tabindex="1">
@@ -33,8 +33,8 @@
                 <div id="navigation-content" class="accordion-content" hidden>
                     <div id="destination-search">
                         <label for="destination-input">Destination:</label>
-                        <input type="text" id="destination-input" placeholder="Enter destination address">
-                        <button id="search-button">Search</button>
+                        <input type="text" id="destination-input" placeholder="Enter destination address" tabindex="4">
+                        <button id="search-button" tabindex="5">Search</button>
                     </div>
                     <div id="directions-list" role="list"></div>
                 </div>
@@ -42,7 +42,7 @@
             
             <!-- Filter Accordion -->
             <div class="accordion-item">
-                <button class="accordion-header" aria-expanded="false" aria-controls="filter-content" tabindex="4">
+                <button class="accordion-header" aria-expanded="false" aria-controls="filter-content" tabindex="100">
                     <span class="icon" aria-hidden="true">🎛️</span>
                     <span class="label">Filters</span>
                     <span class="accordion-arrow">▼</span>
@@ -57,7 +57,7 @@
             
             <!-- Rotor Accordion -->
             <div class="accordion-item">
-                <button class="accordion-header" aria-expanded="false" aria-controls="rotor-content" tabindex="5">
+                <button class="accordion-header" aria-expanded="false" aria-controls="rotor-content" tabindex="4000">
                     <span class="icon" aria-hidden="true">🎯</span>
                     <span class="label">Rotor</span>
                     <span class="accordion-arrow">▼</span>
@@ -67,7 +67,7 @@
                         <legend class="screen-reader-only">Navigate by category or feature type</legend>
                         
                         <!-- Clear All button -->
-                        <button type="button" class="clear-all-rotor" aria-label="Clear all rotor selections">
+                        <button type="button" class="clear-all-rotor" aria-label="Clear all rotor selections" tabindex="4001">
                             <span class="icon" aria-hidden="true">🗑️</span>
                             Clear All
                         </button>
@@ -80,8 +80,8 @@
     </div>
 
     <main>
-        <div id="map-container" role="application" aria-label="Interactive map">
-            <svg id="map-svg" role="document" focusable="true"
+        <div id="map-container">
+            <svg id="map-svg" role="document" aria-label="Interactive map" focusable="true"
                  width="100%" height="100%" viewBox="0 0 800 600"
                  xmlns="http://www.w3.org/2000/svg">
                 <g id="map-tiles"></g>
@@ -92,65 +92,65 @@
             </svg>
             
             <!-- Compass Navigator -->
-            <div id="compass-navigator" class="compass-navigator" role="group" aria-label="Map navigation compass">
+            <div id="compass-navigator" class="compass-navigator" role="complementary" aria-label="Map navigation compass">
                 <div class="compass-ring">
-                    <button id="nav-n" class="nav-button nav-n" aria-label="Pan north" tabindex="7">
+                    <button id="nav-n" class="nav-button nav-n" aria-label="Pan north" tabindex="8000">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 4 L8 12 L12 10 L16 12 Z"/>
                         </svg>
                     </button>
-                    <button id="nav-ne" class="nav-button nav-ne" aria-label="Pan northeast" tabindex="8">
+                    <button id="nav-ne" class="nav-button nav-ne" aria-label="Pan northeast" tabindex="8001">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 4 L8 12 L12 10 L16 12 Z" transform="rotate(45 12 12)"/>
                         </svg>
                     </button>
-                    <button id="nav-e" class="nav-button nav-e" aria-label="Pan east" tabindex="9">
+                    <button id="nav-e" class="nav-button nav-e" aria-label="Pan east" tabindex="8002">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M20 12 L12 8 L14 12 L12 16 Z"/>
                         </svg>
                     </button>
-                    <button id="nav-se" class="nav-button nav-se" aria-label="Pan southeast" tabindex="10">
+                    <button id="nav-se" class="nav-button nav-se" aria-label="Pan southeast" tabindex="8003">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 4 L8 12 L12 10 L16 12 Z" transform="rotate(135 12 12)"/>
                         </svg>
                     </button>
-                    <button id="nav-s" class="nav-button nav-s" aria-label="Pan south" tabindex="11">
+                    <button id="nav-s" class="nav-button nav-s" aria-label="Pan south" tabindex="8004">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 20 L16 12 L12 14 L8 12 Z"/>
                         </svg>
                     </button>
-                    <button id="nav-sw" class="nav-button nav-sw" aria-label="Pan southwest" tabindex="12">
+                    <button id="nav-sw" class="nav-button nav-sw" aria-label="Pan southwest" tabindex="8005">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 4 L8 12 L12 10 L16 12 Z" transform="rotate(-135 12 12)"/>
                         </svg>
                     </button>
-                    <button id="nav-w" class="nav-button nav-w" aria-label="Pan west" tabindex="13">
+                    <button id="nav-w" class="nav-button nav-w" aria-label="Pan west" tabindex="8006">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 12 L12 16 L10 12 L12 8 Z"/>
                         </svg>
                     </button>
-                    <button id="nav-nw" class="nav-button nav-nw" aria-label="Pan northwest" tabindex="14">
+                    <button id="nav-nw" class="nav-button nav-nw" aria-label="Pan northwest" tabindex="8007">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M12 4 L8 12 L12 10 L16 12 Z" transform="rotate(-45 12 12)"/>
                         </svg>
                     </button>
                 </div>
                 <div class="nav-center">
-                    <button id="nav-zoom-in" class="nav-zoom nav-zoom-in" aria-label="Zoom in" tabindex="15">
+                    <button id="nav-zoom-in" class="nav-zoom nav-zoom-in" aria-label="Zoom in" tabindex="8008">
                         <svg viewBox="0 0 20 20" aria-hidden="true">
                             <path d="M10 3 v14 M3 10 h14" stroke-width="2"/>
                         </svg>
                     </button>
                     <div class="zoom-in-outline" aria-hidden="true"></div>
                     
-                    <button id="nav-zoom-out" class="nav-zoom nav-zoom-out" aria-label="Zoom out" tabindex="16">
+                    <button id="nav-zoom-out" class="nav-zoom nav-zoom-out" aria-label="Zoom out" tabindex="8009">
                         <svg viewBox="0 0 20 20" aria-hidden="true">
                             <path d="M3 10 h14" stroke-width="2"/>
                         </svg>
                     </button>
                     <div class="zoom-out-outline" aria-hidden="true"></div>
                     
-                    <button id="nav-center" class="nav-center-btn" aria-label="Center on current location" tabindex="17">
+                    <button id="nav-center" class="nav-center-btn" aria-label="Center on current location" tabindex="8010">
                         <svg viewBox="0 0 20 20" aria-hidden="true">
                             <circle cx="10" cy="10" r="3"/>
                             <path d="M10 2 v4 M10 14 v4 M2 10 h4 M14 10 h4" stroke-width="1.5"/>

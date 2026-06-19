@@ -5,9 +5,14 @@
 // Manager wire to those; accordion toggling is handled by app.js's existing
 // `.filter-accordion-header` listener).
 
-export function buildFilterUI(taxonomy, container, prefix = 'filter') {
+export function buildFilterUI(taxonomy, container, prefix = 'filter', baseTabIndex = 0) {
   if (!container) return;
   container.textContent = '';
+
+  // Positive tabindex keeps this control band ahead of the map features (which
+  // the rotor authors at 9000+). When baseTabIndex is given, each group header
+  // and checkbox gets an incrementing value from it, in document order.
+  let tabIndex = baseTabIndex;
 
   const groups = taxonomy.byFilterGroup();
   for (const groupName of Object.keys(groups).sort()) {
@@ -22,6 +27,7 @@ export function buildFilterUI(taxonomy, container, prefix = 'filter') {
     header.className = 'filter-accordion-header';
     header.setAttribute('aria-expanded', 'false');
     header.setAttribute('aria-controls', contentId);
+    if (baseTabIndex) header.tabIndex = tabIndex++;
     const labelSpan = document.createElement('span');
     labelSpan.className = 'label';
     labelSpan.textContent = groupName;
@@ -41,6 +47,7 @@ export function buildFilterUI(taxonomy, container, prefix = 'filter') {
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.id = prefix + '-' + feature.id;
+      if (baseTabIndex) input.tabIndex = tabIndex++;
       label.append(input, document.createTextNode(' ' + (feature.label || feature.id)));
       content.append(label);
     }

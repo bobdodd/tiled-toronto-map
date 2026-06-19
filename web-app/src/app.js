@@ -47,8 +47,11 @@ class MapApplication {
         }
 
         // Build the filter + rotor controls from the taxonomy (replaces the old hand-coded HTML)
-        buildFilterUI(this.taxonomy, document.getElementById('filter-groups'), 'filter');
-        buildFilterUI(this.taxonomy, document.getElementById('rotor-groups'), 'rotor');
+        // Tabindex bands keep header < map controls < map (positive throughout):
+        // filter controls start at 101, rotor controls at 4002, map features at
+        // 9000+ (assigned by the rotor in AccessibilityManager.updateTabOrder).
+        buildFilterUI(this.taxonomy, document.getElementById('filter-groups'), 'filter', 101);
+        buildFilterUI(this.taxonomy, document.getElementById('rotor-groups'), 'rotor', 4002);
 
         // Initialize filter and accessibility managers
         this.filterManager = new FilterManager(this.taxonomy);
@@ -282,34 +285,29 @@ class MapApplication {
         mapContainer.addEventListener('keydown', (e) => {
             const step = e.shiftKey ? 5 : 1;
             let handled = true;
-            
-            // Check for modifier key (Ctrl or Cmd)
+
+            // Panning is gated behind Ctrl/Cmd ON PURPOSE: bare arrow keys belong
+            // to the screen reader (virtual cursor / reading), so we must never
+            // hijack them. A bare arrow sets handled=false and falls through
+            // untouched — no preventDefault — so the SR still receives it.
             const hasModifier = e.ctrlKey || e.metaKey;
-            
+
             switch(e.key) {
                 case 'ArrowUp':
-                    if (hasModifier) {
-                        this.panMap(0, -step);
-                        handled = true;
-                    }
+                    if (hasModifier) this.panMap(0, -step);
+                    else handled = false;
                     break;
                 case 'ArrowDown':
-                    if (hasModifier) {
-                        this.panMap(0, step);
-                        handled = true;
-                    }
+                    if (hasModifier) this.panMap(0, step);
+                    else handled = false;
                     break;
                 case 'ArrowLeft':
-                    if (hasModifier) {
-                        this.panMap(-step, 0);
-                        handled = true;
-                    }
+                    if (hasModifier) this.panMap(-step, 0);
+                    else handled = false;
                     break;
                 case 'ArrowRight':
-                    if (hasModifier) {
-                        this.panMap(step, 0);
-                        handled = true;
-                    }
+                    if (hasModifier) this.panMap(step, 0);
+                    else handled = false;
                     break;
                 case '+':
                 case '=':
