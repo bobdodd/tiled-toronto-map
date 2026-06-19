@@ -44,8 +44,10 @@
     "facility":      { "label": "Accessible facilities", "layer": "accessibility" },
     "sensory":       { "label": "Sensory accessibility", "layer": "accessibility" },
     "mobility":      { "label": "Mobility access", "layer": "accessibility" },
-    "transport":     { "label": "Accessible transport", "layer": "accessibility" }
+    "transport":     { "label": "Accessible transport", "layer": "accessibility" },
+    "terrain":       { "label": "Terrain & surface", "layer": "accessibility" }
   },
+  "_terrain_note": "The 'terrain' category is an accessibility OVERLAY (highlight + rotor, never hides the base path) like the others, but is deliberately ABSENT from the search index's POI category set (build-tiles.py _SEARCH_POI_CATS). Surface/smoothness/width/incline/lit are way-attributes that ride on tens of thousands of roads; they belong on the map as filters, not as named search results. Node POIs (kerbs, crossings, steps) stay in facility/mobility so they remain findable.",
 
   "features": [
 
@@ -129,19 +131,79 @@
       "geometry": ["way"], "label": "Moving walkways",
       "ui": { "filterGroup": "Aviation", "rotorGroup": "Transportation" }, "status": "implemented" },
 
-    { "id": "steep-inclines", "category": "facility",
+    { "id": "steep-inclines", "category": "terrain",
       "match": [ { "incline": { ">": 8.33 } }, { "incline": "steep" } ], "subtype": "steep_incline",
       "geometry": ["node", "way"], "label": "Steep inclines (over 8%)",
       "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
 
-    { "id": "moderate-inclines", "category": "facility",
+    { "id": "moderate-inclines", "category": "terrain",
       "match": { "incline": { ">": 5, "<=": 8.33 } }, "subtype": "moderate_incline",
       "geometry": ["node", "way"], "label": "Moderate inclines (5-8%)",
       "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
 
-    { "id": "gentle-inclines", "category": "facility",
+    { "id": "gentle-inclines", "category": "terrain",
       "match": { "incline": { "<=": 5 } }, "subtype": "gentle_incline",
       "geometry": ["node", "way"], "label": "Gentle inclines (up to 5%)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "marked-incline", "category": "terrain",
+      "match": { "incline": ["up", "down"] }, "subtype": "marked_incline",
+      "geometry": ["node", "way"], "label": "Marked incline (direction noted)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "firm-surface", "category": "terrain",
+      "match": { "surface": ["asphalt", "concrete", "concrete:plates", "paved", "paving_stones", "chipseal", "compacted", "metal", "wood"] }, "subtype": "firm_surface",
+      "geometry": ["way", "area"], "label": "Firm, smooth surface",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "rough-surface", "category": "terrain",
+      "match": { "surface": ["gravel", "fine_gravel", "dirt", "ground", "earth", "grass", "sand", "sett", "cobblestone", "unpaved", "pebblestone", "mud", "woodchips", "rock"] }, "subtype": "rough_surface",
+      "geometry": ["way", "area"], "label": "Loose or rough surface",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "good-smoothness", "category": "terrain",
+      "match": { "smoothness": ["excellent", "good", "intermediate"] }, "subtype": "good_smoothness",
+      "geometry": ["way", "area"], "label": "Good smoothness (wheelchair-passable)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "poor-smoothness", "category": "terrain",
+      "match": { "smoothness": ["bad", "very_bad", "horrible", "very_horrible", "impassable"] }, "subtype": "poor_smoothness",
+      "geometry": ["way", "area"], "label": "Poor smoothness (difficult)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "narrow-width", "category": "terrain",
+      "match": { "width": { "<": 0.9 } }, "subtype": "narrow_width",
+      "geometry": ["way"], "label": "Narrow path (under 0.9 m)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "passable-width", "category": "terrain",
+      "match": { "width": { ">=": 0.9, "<": 1.5 } }, "subtype": "passable_width",
+      "geometry": ["way"], "label": "Passable width (0.9 to 1.5 m)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "generous-width", "category": "terrain",
+      "match": { "width": { ">=": 1.5 } }, "subtype": "generous_width",
+      "geometry": ["way"], "label": "Generous width (1.5 m and over)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "raised-kerbs", "category": "facility",
+      "match": { "kerb": "raised" }, "subtype": "raised_kerb",
+      "geometry": ["node"], "label": "Raised kerbs (barrier)",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "signalized-crossing", "category": "facility",
+      "match": [ { "crossing": ["traffic_signals", "pedestrian_signals"] }, { "crossing:signals": "yes" } ], "subtype": "signalized_crossing",
+      "geometry": ["node", "way"], "label": "Signal-controlled crossing",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "uncontrolled-crossing", "category": "facility",
+      "match": { "crossing": ["uncontrolled", "unmarked", "marked", "zebra", "informal", "stop_sign"] }, "subtype": "uncontrolled_crossing",
+      "geometry": ["node", "way"], "label": "Uncontrolled crossing",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
+
+    { "id": "lit-paths", "category": "terrain",
+      "match": { "lit": ["yes", "automatic", "dusk-dawn", "partial"] }, "subtype": "lit",
+      "geometry": ["way", "area", "node"], "label": "Lit at night",
       "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
 
     { "id": "accessible-medical", "category": "facility",
@@ -207,17 +269,17 @@
     { "id": "crossings", "category": "facility",
       "match": [ { "highway": "crossing" }, { "footway": "crossing" } ], "subtype": "crossing",
       "geometry": ["node", "way"], "label": "Pedestrian crossings",
-      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "planned" },
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
 
     { "id": "curb-cuts", "category": "facility",
       "match": [ { "kerb": "lowered" }, { "kerb": "flush" } ], "subtype": "curb_cut",
-      "geometry": ["node"], "label": "Curb cuts and ramps",
-      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "planned" },
+      "geometry": ["node"], "label": "Dropped or flush kerbs",
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
 
     { "id": "steps", "category": "mobility",
       "match": { "highway": "steps" }, "subtype": "steps",
       "geometry": ["way"], "label": "Steps and handrails",
-      "ui": { "filterGroup": "Navigation & Mobility", "rotorGroup": "Accessibility" }, "status": "implemented" },
+      "ui": { "filterGroup": "Mobility & terrain", "rotorGroup": "Accessibility" }, "status": "implemented" },
 
     { "id": "benches", "category": "amenity",
       "match": { "amenity": "bench" }, "subtype": "bench",
