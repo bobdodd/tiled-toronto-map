@@ -9,7 +9,19 @@
 // Expected layout under this base:
 //   <TILE_BASE>/tile-index.json
 //   <TILE_BASE>/tiles/<lat>_<lng>.svg.gz
-const TILE_BASE = 'https://tiles.a11ybob.com/toronto/';
+//
+// A `?tiles=<base>` URL query param overrides this default — for validating a
+// freshly generated tile set against a local copy before publishing, e.g.
+//   index.html?tiles=local-tiles/
+// served by a static server rooted at web-app/ (see the local-tiles symlink).
+// The default is unchanged for production deployments.
+const DEFAULT_TILE_BASE = 'https://tiles.a11ybob.com/toronto/';
+const TILE_BASE = (() => {
+    if (typeof window === 'undefined') return DEFAULT_TILE_BASE;
+    const override = new URLSearchParams(window.location.search).get('tiles');
+    if (!override) return DEFAULT_TILE_BASE;
+    return override.endsWith('/') ? override : override + '/';
+})();
 
 export class SVGTileManager {
     constructor() {
