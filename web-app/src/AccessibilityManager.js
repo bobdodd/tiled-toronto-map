@@ -245,6 +245,16 @@ export class AccessibilityManager {
             outlineElement.setAttribute('cy', element.getAttribute('cy'));
             const radius = parseFloat(element.getAttribute('r') || 5);
             outlineElement.setAttribute('r', radius + 3); // Add offset
+        } else if (element.tagName === 'path') {
+            // Area features (buildings, land, water multipolygons) render as <path>
+            outlineElement = document.createElementNS(this.SVG_NS, 'path');
+            outlineElement.setAttribute('d', element.getAttribute('d'));
+        } else if (element.tagName === 'rect') {
+            outlineElement = document.createElementNS(this.SVG_NS, 'rect');
+            outlineElement.setAttribute('x', element.getAttribute('x'));
+            outlineElement.setAttribute('y', element.getAttribute('y'));
+            outlineElement.setAttribute('width', element.getAttribute('width'));
+            outlineElement.setAttribute('height', element.getAttribute('height'));
         }
         
         if (outlineElement) {

@@ -7,6 +7,7 @@ import { FeatureRenderer } from './FeatureRenderer.js';
 import { Avatar } from './Avatar.js';
 import { TaxonomyClient } from './TaxonomyClient.js';
 import { buildFilterUI } from './FilterUI.js';
+import { setupTooltip } from './Tooltip.js';
 
 class MapApplication {
     constructor() {
@@ -69,7 +70,11 @@ class MapApplication {
         
         // Set up event listeners
         this.setupEventListeners();
-        
+
+        // Sticky name tooltip on focus/hover (reads each feature's aria-label).
+        // Delegates on #map-svg, so it covers tiles loaded later too.
+        setupTooltip();
+
         // Set up keyboard navigation
         this.setupKeyboardNavigation();
         

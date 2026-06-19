@@ -176,10 +176,18 @@
         <button id="set-location">Set Location</button>
     </div>
 
+    <!-- Sticky name tooltip + point marker (filled in from each feature's
+         aria-label on focus/hover; aria-hidden — the name is announced from the
+         feature itself). Ported from the east-end Toronto / terminal maps. -->
+    <div id="poiTooltip" class="poi-tooltip" aria-hidden="true" hidden>
+        <span class="poi-tooltip-title"></span>
+    </div>
+    <div id="poiMarker" class="poi-marker" aria-hidden="true" hidden></div>
+
     <!-- Pako library for gzip decompression fallback (self-hosted, no CDN) -->
     <script src="vendor/pako.min.js"></script>
     <script type="module" src="src/app.js"></script>
-    
+
     <!-- Live region for announcements -->
     <div id="map-announcements" aria-live="polite" aria-atomic="true" class="screen-reader-only"></div>
 </body>

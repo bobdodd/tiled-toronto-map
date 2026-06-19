@@ -1778,3 +1778,84 @@ main {
         stroke-width: 5;
     }
 }
+
+/* Sticky name tooltip (ported from the east-end Toronto / terminal maps). A pill
+   anchored above the pointer/feature, fed from the feature's aria-label.
+   pointer-events:none so it never blocks the marker; sticky so magnifier users
+   can pan/zoom to read it. */
+.poi-tooltip {
+    position: fixed;
+    max-width: 260px;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.97);
+    color: black;
+    border: 1px solid #1E3A8A;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(8, 17, 46, 0.22);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+    z-index: 200;
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - 22px));
+    white-space: normal;
+}
+.poi-tooltip[hidden] { display: none; }
+.poi-tooltip::before,
+.poi-tooltip::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-style: solid;
+    border-color: transparent;
+}
+/* Navy outline of the tail — continues the bubble's 1px border down the V. */
+.poi-tooltip::before {
+    top: 100%;
+    border-width: 11px;
+    border-top-color: #1E3A8A;
+}
+/* White fill, 1px smaller and nudged back into the bubble so the fill is
+   continuous and navy shows only on the sides. */
+.poi-tooltip::after {
+    top: calc(100% - 1px);
+    border-width: 10px;
+    border-top-color: rgba(255, 255, 255, 0.97);
+}
+/* When the feature is near the top edge, flip the pill below the point. */
+body.tooltip-below .poi-tooltip {
+    transform: translate(-50%, calc(0% + 22px));
+}
+body.tooltip-below .poi-tooltip::before {
+    top: auto;
+    bottom: 100%;
+    border-top-color: transparent;
+    border-bottom-color: #1E3A8A;
+}
+body.tooltip-below .poi-tooltip::after {
+    top: auto;
+    bottom: calc(100% - 1px);
+    border-top-color: transparent;
+    border-bottom-color: rgba(255, 255, 255, 0.97);
+}
+
+/* Point marker — a constant-size ring pinned at the feature point. Navy ring +
+   white halo so it shows over parks, water, roads and buildings alike. Lives in
+   the screen-space overlay, so it never scales with the map zoom. aria-hidden —
+   the name is announced from the feature itself. */
+.poi-marker {
+    position: fixed;
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    border: 3px solid #1E3A8A;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+    transform: translate(-50%, -50%);
+    z-index: 199;
+    pointer-events: none;
+}
+.poi-marker[hidden] { display: none; }
