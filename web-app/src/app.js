@@ -124,6 +124,13 @@ class MapApplication {
             if (needsNewTiles) {
                 this.loadMapTiles();
             }
+            // Refresh which features can take focus — only those now on-screen.
+            // Debounced because a pan/zoom fires viewBoxChanged rapidly; silent so
+            // it doesn't spam the live region while panning.
+            clearTimeout(this._tabOrderRefresh);
+            this._tabOrderRefresh = setTimeout(() => {
+                this.accessibilityManager.updateTabOrder();
+            }, 150);
         });
         
         // Check for debug mode in URL

@@ -17,7 +17,7 @@ export class AccessibilityManager {
         const rotorCheckboxes = document.querySelectorAll('input[type="checkbox"][id^="rotor-"]');
         rotorCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', () => {
-                this.updateTabOrder();
+                this.updateTabOrder(true);
             });
         });
         
@@ -28,7 +28,7 @@ export class AccessibilityManager {
                 rotorCheckboxes.forEach(checkbox => {
                     checkbox.checked = false;
                 });
-                this.updateTabOrder();
+                this.updateTabOrder(true);
             });
         }
         
@@ -332,12 +332,14 @@ export class AccessibilityManager {
         return selected;
     }
     
-    updateTabOrder() {
+    updateTabOrder(notify = false) {
         // Clear any previous rotor tab order from the tile features.
         document.querySelectorAll('#map-tiles [tabindex]').forEach((el) => el.removeAttribute('tabindex'));
 
         const region = document.getElementById('map-announcements');
-        const announce = (msg) => { if (region) { region.textContent = ''; region.textContent = msg; } };
+        // Announce only on an explicit rotor change (notify=true) — NOT on the
+        // silent refreshes that run as the viewport pans/zooms.
+        const announce = (msg) => { if (notify && region) { region.textContent = ''; region.textContent = msg; } };
 
         const selectedIds = this.getSelectedRotorValues();
         if (selectedIds.length === 0 || !this.taxonomy) {
@@ -369,12 +371,27 @@ export class AccessibilityManager {
         // map-controls (complementary) bands — so Tab flows controls -> features.
         // The tile feature groups already carry role="img" + aria-label from the
         // generator, so focusing one announces its name.
+        // Only features visible in the current viewport may take focus — Tab must
+        // never stop on off-screen content. This is re-run (debounced) as the
+        // viewport pans/zooms, so the focusable set tracks what's on screen.
+        const viewportEl = document.getElementById('map-svg');
+        const vp = viewportEl ? viewportEl.getBoundingClientRect() : null;
+        const onScreen = (el) => {
+            if (!vp) return true;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 &&
+                   r.right > vp.left && r.left < vp.right &&
+                   r.bottom > vp.top && r.top < vp.bottom;
+        };
+
         const elements = document.querySelectorAll('#map-tiles ' + selectors.join(', '));
         let tabIndex = 9000;
         let count = 0;
         elements.forEach((el) => {
             // Skip features hidden by a base filter.
             if (el.closest('[style*="display: none"], [style*="display:none"]')) return;
+            // Skip features outside the visible viewport.
+            if (!onScreen(el)) return;
             el.setAttribute('tabindex', String(tabIndex++));
             count++;
         });
