@@ -31,21 +31,7 @@ export class AccessibilityManager {
                 this.updateTabOrder(true);
             });
         }
-        
-        // Handle "Everything" checkbox
-        const everythingCheckbox = document.querySelector('input[name="rotor-quick"][value="everything"]');
-        if (everythingCheckbox) {
-            everythingCheckbox.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    // Check all category checkboxes
-                    document.querySelectorAll('input[name="rotor-category"]').forEach(cb => {
-                        cb.checked = true;
-                    });
-                }
-                this.updateTabOrder();
-            });
-        }
-        
+
         // Initialize with default rotor value
         this.updateTabOrder();
         

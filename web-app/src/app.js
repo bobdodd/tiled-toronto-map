@@ -3,7 +3,6 @@ import { LocationTracker } from './LocationTracker.js';
 import { FilterManager } from './FilterManager.js';
 import { AccessibilityManager } from './AccessibilityManager.js';
 import { SVGTileManager } from './SVGTileManager.js';
-import { FeatureRenderer } from './FeatureRenderer.js';
 import { Avatar } from './Avatar.js';
 import { TaxonomyClient } from './TaxonomyClient.js';
 import { buildFilterUI } from './FilterUI.js';
@@ -16,7 +15,6 @@ class MapApplication {
         this.filterManager = null;
         this.accessibilityManager = null;
         this.svgTileManager = null;
-        this.featureRenderer = null;
         this.avatar = null;
         this.isTracking = false;
         this.isNavigating = false;
@@ -64,10 +62,9 @@ class MapApplication {
             this.accessibilityManager.updateTabOrder();
         };
         
-        // Initialize SVG tile manager and feature renderer
+        // Initialize SVG tile manager
         this.svgTileManager = new SVGTileManager();
-        this.featureRenderer = new FeatureRenderer(this.mapRenderer);
-        
+
         // Initialize avatar
         this.avatar = new Avatar(this.mapRenderer);
         
@@ -730,21 +727,28 @@ class MapApplication {
     }
     
     async loadMapTiles(clearExisting = false) {
+        // Load generation: if a newer load starts while this one awaits (fast
+        // panning), the stale one bows out instead of rendering/announcing.
+        const gen = (this._loadGen = (this._loadGen || 0) + 1);
         try {
             // Get current map bounds
             const bounds = this.getBoundsFromView();
-            
+
             // Show loading indicator
             this.announceStatus('Loading map tiles...');
-            
+
             // Load SVG tiles for the area
-            const tiles = await this.svgTileManager.loadTilesForArea(bounds);
-            
+            const { tiles, stats } = await this.svgTileManager.loadTilesForArea(bounds);
+
+            if (gen !== this._loadGen) return; // superseded by a newer load
+
             if (!tiles || tiles.length === 0) {
-                this.announceStatus('No map data available for this area');
+                this.announceStatus(stats && stats.failed > 0
+                    ? `Map data could not be loaded — ${stats.failed} tile${stats.failed === 1 ? '' : 's'} failed.`
+                    : 'No map data available for this area');
                 return;
             }
-            
+
             // Only clear old tiles if explicitly requested (e.g., on initial load)
             if (clearExisting) {
                 this.clearMapTiles();
@@ -777,11 +781,15 @@ class MapApplication {
             
             // Clean up tiles that are far outside the current view
             this.cleanupDistantTiles();
-            
-            // Announce completion
-            this.announceStatus(`Map loaded. ${tiles.length} tiles available.`);
+
+            // Honest completion — report failures rather than counting survivors.
+            this.announceStatus(stats && stats.failed > 0
+                ? `Map loaded — ${stats.loaded} tile${stats.loaded === 1 ? '' : 's'}, ${stats.failed} failed to load.`
+                : `Map loaded. ${stats ? stats.loaded : tiles.length} tile${(stats ? stats.loaded : tiles.length) === 1 ? '' : 's'}.`);
         } catch (error) {
-            this.announceStatus('Error loading map. Please try again.');
+            if (gen === this._loadGen) {
+                this.announceStatus('Error loading map. Please try again.');
+            }
         }
     }
 

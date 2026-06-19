@@ -29,6 +29,7 @@ export class SVGTileManager {
         this.indexUrl = TILE_BASE + 'tile-index.json';
         this.tileIndex = null;
         this.tileVersion = null;
+        this.existingTileIds = null; // ids that actually exist (from the index)
         this.tileCache = new Map();
         this.maxCacheSize = 20;
         this.tileSize = 0.01; // 0.01 degrees per tile (roughly 1km)
@@ -48,6 +49,11 @@ export class SVGTileManager {
             // tile URLs so a tile republish busts the browser cache for everyone
             // — without it, the 24h max-age on stable tile URLs hides updates.
             this.tileVersion = this.tileIndex.version || null;
+            // The set of tile ids that actually exist, so empty cells in a sparse
+            // map aren't mistaken for load failures.
+            this.existingTileIds = new Set((this.tileIndex.tiles || [])
+                .map(t => String(t.file || t.id || '').replace(/\.svg\.gz$/, ''))
+                .filter(Boolean));
             console.log(`Loaded tile index: ${this.tileIndex.tiles?.length || 0} tiles available (v${this.tileVersion || 'none'})`);
             return this.tileIndex;
         } catch (error) {
@@ -96,27 +102,31 @@ export class SVGTileManager {
         }
 
         if (this.activeRequests.has(tileId)) {
-            return this.activeRequests.get(tileId);
+            return this.activeRequests.get(tileId).promise;
         }
 
         const url = this.getTileUrl(tileId);
-        const request = this.fetchTile(url, tileId);
-        this.activeRequests.set(tileId, request);
+        const controller = new AbortController();
+        const promise = this.fetchTile(url, tileId, controller.signal);
+        this.activeRequests.set(tileId, { promise, controller });
 
         try {
-            const svgContent = await request;
+            const svgContent = await promise;
             this.cacheTree(tileId, svgContent);
             this.activeRequests.delete(tileId);
             return svgContent;
         } catch (error) {
             this.activeRequests.delete(tileId);
-            console.error(`Failed to load tile ${tileId}:`, error);
+            // Aborted requests (cancelled on pan) are expected, not errors.
+            if (error.name !== 'AbortError') {
+                console.error(`Failed to load tile ${tileId}:`, error);
+            }
             return null;
         }
     }
 
-    async fetchTile(url, tileId) {
-        const response = await fetch(url);
+    async fetchTile(url, tileId, signal) {
+        const response = await fetch(url, { signal });
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -217,17 +227,26 @@ export class SVGTileManager {
 
     async loadTilesForArea(bounds) {
         await this.loadTileIndex();
-        
-        const tiles = this.getTilesForBounds(bounds);
-        const loadPromises = tiles.map(tile => 
-            this.loadTile(tile.id).then(content => ({
-                ...tile,
-                content
-            }))
-        );
 
-        const loadedTiles = await Promise.all(loadPromises);
-        return loadedTiles.filter(tile => tile.content !== null);
+        const all = this.getTilesForBounds(bounds);
+        // Only request tiles that exist in the index — the rest are empty cells in
+        // a sparse map. So any null result below is a GENUINE load failure, not an
+        // absent tile, which lets the caller report failures honestly.
+        const wanted = (this.existingTileIds && this.existingTileIds.size)
+            ? all.filter(tile => this.existingTileIds.has(tile.id))
+            : all;
+
+        const results = await Promise.all(wanted.map(tile =>
+            this.loadTile(tile.id).then(content => ({ ...tile, content }))
+        ));
+
+        const tiles = results.filter(tile => tile.content !== null);
+        const stats = {
+            requested: wanted.length,
+            loaded: tiles.length,
+            failed: wanted.length - tiles.length,
+        };
+        return { tiles, stats };
     }
 
     clearCache() {
@@ -237,6 +256,12 @@ export class SVGTileManager {
     }
 
     cancelAllRequests() {
+        // Actually abort in-flight fetches (not just drop their dedup entries),
+        // so fast panning doesn't leave orphaned fetches running or re-fetch the
+        // same tile because its in-flight promise was forgotten.
+        this.activeRequests.forEach(({ controller }) => {
+            try { controller.abort(); } catch (_) { /* already settled */ }
+        });
         this.activeRequests.clear();
     }
 }

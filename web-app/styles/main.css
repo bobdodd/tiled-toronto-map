@@ -1723,19 +1723,6 @@ main {
 
 
 
-/* WCAG debug visualization */
-[data-wcag-visible="false"] {
-    opacity: 0.3 \!important;
-    stroke: #ff0000 \!important;
-    stroke-width: 2 \!important;
-    stroke-dasharray: 5, 5 \!important;
-}
-
-[data-wcag-visible="true"] {
-    stroke: #00ff00 \!important;
-    stroke-width: 2 \!important;
-}
-
 /* Avatar styles */
 .map-avatar {
     cursor: pointer;
