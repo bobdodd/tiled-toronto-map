@@ -1,17 +1,18 @@
-// FilterUI — builds the filter controls from the taxonomy, so the filter list
-// comes from taxonomy.json instead of ~550 lines of hand-maintained, duplicated
-// HTML. One collapsible group per filterGroup; each leaf is a checkbox whose id
-// is `filter-<feature id>` (FilterManager wires to those; accordion toggling is
-// handled by app.js's existing `.filter-accordion-header` listener).
+// FilterUI — builds the filter (and rotor) controls from the taxonomy, so the
+// list comes from taxonomy.json instead of ~1100 lines of hand-maintained,
+// duplicated HTML. One collapsible group per filterGroup; each leaf is a
+// checkbox whose id is `<prefix>-<feature id>` (FilterManager / Accessibility
+// Manager wire to those; accordion toggling is handled by app.js's existing
+// `.filter-accordion-header` listener).
 
-export function buildFilterUI(taxonomy, container) {
+export function buildFilterUI(taxonomy, container, prefix = 'filter') {
   if (!container) return;
   container.textContent = '';
 
   const groups = taxonomy.byFilterGroup();
   for (const groupName of Object.keys(groups).sort()) {
     const features = groups[groupName];
-    const contentId = 'fg-' + groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const contentId = `${prefix}-fg-` + groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
     const item = document.createElement('div');
     item.className = 'filter-accordion-item';
@@ -39,7 +40,7 @@ export function buildFilterUI(taxonomy, container) {
       const label = document.createElement('label');
       const input = document.createElement('input');
       input.type = 'checkbox';
-      input.id = 'filter-' + feature.id;
+      input.id = prefix + '-' + feature.id;
       label.append(input, document.createTextNode(' ' + (feature.label || feature.id)));
       content.append(label);
     }

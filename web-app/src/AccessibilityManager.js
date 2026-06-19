@@ -1,10 +1,10 @@
 export class AccessibilityManager {
-    constructor() {
+    constructor(taxonomy) {
+        this.taxonomy = taxonomy;
         this.currentRotor = 'none';
-        // (Removed a vestigial, unused feature-selector map that duplicated — and had
-        // drifted from — the live mapping. The rotor now derives its keyboard targets
-        // from FilterManager.classMap in updateTabOrder(), the single source of truth.)
-        
+        // The rotor derives its keyboard-navigation targets from the taxonomy
+        // (taxonomy.json) in updateTabOrder() — the single source of truth.
+
         this.SVG_NS = 'http://www.w3.org/2000/svg';
         this.focusOutline = null;
         this.currentFocusedElement = null;
@@ -323,99 +323,52 @@ export class AccessibilityManager {
     }
     
     updateTabOrder() {
-        // First, remove all tabindex from ALL g elements in map-features
-        const allGroups = document.querySelectorAll('#map-features g[tabindex]');
-        allGroups.forEach(element => {
-            element.removeAttribute('tabindex');
-            element.removeAttribute('role');
-        });
-        
-        // Get all selected rotor values
-        const selectedValues = this.getSelectedRotorValues();
-        
-        // If no rotor values selected, don't add any tabindex
-        if (selectedValues.length === 0) {
-            this.announceFeatureCount(0);
+        // Clear any previous rotor tab order from the tile features.
+        document.querySelectorAll('#map-tiles [tabindex]').forEach((el) => el.removeAttribute('tabindex'));
+
+        const region = document.getElementById('map-announcements');
+        const announce = (msg) => { if (region) { region.textContent = ''; region.textContent = msg; } };
+
+        const selectedIds = this.getSelectedRotorValues();
+        if (selectedIds.length === 0 || !this.taxonomy) {
+            announce('Rotor cleared.');
             return;
         }
-        
-        // Derive the rotor's feature-group targets from the FilterManager class map
-        // (the single source of truth) so the rotor and filters can't drift apart.
-        // Each filter class maps to its navigable group via the "-feature" suffix
-        // (e.g. ".restaurant" -> ".restaurant-feature"); a few groups are named
-        // differently and need an explicit override. Values whose -feature group
-        // isn't rendered yet (indoor / airport-interior detail types) just match
-        // nothing, so checking them is a harmless no-op until FeatureRenderer grows
-        // navigable groups for them.
-        const classMap = (window.mapApp && window.mapApp.filterManager)
-            ? window.mapApp.filterManager.classMap
-            : null;
-        if (!classMap) return;
 
-        // Groups whose class is NOT <filterClass>-feature.
-        const selectorOverrides = {
-            'transit': '.transit-feature',
-            'airports': '.airport-feature',
-            'enhanced-highways': '.enhanced-highway-feature'
+        const labelOf = (id) => {
+            const f = this.taxonomy.getById(id);
+            return f ? (f.label || id) : id;
         };
+        const selectors = selectedIds
+            .map((id) => {
+                const f = this.taxonomy.getById(id);
+                return f ? this.taxonomy.selectorFor(f) : null;
+            })
+            .filter(Boolean);
 
-        // Combine selectors from all selected values
-        const selectors = [];
-        selectedValues.forEach(value => {
-            if (selectorOverrides[value]) {
-                selectors.push(selectorOverrides[value]);
-                return;
-            }
-            const filterSelector = classMap[value];
-            if (!filterSelector) return;
-            // ".road, .road-casing" -> ".road-feature, .road-casing-feature"
-            const featureSelector = filterSelector
-                .split(',')
-                .map(cls => cls.trim() + '-feature')
-                .join(', ');
-            selectors.push(featureSelector);
-        });
-
-        if (selectors.length === 0) return;
-        
-        // Join all selectors with comma to create a combined selector
-        const combinedSelector = selectors.join(', ');
-        
-        // Get all individual feature groups matching any of the selected types
-        const featureGroups = document.querySelectorAll(combinedSelector);
-        
-        // Use a Set to avoid duplicates (since some features might match multiple selectors)
-        const uniqueFeatures = new Set();
-        featureGroups.forEach(fg => uniqueFeatures.add(fg));
-        
-        let tabIndex = 100; // Start tabindex at 100 to come after UI controls
-        let visibleCount = 0;
-        
-        uniqueFeatures.forEach(featureGroup => {
-            // Check if the feature group is visible
-            const children = Array.from(featureGroup.children);
-            const hasVisibleChildren = children.some(child => 
-                child.style.visibility !== 'hidden'
-            );
-            
-            if (hasVisibleChildren) {
-                featureGroup.setAttribute('tabindex', tabIndex.toString());
-                featureGroup.setAttribute('role', 'group');
-                tabIndex++;
-                visibleCount++;
-            }
-        });
-        
-        this.announceFeatureCount(visibleCount);
-        this.announceSelectedCategories(selectedValues);
-        
-        // Ensure focus outline is always on top
-        this.ensureFocusOutlineOnTop();
-        
-        // Also update tile accessibility if we have tile features
-        if (window.mapApp && window.mapApp.updateAccessibilityForTiles) {
-            window.mapApp.updateAccessibilityForTiles();
+        const names = selectedIds.map(labelOf).slice(0, 4).join(', ');
+        if (selectors.length === 0) {
+            announce(`Nothing to navigate for: ${names}`);
+            return;
         }
+
+        // Make ONLY the selected categories keyboard-navigable, in document order.
+        // Positive tabindex is intentional (it narrows + orders map navigation — see
+        // the project's rotor design); start at 100 to come after the UI controls.
+        // The tile feature groups already carry role="img" + aria-label from the
+        // generator, so focusing one announces its name.
+        const elements = document.querySelectorAll('#map-tiles ' + selectors.join(', '));
+        let tabIndex = 100;
+        let count = 0;
+        elements.forEach((el) => {
+            // Skip features hidden by a base filter.
+            if (el.closest('[style*="display: none"], [style*="display:none"]')) return;
+            el.setAttribute('tabindex', String(tabIndex++));
+            count++;
+        });
+
+        announce(`${count} feature${count === 1 ? '' : 's'} navigable — ${names}`);
+        this.ensureFocusOutlineOnTop();
     }
     
     ensureFocusOutlineOnTop() {
