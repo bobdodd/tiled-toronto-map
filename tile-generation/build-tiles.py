@@ -972,7 +972,11 @@ class TileBuilder:
         if addr:
             base_parts.append(f"at {addr}")
         base_label = ', '.join(base_parts) or type_label
-        overlay_labels = [o['label'] for o in cls['overlays'] if o.get('label')]
+        # Exclude the primary from the overlay list: for a POI/attribute node with
+        # no base geometry the primary IS the first overlay, so otherwise its label
+        # would be spoken twice ("Accessible toilets ... Accessible toilets").
+        overlay_labels = [o['label'] for o in cls['overlays']
+                          if o.get('label') and o is not primary]
         aria = f"{base_label}. {', '.join(overlay_labels)}" if overlay_labels else base_label
 
         group = self.create_svg_element('g', class_=' '.join(tokens), role='img', aria_label=aria)
