@@ -64,8 +64,14 @@ export class SVGTileManager {
     }
 
     coordsToTileId(lat, lng) {
-        const tileY = Math.floor(lat / this.tileSize) * this.tileSize;
-        const tileX = Math.floor(lng / this.tileSize) * this.tileSize;
+        // Snap to the tile grid with a tiny epsilon BEFORE flooring. lat/0.01 can
+        // land just below an integer in floating point (43.67/0.01 = 4366.9999…),
+        // so a bare floor maps the tile to the row below it — fetching the wrong
+        // tile's content while positioning it for the correct row (vertical gap +
+        // ghosting). The epsilon (« half a tile) cancels that representation error.
+        const eps = 1e-6;
+        const tileY = Math.floor(lat / this.tileSize + eps) * this.tileSize;
+        const tileX = Math.floor(lng / this.tileSize + eps) * this.tileSize;
         return `${tileY.toFixed(3)}_${tileX.toFixed(3)}`;
     }
 

@@ -799,13 +799,14 @@ class MapApplication {
         const width = this.mapRenderer.viewBox.width;
         const height = this.mapRenderer.viewBox.height;
         
-        // Match the coordinate system from latLngToPixel
-        const zoomScale = Math.pow(2, zoom - 17); // At zoom 17, scale = 1
-        const baseTileSize = 1000; // pixels per tile at zoom 17
-        const tileSize = baseTileSize * zoomScale;
+        // The viewBox lives in project() space, whose scale is FIXED at 1000px per
+        // 0.01° regardless of zoom — the viewBox itself already encodes the zoom
+        // (it grows as you zoom out). So this conversion must use that same fixed
+        // scale, NOT a zoom-dependent one; otherwise the tiles we load stop lining
+        // up with where project() actually draws them (the off-zoom breakage).
         const degreesPerTile = 0.01;
-        const pixelsPerDegree = tileSize / degreesPerTile;
-        
+        const pixelsPerDegree = 1000 / degreesPerTile; // 100000 — must match MapRenderer.project()
+
         // Calculate how many degrees the viewport covers
         const viewportWidthDegrees = width / pixelsPerDegree;
         const viewportHeightDegrees = height / pixelsPerDegree;
@@ -868,16 +869,13 @@ class MapApplication {
                 tileGroup.setAttribute('class', 'tile');
                 tileGroup.setAttribute('data-tile-id', tile.id);
                 
-                // Calculate tile position
-                const tilePixelPos = this.latLngToPixel(tile.lat, tile.lng);
-                
-                // Tiles are always 1000x1000 in their native coordinate system
-                // ViewBox zooming handles the scaling
-                
-                
-                // Position the tile at its absolute coordinates
-                // No scaling needed - viewBox handles zoom
-                tileGroup.setAttribute('transform', 
+                // The tile content is north-up internally (the generator flips Y),
+                // so anchor each tile by its NORTH-west corner: project(north edge).
+                // tile.lat is the SOUTH edge; the north edge is tile.lat + tileSize.
+                // Anchoring by the south edge (the old code) stacked tiles upside
+                // down relative to their content. ViewBox handles zoom — no scaling.
+                const tilePixelPos = this.latLngToPixel(tile.lat + 0.01, tile.lng);
+                tileGroup.setAttribute('transform',
                     `translate(${tilePixelPos.x}, ${tilePixelPos.y})`);
                 
                 // Create a group to hold the tile content with proper viewBox scaling
@@ -904,7 +902,20 @@ class MapApplication {
                     importedNode.querySelectorAll('[id]').forEach(element => {
                         element.id = `${tile.id}-${element.id}`;
                     });
-                    
+
+                    // The clipPath id was renamed above, so re-point every
+                    // clip-path reference at it. Without this the clip silently
+                    // breaks and each feature renders its FULL geometry into every
+                    // tile its bbox overlaps — so clip each tile to its own region,
+                    // which makes cross-tile ghosting structurally impossible.
+                    const relinkClip = (el) => {
+                        const cp = el.getAttribute && el.getAttribute('clip-path');
+                        const m = cp && cp.match(/url\(#(.+?)\)/);
+                        if (m) el.setAttribute('clip-path', `url(#${tile.id}-${m[1]})`);
+                    };
+                    relinkClip(importedNode);
+                    importedNode.querySelectorAll('[clip-path]').forEach(relinkClip);
+
                     // Remove tabindex="-1" from all features to allow native tooltips
                     importedNode.querySelectorAll('[tabindex="-1"]').forEach(element => {
                         element.removeAttribute('tabindex');

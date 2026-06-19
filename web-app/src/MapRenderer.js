@@ -8,7 +8,7 @@ export class MapRenderer {
         this.routeGroup = svgElement.querySelector('#navigation-route');
         
         this.tileSize = 256;
-        this.zoom = 17; // Start at zoom 17 to allow more zoom out room
+        this.zoom = 18; // Default = 1:1 with project()'s 1000px/0.01° scale (init sizes the viewBox to viewport.width, which is the zoom-18 size); zoom out to 15, in to 23
         // Center on the middle of the shifted tile coverage area
         // Now centered one tile north to avoid Lake Ontario
         this.center = { lat: 43.655, lng: -79.375 }; // Center of the shifted coverage
@@ -152,8 +152,13 @@ export class MapRenderer {
         // y = lat * (pixelsPerTile / degreesPerTile)
         // No inversion needed - tiles handle their own internal Y-axis flipping
         const x = (lng / degreesPerTile) * pixelsPerTile;
-        const y = (lat / degreesPerTile) * pixelsPerTile;
-        
+        // North-up: y DECREASES as latitude increases. This must match the
+        // generator's coord_to_svg, which flips Y so each tile is north-up
+        // internally (y = (north - lat)/range). The old `+lat` increased
+        // southward, which mis-stacked vertically-adjacent tiles by 2 tile
+        // heights — fine with one tile in view, scrambled when zoomed out.
+        const y = -(lat / degreesPerTile) * pixelsPerTile;
+
         return { x, y };
     }
 
