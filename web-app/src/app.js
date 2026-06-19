@@ -6,6 +6,7 @@ import { SVGTileManager } from './SVGTileManager.js';
 import { FeatureRenderer } from './FeatureRenderer.js';
 import { Avatar } from './Avatar.js';
 import { TaxonomyClient } from './TaxonomyClient.js';
+import { buildFilterUI } from './FilterUI.js';
 
 class MapApplication {
     constructor() {
@@ -43,6 +44,9 @@ class MapApplication {
             console.error('Taxonomy load failed; filters disabled:', e);
             this.taxonomy = new TaxonomyClient({});
         }
+
+        // Build the filter controls from the taxonomy (replaces the old hand-coded HTML)
+        buildFilterUI(this.taxonomy, document.getElementById('filter-groups'));
 
         // Initialize filter and accessibility managers
         this.filterManager = new FilterManager(this.taxonomy);
