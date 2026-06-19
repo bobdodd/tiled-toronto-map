@@ -114,10 +114,11 @@ export class LocationTracker {
             speed: position.coords.speed,
             timestamp: position.timestamp
         };
-        
-        // Announce location update to screen readers
-        this.announceLocation();
-        
+
+        // Location is announced by the visible #location-info panel (updated in
+        // app.handleLocationUpdate, which is aria-live). No separate region here
+        // — that produced a second, competing announcement of the same update.
+
         // Call all registered callbacks
         this.updateCallbacks.forEach(callback => {
             callback(this.currentPosition);
@@ -147,27 +148,6 @@ export class LocationTracker {
         this.errorCallbacks.forEach(callback => {
             callback({ code: error.code, message });
         });
-    }
-
-    announceLocation() {
-        if (!this.currentPosition) return;
-        
-        // Create or update live region for screen readers
-        let liveRegion = document.getElementById('location-live-region');
-        if (!liveRegion) {
-            liveRegion = document.createElement('div');
-            liveRegion.id = 'location-live-region';
-            liveRegion.setAttribute('aria-live', 'polite');
-            liveRegion.setAttribute('aria-atomic', 'true');
-            liveRegion.className = 'screen-reader-only';
-            document.body.appendChild(liveRegion);
-        }
-        
-        const lat = this.currentPosition.lat.toFixed(4);
-        const lng = this.currentPosition.lng.toFixed(4);
-        const accuracy = Math.round(this.currentPosition.accuracy);
-        
-        liveRegion.textContent = `Location updated: ${lat}, ${lng}. Accuracy: ${accuracy} meters.`;
     }
 
     onUpdate(callback) {

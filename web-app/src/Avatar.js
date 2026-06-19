@@ -301,9 +301,10 @@ export class Avatar {
             'Centered on your current location' : 
             'Centered on map location';
         
-        // Use the existing announcement system
+        // The one shared status region, clear-then-set so re-centring re-announces.
         const announcements = document.getElementById('map-announcements');
         if (announcements) {
+            announcements.textContent = '';
             announcements.textContent = announcement;
         }
     }

@@ -113,14 +113,6 @@ export class SearchManager {
         });
         host.appendChild(filters);
 
-        // Polite count announcement, separate from the map's own live regions so
-        // result counts don't collide with rotor / status messages.
-        this.status = document.createElement('p');
-        this.status.className = 'search-status screen-reader-only';
-        this.status.setAttribute('aria-live', 'polite');
-        this.status.setAttribute('aria-atomic', 'true');
-        host.appendChild(this.status);
-
         this.results = document.createElement('ul');
         this.results.className = 'search-results';
         this.results.setAttribute('role', 'list');
@@ -272,8 +264,11 @@ export class SearchManager {
         while (this.results.firstChild) this.results.removeChild(this.results.firstChild);
     }
 
+    // Search status (result counts, "no results", errors) goes through the one
+    // shared status region rather than a region of its own — search and the map
+    // never announce at the same instant, and one channel keeps things from
+    // racing. The host app supplies the announcer (clear-then-set).
     setStatus(msg) {
-        this.status.textContent = '';
-        this.status.textContent = msg;
+        this.announceExtra(msg);
     }
 }

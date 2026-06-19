@@ -801,18 +801,16 @@ class MapApplication {
     }
 
     announceStatus(message) {
-        // Create or update status live region
-        let statusRegion = document.getElementById('status-live-region');
-        if (!statusRegion) {
-            statusRegion = document.createElement('div');
-            statusRegion.id = 'status-live-region';
-            statusRegion.setAttribute('aria-live', 'assertive');
-            statusRegion.setAttribute('aria-atomic', 'true');
-            statusRegion.className = 'screen-reader-only';
-            document.body.appendChild(statusRegion);
-        }
-        
-        statusRegion.textContent = message;
+        // ONE polite region for all transient status — pan/zoom, search, tracking,
+        // tile-load, the skip-link hint. (Location DATA has its own region: the
+        // visible #location-info panel.) Clear-then-set so an identical
+        // consecutive message still re-announces and writers don't clobber each
+        // other mid-phrase. Polite, not assertive: status should never interrupt
+        // the screen reader mid-sentence.
+        const region = document.getElementById('map-announcements');
+        if (!region) return;
+        region.textContent = '';
+        region.textContent = message;
     }
 
     announceMapChange() {
