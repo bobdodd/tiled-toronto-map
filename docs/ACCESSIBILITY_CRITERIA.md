@@ -1,8 +1,32 @@
 # Accessibility-significant features are first-class
 
-**Status:** requirement — needs sign-off on thresholds before baking into
-`taxonomy.json` and adding UI filters (Phase 2b step 4 / Phase 4).
+**Status:** SIGNED OFF + IMPLEMENTED 2026-06-19. Bob approved the recommended
+thresholds (below); all of these are now first-class overlay filters in a
+single "Mobility & terrain" group, live on the tiled map. Surface, smoothness,
+path width, kerb type, incline (incl. an up/down "direction noted" catch),
+steps, lit, and signal-controlled vs uncontrolled crossings.
 **Date raised:** 2026-06-18.
+
+## Implemented thresholds (2026-06-19)
+
+- **Incline** — gentle ≤5% / moderate >5–8.33% / steep >8.33% (ADA-AODA ramp
+  max), `steep` keyword → steep band, plus `marked-incline` for `up`/`down`
+  (Toronto has ~50 numeric inclines but 1,398 directional).
+- **Surface** — firm {asphalt, concrete, paving_stones, …} vs rough {gravel,
+  dirt, grass, **sett, cobblestone**, …}. sett/cobblestone are "rough" despite
+  OSM calling them paved.
+- **Smoothness** — good {excellent, good, intermediate} vs poor {bad and below}.
+- **Width** — <0.9 m / 0.9–1.5 m / ≥1.5 m.
+- **Kerb** — dropped/flush (crossable) vs raised (barrier), from `kerb=*`
+  (7.2k features; the old `low-kerbs`/`kerb:height` rule was near-empty).
+- **Crossings** — signal-controlled {traffic_signals, pedestrian_signals} vs
+  uncontrolled {uncontrolled, unmarked, marked, zebra, …}.
+- **Lit** — `lit=yes/automatic/dusk-dawn/partial`.
+
+**Key implementation note:** these way-attributes use a dedicated `terrain`
+category (layer=accessibility, so still a map overlay) that is DELIBERATELY
+absent from the search index's POI category set — otherwise every asphalt road
+(135k) would flood search. Node POIs (kerbs/crossings/steps) stay searchable.
 
 ## Principle
 
