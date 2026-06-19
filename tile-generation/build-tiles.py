@@ -966,17 +966,25 @@ class TileBuilder:
         # the manifest's subtypeLabels (applied by the engine) — one source of
         # truth, no parallel hand-coded label tables.
         name = props.get('name')
-        type_label = primary.get('label') or primary['category'].replace('-', ' ').title()
+        # The type word should say what the feature IS — its base geometry, or
+        # failing that a real place POI — NOT an accessibility attribute it merely
+        # carries. So a pizzeria with an accessible toilet reads "Blaze Pizza, Fast
+        # food, ... Accessible toilets", not typed as a toilet. (The address marker
+        # isn't a type.) Accessibility/other attributes follow as overlay labels.
+        type_source = (cls.get('base')
+                       or next((o for o in cls['overlays']
+                                if o.get('layer') == 'poi' and o.get('subtype') != 'address'), None)
+                       or primary)
+        type_label = type_source.get('label') or type_source['category'].replace('-', ' ').title()
         addr = ' '.join(filter(None, (props.get('addr:housenumber'), props.get('addr:street'))))
         base_parts = [p for p in (name, type_label) if p]
         if addr:
             base_parts.append(f"at {addr}")
         base_label = ', '.join(base_parts) or type_label
-        # Exclude the primary from the overlay list: for a POI/attribute node with
-        # no base geometry the primary IS the first overlay, so otherwise its label
-        # would be spoken twice ("Accessible toilets ... Accessible toilets").
+        # Drop the type source from the overlay list so its label isn't spoken
+        # twice (for a base-less POI node the type source is one of the overlays).
         overlay_labels = [o['label'] for o in cls['overlays']
-                          if o.get('label') and o is not primary]
+                          if o.get('label') and o is not type_source]
         aria = f"{base_label}. {', '.join(overlay_labels)}" if overlay_labels else base_label
 
         group = self.create_svg_element('g', class_=' '.join(tokens), role='img', aria_label=aria)
