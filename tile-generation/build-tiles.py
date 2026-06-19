@@ -2079,7 +2079,7 @@ class TileBuilder:
                 lat = round(south + i * size, 4)
                 lng = round(west + j * size, 4)
                 svg = self.create_tile_svg(lat, lng, tile_features)
-                if svg:
+                if svg is not None:
                     gz_file = self.save_svg_tile(svg, lat, lng)
                     tiles_created += 1
                     print(f"\rCreated tile {tiles_created}/{n_lat * n_lng}: {gz_file.name} ({len(tile_features)} features)", end='')
