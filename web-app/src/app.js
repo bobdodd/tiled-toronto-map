@@ -1094,12 +1094,27 @@ class MapApplication {
             }
             
             loadTimeout = setTimeout(() => {
-                // Update viewport dimensions to ensure they're current
-                const container = this.mapRenderer.svg.parentElement;
-                const rect = container.getBoundingClientRect();
-                this.mapRenderer.viewBox.width = rect.width;
-                this.mapRenderer.viewBox.height = rect.height;
-                
+                // Keep the renderer's VIEWPORT (container pixel size) current — it
+                // can change on resize — then DERIVE the viewBox from the current
+                // zoom. The viewBox is zoom-scaled (viewport / 2^(zoom-18)); the old
+                // code wrote the raw container size straight into viewBox.width/
+                // height, which is only correct at zoom 18. At any other zoom it
+                // snapped the viewBox back to zoom-18 scale ~300ms after a pan — a
+                // phantom zoom-in (this.zoom stayed put, but the view jumped a
+                // level). Recompute around the existing centre so the view holds.
+                const r = this.mapRenderer;
+                const rect = r.svg.parentElement.getBoundingClientRect();
+                r.viewport.width = rect.width;
+                r.viewport.height = rect.height;
+                const cx = r.viewBox.x + r.viewBox.width / 2;
+                const cy = r.viewBox.y + r.viewBox.height / 2;
+                const scale = Math.pow(2, r.zoom - 18);
+                r.viewBox.width = rect.width / scale;
+                r.viewBox.height = rect.height / scale;
+                r.viewBox.x = cx - r.viewBox.width / 2;
+                r.viewBox.y = cy - r.viewBox.height / 2;
+                r.updateViewBox();
+
                 // Get current bounds
                 const bounds = this.getBoundsFromView();
                 
