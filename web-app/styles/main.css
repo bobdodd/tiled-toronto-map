@@ -27,6 +27,30 @@ body {
     border: 0;
 }
 
+/* Skip links — off-screen until focused, then pinned top-left. White on dark
+   blue is ~9:1 (AAA); generous height/padding clears the WCAG 2.2 target size. */
+.skip-link {
+    position: absolute;
+    left: 0.5rem;
+    top: -10rem;
+    z-index: 200;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.5rem 0.875rem;
+    background: #08407a;
+    color: #ffffff;
+    font-size: 1rem;
+    text-decoration: underline;
+    border-radius: 0 0 4px 4px;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid #ffffff;
+    outline-offset: -3px;
+}
+
 
 /* Control Sidebar */
 .control-sidebar {
@@ -1956,3 +1980,47 @@ body.tooltip-below .poi-tooltip::after {
     border-radius: 999px;
 }
 .poi-marker[hidden] { display: none; }
+
+/* ---- Filter / rotor checkbox rows: WCAG 2.2 target size + legibility ----
+   The list rows were ~16px tall at 10px and truncated with an ellipsis, which
+   hid the band labels ("Good smoothness (wheelchair-passable)"). Give each row
+   a >=24px target, a readable size, and let long labels wrap instead of clip. */
+.accordion-content label,
+.filter-accordion-content label {
+    display: flex;
+    align-items: center;
+    min-height: 1.75rem; /* >= 24px clickable target */
+    padding: 0.25rem 0;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.accordion-content input,
+.filter-accordion-content input {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.5rem;
+}
+
+/* ---- Reduced motion (WCAG 2.3.3) ----
+   Last in the file so it overrides the per-button rules above. Kills all
+   animation/transition, and resets the compass hover "grow" to each button's
+   resting transform so nothing jumps for vestibular-sensitive users. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .nav-button:hover,
+    .nav-button:focus { transform: none; }
+    .nav-n:hover,
+    .nav-s:hover { transform: translateX(-50%); }
+    .nav-e:hover,
+    .nav-w:hover { transform: translateY(-50%); }
+}

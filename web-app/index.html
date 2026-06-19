@@ -7,25 +7,33 @@
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
+    <!-- Skip links: the first two tab stops (tabindex 1, 2 — ahead of every
+         banded control). Visually hidden until focused. "Skip to map" lands on
+         the first feature that is BOTH in a selected rotor category AND on
+         screen — the same viewport-only focus set you reach tabbing in from the
+         header — so the user arrives on something they can see and operate. -->
+    <a href="#compass-navigator" id="skip-to-compass" class="skip-link" tabindex="1">Skip to compass</a>
+    <a href="#map-svg" id="skip-to-map" class="skip-link" tabindex="2">Skip to map</a>
+
     <!-- Control Sidebar -->
     <div id="control-sidebar" class="control-sidebar" role="banner">
         <div class="sidebar-header">
             <h1 class="sidebar-title">Map</h1>
-            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="true" tabindex="1">
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="true" tabindex="3">
                 <span class="icon hamburger-icon" style="display: none;">☰</span>
                 <span class="icon close-icon">✕</span>
             </button>
         </div>
         
         <div class="sidebar-content">
-            <button id="toggle-tracking" class="control-button" aria-pressed="false" tabindex="2">
+            <button id="toggle-tracking" class="control-button" aria-pressed="false" tabindex="4">
                 <span class="icon" aria-hidden="true">📍</span>
                 <span class="label">Track Location</span>
             </button>
             
             <!-- Search Accordion -->
             <div class="accordion-item">
-                <button class="accordion-header" aria-expanded="false" aria-controls="navigation-content" tabindex="3">
+                <button class="accordion-header" aria-expanded="false" aria-controls="navigation-content" tabindex="5">
                     <span class="icon" aria-hidden="true">🔍</span>
                     <span class="label">Search</span>
                     <span class="accordion-arrow">▼</span>
@@ -36,8 +44,8 @@
                         <!-- No placeholder: muted placeholder text fails AAA 1.4.6
                              contrast and vanishes on input. A visible hint below
                              the field, wired with aria-describedby, replaces it. -->
-                        <input type="text" id="destination-input" aria-describedby="search-hint" tabindex="4">
-                        <button id="search-button" tabindex="5">Search</button>
+                        <input type="text" id="destination-input" aria-describedby="search-hint" tabindex="6">
+                        <button id="search-button" tabindex="7">Search</button>
                         <span id="search-hint" class="search-hint">Find a place, address, or feature — a library, a washroom, “123 Main Street”. Tick a box to show only accessible results.</span>
                     </div>
                 </div>

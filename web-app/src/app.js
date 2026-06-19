@@ -221,6 +221,19 @@ class MapApplication {
         
         // Compass navigator controls
         this.setupCompassNavigator();
+
+        // Skip links (first two tab stops)
+        const skipCompass = document.getElementById('skip-to-compass');
+        if (skipCompass) skipCompass.addEventListener('click', (e) => {
+            e.preventDefault();
+            const first = document.getElementById('nav-n'); // first compass control
+            if (first) first.focus();
+        });
+        const skipMap = document.getElementById('skip-to-map');
+        if (skipMap) skipMap.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.focusFirstMapFeature();
+        });
         
         // Location tracker callbacks
         this.locationTracker.onUpdate((position) => {
@@ -673,6 +686,30 @@ class MapApplication {
             // This shouldn't happen, but just in case
             this.announceStatus('No location available');
         }
+    }
+
+    // "Skip to map" target. The rotor assigns a positive tabindex ONLY to
+    // features that are both in a selected category AND currently in the
+    // viewport, so `#map-tiles [tabindex]` is exactly the set you can see and
+    // operate — the same set you'd tab into from the header. Jump to the first
+    // of those (lowest tabindex). If nothing is navigable yet (no rotor
+    // category chosen), place focus in the map document itself and say how to
+    // make features keyboard-navigable.
+    focusFirstMapFeature() {
+        const focusables = Array.from(document.querySelectorAll('#map-tiles [tabindex]'))
+            .map((el) => ({ el, ti: parseInt(el.getAttribute('tabindex'), 10) }))
+            .filter((x) => x.ti > 0)
+            .sort((a, b) => a.ti - b.ti);
+        if (focusables.length) {
+            focusables[0].el.focus();
+            return;
+        }
+        const svg = document.getElementById('map-svg');
+        if (svg) {
+            svg.setAttribute('tabindex', '-1');
+            svg.focus({ preventScroll: true });
+        }
+        this.announceStatus('Map. Choose a category in the Rotor to navigate features by keyboard.');
     }
 
     // Search result chosen → recentre on it and move keyboard/screen-reader

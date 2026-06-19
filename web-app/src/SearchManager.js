@@ -57,9 +57,10 @@ const A11Y_BADGES = {
 const NEGATIVE = new Set(['no', 'none', 'false', '0']);
 
 // Tabindex bands stay consistent with the rest of the viewer (header < map
-// controls < map). Search lives in the header band: input 4, button 5, then the
-// a11y filters and result buttons follow here.
-const TAB_FILTERS = 6;     // 6..(6+filters)
+// controls < map). Search lives in the header band, after the two skip links
+// (1,2) and the static header controls: input 6, button 7, then the a11y
+// filters and result buttons follow here.
+const TAB_FILTERS = 8;     // 8..(8+filters)
 const TAB_RESULTS = 30;    // 30.. (one per shown result)
 const RESULT_LIMIT = 20;   // matches the API's default page size
 
