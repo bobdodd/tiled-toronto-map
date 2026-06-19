@@ -2132,11 +2132,15 @@ class TileBuilder:
                 c = f['geometry'].centroid
                 if c.is_empty:
                     continue
-                # Prefer a real "place" POI for display/category over the base type
-                # or a property-marker like the wheelchair-status (mobility) overlay.
-                lead = next((o for o in overlays
-                             if o['category'] in self._SEARCH_POI_CATS and o['category'] != 'mobility'),
-                            None) or primary
+                # Prefer a real "place" POI for display/category; failing that a
+                # mobility marker (wheelchair status) — which is at least a reason
+                # the point is findable — over the bare primary, which for an
+                # attribute-only node would be a terrain overlay (a surface/incline
+                # label is a poor name for a searchable feature).
+                lead = (next((o for o in overlays
+                              if o['category'] in self._SEARCH_POI_CATS and o['category'] != 'mobility'), None)
+                        or next((o for o in overlays if o['category'] == 'mobility'), None)
+                        or primary)
                 # Deduplicate labels (a POI node's primary IS its first overlay).
                 labels = list(dict.fromkeys(
                     e['label'] for e in ([primary] + overlays) if e and e.get('label')))
