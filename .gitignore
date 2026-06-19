@@ -3,6 +3,13 @@
 *.osm
 toronto-svg-tiles/data/
 
+# Generated map tiles + their index/styles — build artifacts, reproducible from
+# the manifest + OSM extract via build-tiles.py (~5 min) and published to the
+# tile server with Tile Studio. Not committed (binary churn).
+*.svg.gz
+tile-generation/*-svg-tiles/tile-index.json
+tile-generation/*-svg-tiles/styles/
+
 # Archive folders
 archive/
 
