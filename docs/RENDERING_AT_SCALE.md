@@ -120,11 +120,16 @@ index) yet not be **rendered** at the current zoom (culled below the "m" floor).
 Search, filters and the rotor each need a consistent answer for "exists but not
 shown here." (Bob's questions, with an initial lean each — to settle tomorrow.)
 
-1. **Search → a result not rendered at the current zoom.** Selecting it can't
-   focus a `<g>` that isn't in the DOM. *Lean:* a hit carries (or we derive) its
-   `min_zoom`; selecting it zooms to ≥ that level so the feature renders and can
-   be focused. Search stays complete (all features); the map follows the
-   selection to a zoom where the thing is actually visible.
+1. **Search → a result not rendered at the current zoom.** *Settled (Bob):* the
+   zoom level **adjusts to show the selected result** — the ordinary map
+   behaviour of taking you to the thing you searched for, framed so you can see
+   it. The LOD then takes care of itself: at a zoom that *shows* the feature it
+   is, by definition, rendered and focusable. Search needs NO awareness of
+   `min_zoom` or culling — it just does what selecting a result should always do,
+   and the rendering follows. ("Show" ideally = frame the feature's extent: a
+   large park frames wide, a shop frames at street level — not a fixed zoom.)
+   (Today's `goToSearchResult` already crudely does this by zooming to 18 on
+   select; the refinement is fit-to-feature rather than a fixed level.)
 
 2. **Filters with no rendered content at the current zoom** (e.g. a buildings
    filter at city zoom where buildings are culled). *Lean:* prefer "tell the
