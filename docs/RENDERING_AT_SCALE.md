@@ -97,6 +97,22 @@ aggregates ("~200 homes" / "mostly low-rise"), and a tile pyramid that carries
 the right representation per zoom. Out of scope for now; captured here so we
 build toward it rather than hard-coding the "delete or keep" binary.
 
+## Measured + shipped (A, 2026-06-19)
+
+The tangible m-rule LOD is **live**: four bands (full + lod17/lod16/lod15), the
+viewer switching band by zoom. On the dense downtown tile it culls tangible
+shapes 2,491 → 287 and drops the tile 133 KB → 54 KB (~2.5×), ~3,371 → 1,458
+nodes — a real win on heavy areas.
+
+**But the build proved points are now the cap, and it's mostly addresses.** Of
+the ~1,458 features left in that lod15 tile, only ~287 are shapes; the other
+~1,170 are always-shown points — **503 of them address points**, plus benches,
+food, and accessibility points. 500 house-numbers in one tile at whole-city zoom
+is exactly the overload that shouldn't be *browsable* at that scale. So the
+~2.5× is capped here until points get thinned — which is "B" below, and the
+prime first target is **addresses** (searchable, so a high min-zoom — don't
+render them at city scale).
+
 ## POIs are separate
 
 Points of interest (washrooms, crossings, benches, accessible features) are
