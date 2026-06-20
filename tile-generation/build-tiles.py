@@ -11,6 +11,7 @@ import json
 import argparse
 import gzip
 import math
+import re
 import copy
 import hashlib
 import requests
@@ -983,22 +984,292 @@ class TileBuilder:
                        or primary)
         type_label = type_source.get('label') or type_source['category'].replace('-', ' ').title()
         addr = ' '.join(filter(None, (props.get('addr:housenumber'), props.get('addr:street'))))
-        base_parts = [p for p in (name, type_label) if p]
-        if addr:
-            base_parts.append(f"at {addr}")
-        base_label = ', '.join(base_parts) or type_label
+        if self._is_address(type_source):
+            # An address IS its number + street — the "Addresses" type word and the
+            # "at" are noise ("Addresses, at 54 Hayden Street" → "54 Hayden Street").
+            base_label = ', '.join(p for p in (name, addr) if p) or type_label
+        else:
+            base_parts = [p for p in (name, type_label) if p]
+            if addr:
+                base_parts.append(f"at {addr}")
+            base_label = ', '.join(base_parts) or type_label
         # Drop the type source from the overlay list so its label isn't spoken
         # twice (for a base-less POI node the type source is one of the overlays).
+        # Also drop the "Addresses" overlay label: when a feature carries an
+        # address it's already stated ("… at 505 University Avenue"), so the extra
+        # "Addresses" word is noise. The address CLASS stays, so it's still
+        # filterable — only the redundant spoken label goes.
         overlay_labels = [o['label'] for o in cls['overlays']
-                          if o.get('label') and o is not type_source]
+                          if o.get('label') and o is not type_source
+                          and o.get('subtype') != 'address' and o.get('id') != 'addresses']
         aria = f"{base_label}. {', '.join(overlay_labels)}" if overlay_labels else base_label
+        # An aggregate marker (POI declutter) carries its own ready-made name
+        # ("5 Benches") — use it verbatim, not the per-feature name assembly.
+        if feature.get('_aggregate_label'):
+            aria = feature['_aggregate_label']
 
         group = self.create_svg_element('g', class_=' '.join(tokens), role='img', aria_label=aria)
         group.set('data-osm-id', str(props.get('osm_id', '')))
         if cls['overlays']:
             group.set('data-overlays', ' '.join(o['id'] for o in cls['overlays']))
+        if feature.get('_aggregate_count'):
+            group.set('data-aggregate', str(feature['_aggregate_count']))
         group.append(shape)
         return group, casing
+
+    # ----- POI declutter (the "m-rule" for points) -------------------------
+    # Same-type points closer together than a readable "m" can't be told apart,
+    # so they're decluttered per LOD band (RENDERING_AT_SCALE.md). Two different
+    # treatments, because they answer to different truths:
+    #   * general POIs (benches, cafes, …) AGGREGATE into one marker at the
+    #     cluster centroid, named "N <plural>" ("5 Benches"). Clustered by FULL
+    #     classification (primary + overlay set) so accessible variants stay
+    #     distinct — "3 Accessible toilets" never merges into "8 Toilets".
+    #   * ADDRESSES can't be summarised that way: OSM carries them sparsely and
+    #     non-consecutively (odd/even sides, representative points only), so a
+    #     range or a count would be a false claim. Instead ONE real address — the
+    #     MEDIAN house number, which by definition exists in the cluster — is
+    #     kept at its own location and the rest drop. (You find a specific
+    #     address by searching, which frames the zoom to show it.)
+    # Clustering is a grid declutter (cell ~ one "m"): O(n), and for "collapse
+    # points within an m of each other" it yields the same spaced-out set as the
+    # pairwise iterate-to-convergence, far cheaper. Threshold is in degrees (the
+    # "m" height as a ground distance at the band's zoom).
+    def aggregate_pois(self, pois, threshold):
+        if not pois or threshold <= 0:
+            return pois
+        from collections import defaultdict
+        groups = defaultdict(list)
+        keep_aside = []
+        for p in pois:
+            cls = p.get('classification') or {}
+            prim = cls.get('primary') or {}
+            try:
+                c = p['geometry'].centroid
+                cx, cy = c.x, c.y
+            except Exception:
+                keep_aside.append(p)   # no usable point — keep rather than risk a drop
+                continue
+            cell = (math.floor(cx / threshold), math.floor(cy / threshold))
+            if self._is_address(prim):
+                key = ('addr', (p.get('properties') or {}).get('addr:street', ''), cell)
+            else:
+                key = ('poi', prim.get('id'),
+                       frozenset(o['id'] for o in cls.get('overlays', [])), cell)
+            groups[key].append((p, cx, cy))
+        out = list(keep_aside)
+        for key, members in groups.items():
+            if len(members) == 1:
+                out.append(members[0][0])
+            elif key[0] == 'addr':
+                out.append(self._median_address([m[0] for m in members]))
+            else:
+                out.append(self._aggregate_marker(members))
+        return out
+
+    def _is_address(self, prim):
+        return prim.get('id') == 'addresses' or prim.get('subtype') == 'address'
+
+    def _median_address(self, addrs):
+        # The median by house number — a real address that EXISTS in the cluster
+        # (never an average, which could invent a number nobody lives at).
+        def num(a):
+            m = re.match(r'\s*(\d+)', str((a.get('properties') or {}).get('addr:housenumber', '')))
+            return int(m.group(1)) if m else 0
+        s = sorted(addrs, key=num)
+        return s[len(s) // 2]
+
+    def _aggregate_marker(self, members):
+        feats = [m[0] for m in members]
+        n = len(feats)
+        cx = sum(m[1] for m in members) / n   # count-weighted centroid (each member = 1)
+        cy = sum(m[2] for m in members) / n
+        cls = feats[0]['classification']
+        return {
+            'geometry': Point(cx, cy),
+            'properties': {},
+            'classification': cls,            # keep type + overlay classes so it stays filterable
+            'min_zoom': 0.0,
+            '_aggregate_label': f"{n} {self._aggregate_type_phrase(cls)}",
+            '_aggregate_count': n,
+        }
+
+    def _aggregate_type_phrase(self, cls):
+        # The aggregate's type wording MIRRORS render_feature's per-feature naming
+        # (minus the name/address an aggregate has none of): the TYPE it IS — its
+        # base geometry or a real-place POI overlay, never an accessibility
+        # attribute it merely carries — pluralised, then the attribute labels. So a
+        # wheelchair-accessible restaurant aggregates "type first" as "Restaurants.
+        # Wheelchair accessible locations" exactly as one reads, and accessible
+        # toilets stay "Toilets. Accessible toilets", distinct from plain "Toilets".
+        type_source = (cls.get('base')
+                       or next((o for o in cls['overlays']
+                                if o.get('layer') == 'poi' and o.get('subtype') != 'address'), None)
+                       or cls['primary'])
+        type_label = type_source.get('label') or type_source['category'].replace('-', ' ').title()
+        phrase = self._pluralise(type_label)
+        # An aggregate has no single address, so the per-feature "Addresses"
+        # overlay is meaningless noise here ("5 Restaurants. Addresses") — drop it.
+        overlay_labels = [o['label'] for o in cls['overlays']
+                          if o.get('label') and o is not type_source
+                          and o.get('subtype') != 'address' and o.get('id') != 'addresses']
+        if overlay_labels:
+            phrase += '. ' + ', '.join(overlay_labels)
+        return phrase
+
+    def _pluralise(self, phrase):
+        # "typically a pluralisation" (Bob). Pluralise the final word; leave
+        # already-plural (ends -s) and " of " compounds ("Places of worship").
+        p = (phrase or '').strip()
+        if not p:
+            return 'features'
+        if ' of ' in p.lower():
+            return p
+        head, _, last = p.rpartition(' ')
+        ll = last.lower()
+        if ll.endswith('s'):
+            plural = last
+        elif ll.endswith(('x', 'z', 'ch', 'sh')):
+            plural = last + 'es'
+        elif ll.endswith('y') and len(last) > 1 and last[-2].lower() not in 'aeiou':
+            plural = last[:-1] + 'ies'
+        else:
+            plural = last + 's'
+        return (head + ' ' + plural) if head else plural
+
+    # ----- POI declutter, STAGE 2: cross-type proximity (coarse bands only) ----
+    # After stage 1 (same-type), nearby points of DIFFERENT types still stack
+    # within one "m" of each other — at a downtown intersection a z15 viewport can
+    # carry dozens of distinct tooltips a fraction of a millimetre apart. For
+    # explore-by-touch / pointer, and anyone with limited mobility or tremor,
+    # that's an impossible target. So a second pass merges the surviving markers
+    # by PROXIMITY ALONE (the same m-distance, blind to type) into ONE marker with
+    # an ACCESSIBILITY-FIRST summary tooltip (Bob's choice 2026-06-20): the access
+    # features a disabled traveller needs lead, then a coarse roll-up of the rest.
+    # Runs only on the coarse bands, so z18 keeps every individual and "zoom in to
+    # separate them" has a real endpoint. As you zoom out the m-distance grows and
+    # the clusters coarsen — the generalisation the doc anticipated, now serving
+    # target acquisition. Grid declutter (cell ~ one "m"), O(n), as stage 1.
+    _WHEELCHAIR_FLAGS = {'wheelchair_yes', 'wheelchair_no', 'wheelchair_limited'}
+
+    def cluster_proximity(self, features, threshold):
+        if not features or threshold <= 0:
+            return features
+        from collections import defaultdict
+        cells = defaultdict(list)
+        keep_aside = []
+        for f in features:
+            try:
+                c = f['geometry'].centroid
+                cx, cy = c.x, c.y
+            except Exception:
+                keep_aside.append(f)
+                continue
+            cells[(math.floor(cx / threshold), math.floor(cy / threshold))].append((f, cx, cy))
+        out = list(keep_aside)
+        for members in cells.values():
+            out.append(members[0][0] if len(members) == 1
+                       else self._proximity_marker(members))
+        return out
+
+    def _proximity_marker(self, members):
+        feats = [m[0] for m in members]
+        n = len(members)
+        cx = sum(m[1] for m in members) / n
+        cy = sum(m[2] for m in members) / n
+        total = sum(f.get('_aggregate_count', 1) for f in feats)
+        return {
+            'geometry': Point(cx, cy),
+            'properties': {},
+            # A dedicated 'cluster' class so the viewer can style it distinctly;
+            # no overlays (filtering a cluster by its contents is part of the
+            # deferred filters-at-low-zoom question).
+            'classification': {'base': None, 'overlays': [],
+                               'primary': {'id': 'cluster', 'category': 'cluster',
+                                           'subtype': None, 'svgClass': 'cluster',
+                                           'label': 'Cluster', 'layer': 'poi'}},
+            'min_zoom': 0.0,
+            '_aggregate_label': self._proximity_tooltip(feats),
+            '_aggregate_count': total,
+            '_cluster': True,
+        }
+
+    def _proximity_tooltip(self, feats):
+        # Accessibility-first: real access FEATURES (presence — counts are fuzzy
+        # once carried as overlays) lead; then a coarse roll-up of the rest with
+        # counts; then addresses by street. The generic wheelchair=yes/no/limited
+        # flags are attributes, not features, so they're left out.
+        access = {}      # label -> count (count used only for ordering)
+        other = {}       # coarse theme -> count
+        streets = set()
+        for f in feats:
+            cls = f['classification']
+            prim = cls['primary']
+            cnt = f.get('_aggregate_count', 1)
+            if self._is_address(prim):
+                st = (f.get('properties') or {}).get('addr:street')
+                if st:
+                    streets.add(st)
+                other['addresses'] = other.get('addresses', 0) + cnt
+            elif prim.get('layer') == 'accessibility':
+                if prim.get('subtype') not in self._WHEELCHAIR_FLAGS and prim.get('label'):
+                    access[prim['label']] = access.get(prim['label'], 0) + cnt
+            elif prim.get('id') != 'cluster':
+                th = self._coarse_theme(prim)
+                other[th] = other.get(th, 0) + cnt
+            # access attributes carried as overlays on this member
+            for o in cls['overlays']:
+                if (o is not prim and o.get('layer') == 'accessibility'
+                        and o.get('subtype') not in self._WHEELCHAIR_FLAGS
+                        and o.get('label')):
+                    access[o['label']] = access.get(o['label'], 0) + cnt
+        return self._compose_cluster_tooltip(access, other, streets)
+
+    def _coarse_theme(self, entry):
+        # Coarsen a POI type to a short theme for the "also …" roll-up.
+        cat = entry.get('category')
+        lab = (entry.get('label') or '').lower()
+        if cat == 'shop':
+            return 'shops'
+        if cat == 'transit':
+            return 'transit'
+        if cat == 'tourism':
+            return 'attractions'
+        if cat == 'historic':
+            return 'historic sites'
+        if any(k in lab for k in ('food', 'restaurant', 'cafe', 'bar', 'pub', 'bistro', 'diner', 'eatery')):
+            return 'food'
+        if any(k in lab for k in ('bank', 'atm', 'bureau')):
+            return 'banks'
+        if 'bench' in lab or 'rest area' in lab:
+            return 'seating'
+        return entry.get('label') or (cat or 'features')
+
+    def _compose_cluster_tooltip(self, access, other, streets):
+        def lc(s):
+            return (s[0].lower() + s[1:]) if s else s
+        parts = []
+        if access:
+            items = [lc(t) for t, _ in sorted(access.items(), key=lambda x: -x[1])]
+            parts.append("Accessible features here: " + ", ".join(items))
+        addr_n = other.pop('addresses', 0)
+        rest = [(f"{c} {lc(t)}" if c > 1 else lc(t))
+                for t, c in sorted(other.items(), key=lambda x: -x[1])]
+        seg = ", ".join(rest)
+        if addr_n:
+            sl = sorted(streets)
+            if not sl:
+                aseg = "addresses"
+            elif len(sl) == 1:
+                aseg = f"addresses on {sl[0]}"
+            elif len(sl) <= 3:
+                aseg = "addresses on " + ", ".join(sl[:-1]) + " and " + sl[-1]
+            else:
+                aseg = f"addresses on {len(sl)} streets"
+            seg = (seg + ", " + aseg) if seg else aseg
+        if seg:
+            parts.append(("Also " if access else "Here: ") + seg)
+        return ". ".join(parts) + ". Zoom in to separate them."
 
     def save_svg_tile(self, svg, tile_lat, tile_lng):
         """Save SVG tile to compressed file"""
@@ -1170,17 +1441,36 @@ class TileBuilder:
         # come out empty, so zooming out fetches fewer AND lighter tiles. Each band
         # is a self-contained {tiles/, tile-index.json} unit; the full band stays at
         # the root so the existing URL keeps working.
+        #
+        # Per band, TANGIBLE shapes are culled by the m-rule (min_zoom <= the band's
+        # zoom) and POINTS are decluttered by the POI m-rule (aggregate_pois) at the
+        # "m"-height ground distance for that zoom — so shapes AND points thin out
+        # together as you zoom out, holding cognitive load roughly constant.
+        M_HEIGHT_PX = 8.0    # height of a readable "m" — the POI declutter floor
         full_tiles_dir = self.tiles_dir
-        bands = [(None, None), ('lod17', 17), ('lod16', 16), ('lod15', 15)]
+        bands = [(None, 18), ('lod17', 17), ('lod16', 16), ('lod15', 15)]
         total_created = 0
-        for band_name, max_z in bands:
+        for band_name, band_zoom in bands:
+            max_z = None if band_name is None else band_zoom
+            threshold_deg = M_HEIGHT_PX / (px_per_deg * (2 ** (band_zoom - 18)))
+            do_proximity = band_name is not None   # stage 2: coarse bands only
             self.tiles_dir = (full_tiles_dir if band_name is None
                               else self.output_dir / band_name / 'tiles')
             self.tiles_dir.mkdir(parents=True, exist_ok=True)
             created = 0
             for (i, j), tile_features in buckets.items():
-                feats = (tile_features if max_z is None
-                         else [f for f in tile_features if f.get('min_zoom', 0) <= max_z])
+                tangible = [f for f in tile_features
+                            if (f.get('classification') or {}).get('base') is not None
+                            and (max_z is None or f.get('min_zoom', 0) <= max_z)]
+                # stage 1: same-type aggregation (all bands)
+                pois = self.aggregate_pois(
+                    [f for f in tile_features
+                     if (f.get('classification') or {}).get('base') is None],
+                    threshold_deg)
+                # stage 2: cross-type proximity clustering (coarse bands only)
+                if do_proximity:
+                    pois = self.cluster_proximity(pois, threshold_deg)
+                feats = tangible + pois
                 if not feats:
                     continue
                 lat = round(south + i * size, 4)

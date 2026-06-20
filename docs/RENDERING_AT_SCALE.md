@@ -113,6 +113,179 @@ is exactly the overload that shouldn't be *browsable* at that scale. So the
 prime first target is **addresses** (searchable, so a high min-zoom — don't
 render them at city scale).
 
+## Measured + shipped (B — POI aggregation, 2026-06-20)
+
+The **POI m-rule** is now live too: same-type points closer together than a
+readable "m" can't be told apart, so they declutter per band at the m-**height**
+as a ground distance for that zoom (~9 m at z18 → ~72 m at z15). Two treatments,
+because points answer to different truths:
+
+- **General POIs** (benches, shops, food, crossings, elevators, …) **aggregate**
+  into one marker at the count-weighted centroid, named **"N {plural}"**
+  (`"22 Shops"`, `"12 Signal-controlled crossings"`). Clustered by FULL
+  classification (primary type + the overlay set), so accessible variants never
+  fold into the plain type — `"3 Accessible toilets"` stays distinct from
+  `"8 Toilets"`. The name MIRRORS `render_feature` (type first, then attribute
+  labels), so an aggregate reads exactly like one of its members would, only
+  counted + pluralised. Aggregates keep their type + overlay classes, so they
+  stay filterable; they are display-only and NOT in the search index (you search
+  an individual, which frames the zoom to show it — the settled search rule).
+- **Addresses can't be summarised that way.** OSM carries them sparsely and
+  non-consecutively (odd/even sides, representative points only), so a numeric
+  **range or a count would be a false claim** (Bob, 2026-06-20: "merging those
+  addresses produces false messaging"). Instead one **real** address — the
+  **median by house number**, which by definition exists in the cluster (never an
+  average that could invent a number nobody lives at) — is kept at its own
+  location and the rest drop.
+
+Clustering is an O(n) grid declutter (cell ≈ one "m"); for "collapse points
+within an m of each other" it gives the same spaced-out set as pairwise
+iterate-to-convergence, far cheaper. Implementation: `aggregate_pois` +
+`_aggregate_type_phrase` + `_median_address` in `build-tiles.py`, run per band in
+the tile loop alongside the tangible m-rule cull.
+
+**Measured (densest downtown tile, full→z15):** bytes 148 KB → 57 KB (2.6×),
+points 2,099 → 885, of which addresses 712 → 387; 166 aggregate markers stand in
+for 612 source points. General POIs thin ~2.8×; **addresses only ~1.8×** because
+median-keep at the literal m-height honestly keeps ~one real address per ~60 m of
+street, and downtown has a lot of street-frontage. **Decision (Bob, 2026-06-20):
+leave addresses at the m-height** — it is m-rule-honest (addresses 60 m apart ARE
+distinguishable) and consistent with how tangible shapes are culled, rather than
+giving addresses a coarser threshold or a search-only cutoff. So city zoom stays
+address-dense by design; that is the real-density = parity principle, not a bug.
+The bigger win is concentrated where the slowness was: the city-wide densest tile
+drops 257 KB → 27 KB (9.5×) from z18 to z15. **Shipped + live 2026-06-20** (all 4
+bands re-uploaded — the full band changed too, since POIs aggregate at z18 as
+well; viewer + search unchanged).
+
+**Felt result (Bob, 2026-06-20):** zoom-out is noticeably faster, *especially at
+the lowest zoom with the most tiles* — what used to take "a count of 10" to
+finish loading is now 3–4. Not instant, but much better.
+
+## Stage 2 — cross-type proximity clustering (shipped 2026-06-20)
+
+Stage 1 collapses same-type points; it does NOT touch points of DIFFERENT types
+that sit within an "m" of each other. Measured on the deployed z15 downtown tile:
+**98% of point markers were still in mixed-type clusters within one "m"** — the
+worst a 57-marker stack carrying 55 distinct tooltips in a ~few-mm span. For
+explore-by-touch / pointer, and for anyone with limited mobility or tremor, that
+is an unhittable target field (Bob, 2026-06-20).
+
+So a **second pass** clusters the surviving stage-1 markers by **proximity alone**
+(the same m-distance, blind to type) into ONE marker per spatial group, carrying
+an **accessibility-first summary tooltip** (Bob's choice from three rendered
+options): the real access features a disabled traveller needs lead — by
+**presence**, since counts are fuzzy once carried as overlays — then a coarse
+roll-up of the rest WITH counts, then addresses by street, then "Zoom in to
+separate them." The access set = everything in an `accessibility`-layer category
+(facility / sensory / mobility / transport / **terrain**), MINUS the generic
+`wheelchair=yes/no/limited` flags (attributes, not features, on nearly
+everything). **Terrain attributes (lit, surface, smoothness, incline, width) ARE
+kept** in the summary (Bob's call) even though they also render on the ways.
+
+Key behaviours:
+- **Coarse bands only (z17/16/15), never z18.** The full band keeps every
+  individual, so "zoom in to separate them" has a real endpoint. As you zoom out
+  the m-distance grows and clusters coarsen — the generalisation the doc
+  anticipated, now serving target acquisition.
+- One marker at the cluster centroid, class `cluster`, `data-aggregate` = total
+  underlying features; display-only (NOT searched — you search the individual and
+  the zoom-to-show dissolves the cluster). Filtering a cluster by its contents is
+  left to the deferred filters-at-low-zoom question.
+
+Real generated tooltip: *"Accessible features here: accessible toilets, tactile
+paving, signal-controlled crossing, audio crossing signals, pedestrian crossings,
+lit at night. Also 8 food, 4 transit, 3 shops, pharmacies, banks, attractions,
+dentists, addresses on 4 streets. Zoom in to separate them."*
+
+**Measured (densest downtown tile):** city-zoom markers **885 → 217** (z15), tile
+57 KB → 32 KB, on top of stage 1; z18 unchanged (2,099 markers, 0 clusters).
+Markers fall monotonically with zoom-out (2,099 → 926 → 526 → 217) — the
+constant-load shape. Code: `cluster_proximity` / `_proximity_marker` /
+`_proximity_tooltip` / `_coarse_theme` / `_compose_cluster_tooltip`, run per
+coarse band after stage 1. **Open follow-ups:** a distinct VISUAL for cluster
+markers (viewer-side — they're plain dots today; maybe a count badge); whether
+clusters should be filterable by content; and this **deepens the search
+open-question** (a cross-type cluster is even less a single searchable thing — it
+only reinforces the settled rule: search the individual, the zoom-to-show
+dissolves the cluster).
+
+## Next lever — fewer tiles at low zoom (coarser grid per band)
+
+Aggregation made each tile *lighter*; it did not make them *fewer*. The residual
+latency at the lowest zoom is now dominated by tile **count**, not tile weight: a
+city-wide z15 viewport still fetches ~64 of the 1 km (0.01°) tiles, each with its
+own HTTP request, its own gunzip, and its own SVG boilerplate + DOM-parse pass.
+
+The targeted, **parity-safe** fix is a **coarser tile grid on the coarse bands** —
+e.g. lod15 uses 4 km tiles (a 4×4 merge of the 1 km grid) instead of 1 km. Same
+features, same POI aggregation, just packaged into ~4 tiles for a city viewport
+instead of ~64: ~16× fewer requests / gunzips / parse passes at exactly the zoom
+that's slow, each tile only modestly bigger (aggregation already keeps coarse
+tiles in the 27–57 KB range). Nothing is dropped — it's a packaging change.
+
+- **For:** hits the actual low-zoom bottleneck (count); no feature loss; the
+  band-switch reload already exists, so no new UX seam.
+- **Against:** the generator must emit a different tile size per band, and the
+  viewer's grid math (`coordsToTileId`, `getTilesForBounds`, `tileSize`) becomes
+  per-band; a 4 km tile spans more, so a small pan near a boundary pulls a bigger
+  tile.
+- **Lighter complement (or alternative):** **prefetch a ring** of tiles just
+  outside the viewport so they're cached before a pan/zoom reaches them — smooths
+  the *feel* without changing the tile architecture.
+
+Status: identified, **not built** — banked here at Bob's request (2026-06-20).
+Reach for the coarser low-zoom grid first; it's aimed straight at the count.
+
+**Related — extend the zoom-OUT range (Bob, 2026-06-20).** Bands stop at lod15
+today; next rerender, add coarser bands BELOW it (lod14/13/…) so the user can zoom
+further out to a regional view — sensible now that it's whole-city, and more so as
+tile counts grow. Generator emits the extra bands (each more aggressively
+m-rule-culled + aggregated); the viewer extends `LOD_BANDS` and lowers its
+min-zoom. This pairs with the coarser-grid lever above (at very low zoom you want
+fewer, bigger tiles AND heavier generalisation) and leans hardest on the
+generalisation direction — at a regional scale "buildings" must already have
+become neighbourhoods and "streets" arterials, or there's nothing legible to
+show. Open: how far out to go, and what the coarsest band should render.
+
+## POI aggregation — further work (Bob: "more to do yet", 2026-06-20)
+
+Bob has flagged that POI aggregation is not finished; the next scope is his to
+set. Loose ends that surfaced building the first cut (candidates, NOT yet a
+committed plan):
+
+- **Aggregates as first-class accessible features.** They carry aria-label +
+  type/overlay classes + `data-aggregate`/count, and are display-only (excluded
+  from search by design — you search an individual). UNVERIFIED: that they appear
+  and read well in the **rotor**, and that focus/announcement of "22 Shops" works
+  in VoiceOver/NVDA. The doc's own bar is that aggregates be navigable, not just
+  labelled.
+- **Clustering method.** Current is an O(n) **grid declutter** (cell ≈ one "m"),
+  which approximates the pairwise iterate-to-convergence Bob first described.
+  Swap to exact pairwise if the precise centroid/spacing turns out to matter.
+- **The "m-height" value.** 8 px is a first guess for the readable-"m" height;
+  tune against real perception / AT once seen in use.
+- **Aggregate naming polish.** Aggregation surfaced verbose type labels
+  ("Benches and rest areas") and long shared-attribute chains on crossings
+  ("Signal-controlled crossings. Tactile paving, Audio crossing signals,
+  Pedestrian crossings"). They MIRROR the individual labels (consistent), but may
+  read heavily when counted; whether to shorten for aggregates is open.
+- **Individual address-overlay noise.** Only *aggregate* names drop the redundant
+  "Addresses" overlay; individual features (via `render_feature`) still append it
+  ("…at 220 Yonge Street. … Addresses, Shops"). Possibly clean up individuals too
+  — deliberately left untouched here to keep the change scoped.
+
+## Vertical dimension — multi-level transit (decided "B", deferred)
+
+Underground / elevated transit (subway, LRT, the PATH, the Gardiner) currently
+flattens onto one plane — clutter, plus explore ambiguity where a tunnel runs
+under a street. Decision (Bob, 2026-06-20): the **level model** — group features
+by level and switch between clean planes, with the rotor / explore scoped and
+**announced** per level ("underground, level −1"). Chosen over cheaper depth-
+styling / toggle options because Toronto (subway + LRT + PATH) is genuinely
+multi-plane. Deferred until after the LOD optimization above. Full write-up:
+**`docs/MULTI_LEVEL_TRANSIT.md`**.
+
 ## Open questions — LOD vs search / filters / rotor (raised 2026-06-19, for design)
 
 The m-rule opens a new state: a feature can **exist** (in the data + the search
