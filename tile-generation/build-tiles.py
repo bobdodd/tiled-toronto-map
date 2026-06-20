@@ -781,9 +781,13 @@ class TileBuilder:
             height=self.svg_size
         )
         
-        # Add a clip path to ensure features don't overflow the tile bounds
+        # Add a clip path to ensure features don't overflow the tile bounds. The
+        # id is TILE-UNIQUE so the combined viewer DOM never has clip-path id
+        # clashes — the viewer used to rename every id at load to avoid them; now
+        # it doesn't have to (a hot-path saving on every pan/zoom).
+        clip_id = f"clip-{tile_lat:.3f}_{tile_lng:.3f}"
         defs = self.create_svg_element('defs')
-        clipPath = self.create_svg_element('clipPath', id='tile-clip')
+        clipPath = self.create_svg_element('clipPath', id=clip_id)
         clipRect = self.create_svg_element(
             'rect',
             x=0, y=0,
@@ -806,8 +810,10 @@ class TileBuilder:
 
         def layer_for(category):
             if category not in layers:
+                # No id on the layer group: it was the category name (e.g.
+                # "building"), which collided across tiles and nothing references.
                 g = self.create_svg_element(
-                    'g', id=category, class_='layer', clip_path='url(#tile-clip)')
+                    'g', class_='layer', clip_path=f'url(#{clip_id})')
                 layers[category] = g
                 svg.append(g)
             return layers[category]

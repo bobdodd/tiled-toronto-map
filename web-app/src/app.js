@@ -973,83 +973,36 @@ class MapApplication {
 
         tiles.forEach(tile => {
             if (!tile.content) return;
-            
-            // Check if this tile already exists and remove it
+
             const existingTile = tilesGroup.querySelector(`[data-tile-id="${tile.id}"]`);
-            if (existingTile) {
-                existingTile.remove();
-            }
-            
+            if (existingTile) existingTile.remove();
+
             try {
-                // Parse SVG content
-                const parser = new DOMParser();
-                const svgDoc = parser.parseFromString(tile.content, 'image/svg+xml');
+                const svgDoc = new DOMParser().parseFromString(tile.content, 'image/svg+xml');
                 const svgElement = svgDoc.documentElement;
-                
-                // Create a group for this tile
+
                 const tileGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 tileGroup.setAttribute('class', 'tile');
                 tileGroup.setAttribute('data-tile-id', tile.id);
-                
-                // The tile content is north-up internally (the generator flips Y),
-                // so anchor each tile by its NORTH-west corner: project(north edge).
-                // tile.lat is the SOUTH edge; the north edge is tile.lat + tileSize.
-                // Anchoring by the south edge (the old code) stacked tiles upside
-                // down relative to their content. ViewBox handles zoom — no scaling.
-                const tilePixelPos = this.latLngToPixel(tile.lat + 0.01, tile.lng);
-                tileGroup.setAttribute('transform',
-                    `translate(${tilePixelPos.x}, ${tilePixelPos.y})`);
-                
-                // Create a group to hold the tile content with proper viewBox scaling
-                const contentGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                
-                // The tile SVG has viewBox="0 0 1000 1000" but we need to ensure content fills the tile
-                // Copy all child elements from the SVG tile and fix duplicate IDs
-                Array.from(svgElement.children).forEach((child) => {
-                    const importedNode = document.importNode(child, true);
-                    
-                    // Fix the broken class- attribute
-                    if (importedNode.hasAttribute('class-')) {
-                        importedNode.setAttribute('class', importedNode.getAttribute('class-'));
-                        importedNode.removeAttribute('class-');
-                    }
-                    
-                    
-                    // Fix duplicate IDs by making them unique per tile
-                    if (importedNode.id) {
-                        importedNode.id = `${tile.id}-${importedNode.id}`;
-                    }
-                    
-                    // Also fix any child element IDs
-                    importedNode.querySelectorAll('[id]').forEach(element => {
-                        element.id = `${tile.id}-${element.id}`;
-                    });
+                // North-up: anchor each tile by its NORTH edge (south edge + one
+                // tile); the generator flips Y internally. ViewBox handles zoom.
+                const pos = this.latLngToPixel(tile.lat + 0.01, tile.lng);
+                tileGroup.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
 
-                    // The clipPath id was renamed above, so re-point every
-                    // clip-path reference at it. Without this the clip silently
-                    // breaks and each feature renders its FULL geometry into every
-                    // tile its bbox overlaps — so clip each tile to its own region,
-                    // which makes cross-tile ghosting structurally impossible.
-                    const relinkClip = (el) => {
-                        const cp = el.getAttribute && el.getAttribute('clip-path');
-                        const m = cp && cp.match(/url\(#(.+?)\)/);
-                        if (m) el.setAttribute('clip-path', `url(#${tile.id}-${m[1]})`);
-                    };
-                    relinkClip(importedNode);
-                    importedNode.querySelectorAll('[clip-path]').forEach(relinkClip);
+                // Hot path: MOVE the parsed nodes straight in (adoptNode, not a
+                // deep importNode clone) in a single insert. The generator now
+                // emits tile-unique clip ids + correct classes, so none of the old
+                // per-feature fixups (id rename, clip relink, class-/tabindex
+                // patches) are needed — this runs for every tile on every pan/zoom.
+                const frag = document.createDocumentFragment();
+                while (svgElement.firstChild) {
+                    frag.appendChild(document.adoptNode(svgElement.firstChild));
+                }
+                tileGroup.appendChild(frag);
 
-                    // Remove tabindex="-1" from all features to allow native tooltips
-                    importedNode.querySelectorAll('[tabindex="-1"]').forEach(element => {
-                        element.removeAttribute('tabindex');
-                    });
-                    
-                    contentGroup.appendChild(importedNode);
-                });
-                
-                tileGroup.appendChild(contentGroup);
-                
                 tilesGroup.appendChild(tileGroup);
             } catch (error) {
+                console.error(`Failed to render tile ${tile.id}:`, error);
             }
         });
     }
