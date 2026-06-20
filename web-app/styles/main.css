@@ -467,6 +467,18 @@ main {
     cursor: pointer;
 }
 
+/* ---- Target size (WCAG 2.5.8): marker dots at a constant 24px SCREEN target ----
+   Markers are baked as r=5 in SVG user units, so they'd scale with zoom. The
+   viewer instead drives the radius from the current scale (MapRenderer.updateViewBox
+   sets --target-r = 12 * 2^(18-zoom) user-units = a 12px screen radius), so every
+   dot renders at a 24px hittable target at EVERY zoom. The CSS geometry property
+   `r` overrides the baked attribute. Aggregation has already spaced markers >=24px
+   apart, so the dots sit tangent, not overlapping. Cluster markers are a little
+   larger so they read as a group. Fallbacks keep markers visible if the var is
+   ever unset. */
+#map-tiles circle { r: var(--target-r, 5px); }
+#map-tiles g.cluster > circle { r: var(--cluster-r, 7px); }
+
 /* Ensure proper rendering order */
 #roads-group {
     /* Roads should render under buildings */

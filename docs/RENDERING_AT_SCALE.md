@@ -331,9 +331,18 @@ nothing merges (z22 ≈ individuals), zoom OUT and it merges to a regional skele
 tile): lod22 3414 targets / **2 clusters**, z18 1865 / 272, lod15 174 / 36, lod12
 **6** / 2 — a clean zoom-driven gradient. 16,015 tiles / 29.7 MB. Deploy needed a
 VIEWER push too (3 JS files to the a11ybob demo `src/`, served `max-age=0`).
-**Open follow-up:** the *visual* half — markers rendered at a constant ≥24 px
-SCREEN size (today they're zoom-scaling SVG units) and road hit-corridors — is
-viewer-side and not yet done; the generator AGGREGATION (spacing) is what shipped.
+**The visual half — markers DONE 2026-06-20 (viewer-side, no rerender).** Markers
+now render at a constant 24 px SCREEN target at every zoom: `MapRenderer.updateViewBox`
+sets `--target-r = 12 * 2^(18-zoom)` user-units (countering the viewBox scale) and
+CSS `#map-tiles circle { r: var(--target-r) }` overrides the baked r=5; clusters
+use `--cluster-r` (1.4×) to read as a group. One property set per zoom (no
+per-element loop), and since the aggregation already spaced markers ≥24 px apart,
+constant 24 px dots stay tangent. Deployed as 2 viewer files (MapRenderer.js,
+main.css) — no tile rerender. **Still open:** road **hit-corridors** — a thin road
+needs a wider HIT area than its visible stroke, which SVG can't do on one element,
+so it's either a transparent fat-stroke clone added by the viewer at tile-load
+(no rerender, small per-road cost) or baked into the tiles (a rerender). Markers
+are the primary tap target; roads are secondary, so they're parked on that choice.
 
 ## Vertical dimension — multi-level transit (decided "B", deferred)
 
