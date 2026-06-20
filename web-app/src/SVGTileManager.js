@@ -23,8 +23,21 @@ const TILE_BASE = (() => {
     return override.endsWith('/') ? override : override + '/';
 })();
 
+// Level-of-detail bands. Each is a self-contained tile set under TILE_BASE: the
+// full set at the root, the coarser ones under /lodNN/. A band is served at any
+// zoom >= its minZoom (so the list is tried high-to-low). The coarse sets drop
+// features below the readable-"m" floor for that zoom (see RENDERING_AT_SCALE.md),
+// so zooming out fetches fewer AND lighter tiles.
+const LOD_BANDS = [
+    { name: '',      minZoom: 18 },  // full detail, zoom >= 18
+    { name: 'lod17', minZoom: 17 },
+    { name: 'lod16', minZoom: 16 },
+    { name: 'lod15', minZoom: 0 },   // coarsest, zoom <= 15
+];
+
 export class SVGTileManager {
     constructor() {
+        this.currentBand = '';
         this.tileBaseUrl = TILE_BASE + 'tiles/';
         this.indexUrl = TILE_BASE + 'tile-index.json';
         this.tileIndex = null;
@@ -35,6 +48,35 @@ export class SVGTileManager {
         this.tileSize = 0.01; // 0.01 degrees per tile (roughly 1km)
         this.loadedTiles = new Set();
         this.activeRequests = new Map();
+    }
+
+    // Which LOD band serves this zoom.
+    bandForZoom(zoom) {
+        for (const b of LOD_BANDS) if (zoom >= b.minZoom) return b.name;
+        return LOD_BANDS[LOD_BANDS.length - 1].name;
+    }
+
+    bandBase(band) {
+        return band ? TILE_BASE + band + '/' : TILE_BASE;
+    }
+
+    // Switch the active band: point at its tile dir + index and force a reload of
+    // that index (the existing tile set + cache-bust version differ per band). The
+    // tile cache is keyed by id, and the same id means different content per band,
+    // so it's cleared on a switch. Switches happen only when zoom crosses a band
+    // boundary, so this is rare.
+    setBand(band) {
+        if (band === this.currentBand) return;
+        this.currentBand = band;
+        const base = this.bandBase(band);
+        this.tileBaseUrl = base + 'tiles/';
+        this.indexUrl = base + 'tile-index.json';
+        this.tileIndex = null;
+        this.existingTileIds = null;
+        this.tileVersion = null;
+        this.cancelAllRequests();
+        this.tileCache.clear();
+        this.loadedTiles.clear();
     }
 
     async loadTileIndex() {
@@ -231,7 +273,9 @@ export class SVGTileManager {
         this.tileCache.set(tileId, svgContent);
     }
 
-    async loadTilesForArea(bounds) {
+    async loadTilesForArea(bounds, zoom) {
+        // Pick the LOD band for this zoom and load that band's index.
+        if (typeof zoom === 'number') this.setBand(this.bandForZoom(zoom));
         await this.loadTileIndex();
 
         const all = this.getTilesForBounds(bounds);
@@ -252,7 +296,7 @@ export class SVGTileManager {
             loaded: tiles.length,
             failed: wanted.length - tiles.length,
         };
-        return { tiles, stats };
+        return { tiles, stats, band: this.currentBand };
     }
 
     clearCache() {

@@ -1147,26 +1147,55 @@ class TileBuilder:
                 for j in range(max(j0, 0), min(j1, n_lng - 1) + 1):
                     buckets[(i, j)].append(f)
 
-        tiles_created = 0
-        tiles_skipped = 0
-        for i in range(n_lat):
-            for j in range(n_lng):
-                tile_features = buckets.get((i, j))
-                if not tile_features:
-                    tiles_skipped += 1
+        # Per-feature appears-at-zoom (the m-rule): a tangible SHAPE is shown only
+        # at zooms where it renders at least as big as a readable "m" (M_FLOOR_PX,
+        # the tooltip font). min_zoom = 18 + log2(floor / extent_at_z18). POIs /
+        # points have no shape to perceive by size — they always show (their
+        # density is a separate design pass). See docs/RENDERING_AT_SCALE.md.
+        M_FLOOR_PX = 13.0
+        px_per_deg = self.svg_size / size
+        for f in features:
+            if (f.get('classification') or {}).get('base') is None:
+                f['min_zoom'] = 0.0
+                continue
+            try:
+                mnx, mny, mxx, mxy = f['geometry'].bounds
+                extent_px = max(mxx - mnx, mxy - mny) * px_per_deg
+            except Exception:
+                extent_px = 0.0
+            f['min_zoom'] = (18 + math.log2(M_FLOOR_PX / extent_px)) if extent_px > 0 else 99.0
+
+        # LOD bands: the full set (served at zoom >= 18) plus coarser sets that drop
+        # features below the "m" floor for that zoom. Coarser bands skip tiles that
+        # come out empty, so zooming out fetches fewer AND lighter tiles. Each band
+        # is a self-contained {tiles/, tile-index.json} unit; the full band stays at
+        # the root so the existing URL keeps working.
+        full_tiles_dir = self.tiles_dir
+        bands = [(None, None), ('lod17', 17), ('lod16', 16), ('lod15', 15)]
+        total_created = 0
+        for band_name, max_z in bands:
+            self.tiles_dir = (full_tiles_dir if band_name is None
+                              else self.output_dir / band_name / 'tiles')
+            self.tiles_dir.mkdir(parents=True, exist_ok=True)
+            created = 0
+            for (i, j), tile_features in buckets.items():
+                feats = (tile_features if max_z is None
+                         else [f for f in tile_features if f.get('min_zoom', 0) <= max_z])
+                if not feats:
                     continue
                 lat = round(south + i * size, 4)
                 lng = round(west + j * size, 4)
-                svg = self.create_tile_svg(lat, lng, tile_features)
+                svg = self.create_tile_svg(lat, lng, feats)
                 if svg is not None:
-                    gz_file = self.save_svg_tile(svg, lat, lng)
-                    tiles_created += 1
-                    print(f"\rCreated tile {tiles_created}/{n_lat * n_lng}: {gz_file.name} ({len(tile_features)} features)", end='')
-                else:
-                    tiles_skipped += 1
+                    self.save_svg_tile(svg, lat, lng)
+                    created += 1
+            print(f"\nBand '{band_name or 'full'}': {created} tiles", flush=True)
+            if band_name is not None:
+                self.create_tile_index()   # full band is indexed by the caller
+            total_created += created
 
-        print(f"\nGenerated {tiles_created} SVG tiles (skipped {tiles_skipped} empty)")
-        return tiles_created
+        self.tiles_dir = full_tiles_dir    # restore for the caller's full-band index
+        return total_created
 
     def create_tile_index(self):
         """Create index of available tiles"""
@@ -1210,8 +1239,9 @@ class TileBuilder:
                       for t in sorted(index['tiles'], key=lambda x: x['file']))
         index['version'] = hashlib.md5(sig.encode()).hexdigest()[:12]
 
-        # Save index
-        index_file = self.output_dir / "tile-index.json"
+        # Save index next to its tile dir (full band -> output_dir/tile-index.json;
+        # an LOD band -> output_dir/<band>/tile-index.json).
+        index_file = self.tiles_dir.parent / "tile-index.json"
         with open(index_file, 'w') as f:
             json.dump(index, f, indent=2)
 

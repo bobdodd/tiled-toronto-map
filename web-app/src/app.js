@@ -856,11 +856,19 @@ class MapApplication {
             // Get current map bounds
             const bounds = this.getBoundsFromView();
 
+            // If the zoom has crossed an LOD band boundary, the old band's tiles
+            // (same ids, different content) must be cleared and replaced.
+            const band = this.svgTileManager.bandForZoom(this.mapRenderer.zoom);
+            if (band !== this._loadedBand) {
+                clearExisting = true;
+                this._loadedBand = band;
+            }
+
             // Show loading indicator
             this.announceStatus('Loading map tiles...');
 
-            // Load SVG tiles for the area
-            const { tiles, stats } = await this.svgTileManager.loadTilesForArea(bounds);
+            // Load SVG tiles for the area (band chosen from the zoom)
+            const { tiles, stats } = await this.svgTileManager.loadTilesForArea(bounds, this.mapRenderer.zoom);
 
             if (gen !== this._loadGen) return; // superseded by a newer load
 
@@ -1134,7 +1142,12 @@ class MapApplication {
         this.mapRenderer.setZoom = (zoom) => {
             const newZoom = originalSetZoom(zoom);
             this.updateZoomButtonStates();
-            // Don't reload tiles on zoom - viewBox handles it
+            // The viewBox alone handles zoom WITHIN a band; only when the zoom
+            // crosses an LOD band boundary do we load the new band's tiles
+            // (loadMapTiles detects the change and clears the old band first).
+            if (this.svgTileManager.bandForZoom(newZoom) !== this._loadedBand) {
+                this.loadMapTiles();
+            }
             // Update accessibility when zoom changes
             if (this.accessibilityManager) {
                 this.accessibilityManager.updateTabOrder();
