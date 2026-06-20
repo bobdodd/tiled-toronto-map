@@ -61,10 +61,10 @@ export class MapRenderer {
     }
 
     setZoom(zoom) {
-        // Allow zoom up to 23 for detailed accessibility (44x44 pixel touch targets)
-        // At zoom 23, features will be much larger and easier to interact with
+        // Zoom range spans the LOD pyramid: out to 12 (lod12, ~whole metro) and in
+        // to 23 (lod22, ~individual features at a hittable target size).
         const previousZoom = this.zoom;
-        this.zoom = Math.max(15, Math.min(23, zoom));
+        this.zoom = Math.max(12, Math.min(23, zoom));
         
         if (this.zoom !== previousZoom) {
             // Calculate the scale change
@@ -107,7 +107,7 @@ export class MapRenderer {
     }
     
     isMinZoom() {
-        return this.zoom <= 15;
+        return this.zoom <= 12;
     }
     
     initializeCoordinateSystem() {

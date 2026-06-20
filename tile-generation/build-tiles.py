@@ -1418,12 +1418,17 @@ class TileBuilder:
                 for j in range(max(j0, 0), min(j1, n_lng - 1) + 1):
                     buckets[(i, j)].append(f)
 
-        # Per-feature appears-at-zoom (the m-rule): a tangible SHAPE is shown only
-        # at zooms where it renders at least as big as a readable "m" (M_FLOOR_PX,
-        # the tooltip font). min_zoom = 18 + log2(floor / extent_at_z18). POIs /
-        # points have no shape to perceive by size — they always show (their
-        # density is a separate design pass). See docs/RENDERING_AT_SCALE.md.
-        M_FLOOR_PX = 13.0
+        # Per-feature appears-at-zoom. The floor is the WCAG TARGET-SIZE px
+        # (target_px): every map feature here is an interactive target, so the
+        # binding floor is "can you HIT it", not just "can you read it" — the
+        # interaction floor supersedes the old readable-"m" perception floor
+        # (24 > 13). A tangible SHAPE shows only at zooms where it renders at least
+        # target_px across (= a hittable target); below that it culls and only
+        # returns as you zoom in. min_zoom = 18 + log2(floor / extent_at_z18).
+        # Points always show here; their target SPACING is enforced below.
+        # 24 = WCAG 2.5.8 AA (with spacing exception); 44 = 2.5.5 AAA. Env-tunable.
+        # See docs/RENDERING_AT_SCALE.md "Target size".
+        target_px = float(os.environ.get('TARGET_PX', '24'))
         px_per_deg = self.svg_size / size
         for f in features:
             if (f.get('classification') or {}).get('base') is None:
@@ -1434,7 +1439,7 @@ class TileBuilder:
                 extent_px = max(mxx - mnx, mxy - mny) * px_per_deg
             except Exception:
                 extent_px = 0.0
-            f['min_zoom'] = (18 + math.log2(M_FLOOR_PX / extent_px)) if extent_px > 0 else 99.0
+            f['min_zoom'] = (18 + math.log2(target_px / extent_px)) if extent_px > 0 else 99.0
 
         # LOD bands: the full set (served at zoom >= 18) plus coarser sets that drop
         # features below the "m" floor for that zoom. Coarser bands skip tiles that
@@ -1442,18 +1447,30 @@ class TileBuilder:
         # is a self-contained {tiles/, tile-index.json} unit; the full band stays at
         # the root so the existing URL keeps working.
         #
-        # Per band, TANGIBLE shapes are culled by the m-rule (min_zoom <= the band's
-        # zoom) and POINTS are decluttered by the POI m-rule (aggregate_pois) at the
-        # "m"-height ground distance for that zoom — so shapes AND points thin out
-        # together as you zoom out, holding cognitive load roughly constant.
-        M_HEIGHT_PX = 8.0    # height of a readable "m" — the POI declutter floor
+        # Per band, TANGIBLE shapes cull below the target-size floor (min_zoom <=
+        # the band's zoom) and POINTS are decluttered (aggregate_pois + proximity)
+        # at the same TARGET-SIZE SPACING for that zoom — markers merge until the
+        # survivors are at least target_px apart on screen (the WCAG target-size
+        # spacing). So shapes and points share ONE interaction threshold and thin
+        # out together. (Was the 8 px readable-"m" height; raised to the hit floor.)
+        # Full pyramid z22..z12. With a single 24 px target-size floor and stage 2
+        # at EVERY band, the aggregation level is now purely a function of zoom:
+        # zoom IN past z18 and the floor covers less ground, so features stop
+        # merging (z22 ≈ individuals, full inspection); zoom OUT and they merge
+        # toward a regional skeleton (z12 ≈ whole metro). z18 stays the root URL
+        # for back-compat. Every band (z18 included) culls tangibles below the
+        # target floor — a shape shows only where it renders >= a hittable target.
         full_tiles_dir = self.tiles_dir
-        bands = [(None, 18), ('lod17', 17), ('lod16', 16), ('lod15', 15)]
+        bands = [('lod22', 22), ('lod21', 21), ('lod20', 20), ('lod19', 19),
+                 (None, 18),
+                 ('lod17', 17), ('lod16', 16), ('lod15', 15),
+                 ('lod14', 14), ('lod13', 13), ('lod12', 12)]
         total_created = 0
         for band_name, band_zoom in bands:
-            max_z = None if band_name is None else band_zoom
-            threshold_deg = M_HEIGHT_PX / (px_per_deg * (2 ** (band_zoom - 18)))
-            do_proximity = band_name is not None   # stage 2: coarse bands only
+            max_z = band_zoom    # every band culls tangibles below the target floor
+            threshold_deg = target_px / (px_per_deg * (2 ** (band_zoom - 18)))
+            do_proximity = True  # stage 2 (cross-type) at every band; at high zoom
+            #                      the tiny threshold merges ~nothing -> individuals
             self.tiles_dir = (full_tiles_dir if band_name is None
                               else self.output_dir / band_name / 'tiles')
             self.tiles_dir.mkdir(parents=True, exist_ok=True)

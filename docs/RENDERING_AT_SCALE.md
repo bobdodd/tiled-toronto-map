@@ -275,6 +275,66 @@ committed plan):
   ("…at 220 Yonge Street. … Addresses, Shops"). Possibly clean up individuals too
   — deliberately left untouched here to keep the change scoped.
 
+## Target size (WCAG) — the interaction floor (next optimization, raised 2026-06-20)
+
+Bob: the next optimization is the **WCAG target-size** requirement — and it needs
+a *further* aggregation that takes in **both POIs and tangible items**.
+
+**Reframe.** The m-rule is a *perception* floor (≥ a readable "m", ~13 px — can you
+see it). Target size is an *interaction* floor (can you hit it). Since on this map
+**everything is an interactive target** (each feature is a focusable `role="img"`
+with a tooltip), the interaction floor is the binding one and it's larger than the
+perception floor. So target size doesn't sit beside the m-rule — for interactive
+elements it **raises the aggregation threshold and unifies POIs + tangibles** under
+one rule: aggregate until every surviving target is big enough / far enough to hit.
+
+**Threshold — OPEN, Bob's call:**
+- **2.5.8 (AA, 24 px)** has the *spacing* exception — a small target passes if a
+  24 px circle on it clears its neighbours. Maps directly onto aggregation (merge
+  anything whose 24 px circles collide). Achievable on a map.
+- **2.5.5 (AAA, 44 px)** has *no* spacing exception — literal 44 px targets; brutal
+  on a dense map (a handful per city-zoom screen).
+- **"Essential" exception** plausibly exempts a map (exact position *is* the
+  information) — but the point is to do better than claim it.
+- Lean: AA / 24 px-with-spacing as the real bar; enlarge markers to 24 px; document
+  why literal AAA-44 isn't applied to the interactive map.
+
+**Two levers, on the COMBINED target set:**
+1. **Enlarge to the floor** — POI/cluster dots 10 px → the floor; thin roads get a
+   padded hit *corridor* (a line is a generous target along its length; the issue
+   is its width).
+2. **Aggregate-to-space** — merge anything whose target circles collide, ACROSS
+   types (a POI dot beside a tiny building both count → the pass runs on the
+   combined set, not POIs and tangibles separately).
+
+**Tangibles:** a shape bigger than the floor is already a fine target — leave it.
+The biters are *small* shapes (< floor → merge into the block, the generalisation
+move) and *thin* ones (roads → hit-corridor padding).
+
+**To settle:** if the target-size floor (24 px) becomes the binding interactive
+threshold, it likely REPLACES the 13 px m-rule for these elements (24 > 13, so
+perception is auto-satisfied) — one threshold, not two overlapping passes.
+
+Note keyboard/rotor has no target-size requirement (you tab, not aim) — this is
+the pointer/touch concern, same user the stage-2 clusters started serving.
+
+**SHIPPED + LIVE 2026-06-20.** Decisions (Bob): **24 px (AA)** floor; the target
+floor REPLACES the perception m-rule for these (all-interactive) features — one
+env-tunable `target_px` (default 24) now drives BOTH the tangible size floor
+(min_zoom, was 13 px) and the POI spacing distance (stage 1 + stage 2, was 8 px).
+**Stage 2 runs at EVERY band**, so aggregation became purely a function of zoom —
+which forced (Bob's insight) extending the pyramid BOTH ways so individuals are
+still inspectable: zoom IN past z18 and the 24 px floor covers less ground until
+nothing merges (z22 ≈ individuals), zoom OUT and it merges to a regional skeleton
+(z12). **The pyramid is now 11 bands, z22 → z12** (root stays z18); the viewer's
+`LOD_BANDS` + the zoom clamp opened to 12–23. Measured live (densest downtown
+tile): lod22 3414 targets / **2 clusters**, z18 1865 / 272, lod15 174 / 36, lod12
+**6** / 2 — a clean zoom-driven gradient. 16,015 tiles / 29.7 MB. Deploy needed a
+VIEWER push too (3 JS files to the a11ybob demo `src/`, served `max-age=0`).
+**Open follow-up:** the *visual* half — markers rendered at a constant ≥24 px
+SCREEN size (today they're zoom-scaling SVG units) and road hit-corridors — is
+viewer-side and not yet done; the generator AGGREGATION (spacing) is what shipped.
+
 ## Vertical dimension — multi-level transit (decided "B", deferred)
 
 Underground / elevated transit (subway, LRT, the PATH, the Gardiner) currently

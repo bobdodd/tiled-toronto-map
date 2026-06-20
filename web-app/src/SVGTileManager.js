@@ -29,10 +29,17 @@ const TILE_BASE = (() => {
 // features below the readable-"m" floor for that zoom (see RENDERING_AT_SCALE.md),
 // so zooming out fetches fewer AND lighter tiles.
 const LOD_BANDS = [
-    { name: '',      minZoom: 18 },  // full detail, zoom >= 18
+    { name: 'lod22', minZoom: 22 },  // zoom in: ~individuals, full inspection
+    { name: 'lod21', minZoom: 21 },
+    { name: 'lod20', minZoom: 20 },
+    { name: 'lod19', minZoom: 19 },
+    { name: '',      minZoom: 18 },  // root URL (back-compat), z18
     { name: 'lod17', minZoom: 17 },
     { name: 'lod16', minZoom: 16 },
-    { name: 'lod15', minZoom: 0 },   // coarsest, zoom <= 15
+    { name: 'lod15', minZoom: 15 },
+    { name: 'lod14', minZoom: 14 },
+    { name: 'lod13', minZoom: 13 },
+    { name: 'lod12', minZoom: 0 },   // coarsest, zoom <= 12, ~whole metro
 ];
 
 export class SVGTileManager {

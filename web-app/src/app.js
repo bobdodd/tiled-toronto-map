@@ -404,7 +404,7 @@ class MapApplication {
                     const newZoom = this.mapRenderer.zoom + zoomDelta;
                     
                     // Apply zoom if within bounds
-                    if (newZoom >= 15 && newZoom <= 23) {
+                    if (newZoom >= 12 && newZoom <= 23) {
                         this.mapRenderer.setZoom(newZoom);
                         this.updateZoomButtonStates();
                         lastDistance = distance;
@@ -448,7 +448,7 @@ class MapApplication {
                 
                 
                 // Apply zoom if within bounds
-                if (newZoom >= 15 && newZoom <= 23) {
+                if (newZoom >= 12 && newZoom <= 23) {
                     this.mapRenderer.setZoom(newZoom);
                     this.updateZoomButtonStates();
                     // Don't announce every tiny change during continuous zoom
