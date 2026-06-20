@@ -113,6 +113,38 @@ is exactly the overload that shouldn't be *browsable* at that scale. So the
 prime first target is **addresses** (searchable, so a high min-zoom — don't
 render them at city scale).
 
+## Open questions — LOD vs search / filters / rotor (raised 2026-06-19, for design)
+
+The m-rule opens a new state: a feature can **exist** (in the data + the search
+index) yet not be **rendered** at the current zoom (culled below the "m" floor).
+Search, filters and the rotor each need a consistent answer for "exists but not
+shown here." (Bob's questions, with an initial lean each — to settle tomorrow.)
+
+1. **Search → a result not rendered at the current zoom.** Selecting it can't
+   focus a `<g>` that isn't in the DOM. *Lean:* a hit carries (or we derive) its
+   `min_zoom`; selecting it zooms to ≥ that level so the feature renders and can
+   be focused. Search stays complete (all features); the map follows the
+   selection to a zoom where the thing is actually visible.
+
+2. **Filters with no rendered content at the current zoom** (e.g. a buildings
+   filter at city zoom where buildings are culled). *Lean:* prefer "tell the
+   user it's empty here" over hiding the control — grey out (or annotate
+   "appears when you zoom in"), re-evaluated per zoom. There's precedent: the
+   rotor already announces "0 features navigable" for an empty selection.
+
+3. **Rotor categories with no rendered features.** Same shape as filters; the
+   viewport-only-focus model already produces "0 navigable," so greying would
+   just pre-empt that.
+
+**Bridge:** the per-feature `min_zoom` is the connective tissue — every system
+can ask "at what zoom does this render?" And note that **aggregation (the B
+direction) partly dissolves all three**: when culled detail is re-represented as
+an aggregate ("residential block"), that aggregate IS rendered, searchable,
+filterable, and in the rotor — the information isn't absent, it's re-grained. The
+m-rule (hide) makes these questions sharp; generalization (re-represent) softens
+them. So we may want to settle the interim answers now and revisit once
+aggregation exists.
+
 ## POIs are separate
 
 Points of interest (washrooms, crossings, benches, accessible features) are
