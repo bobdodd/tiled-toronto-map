@@ -125,7 +125,11 @@ export class SVGTileManager {
     }
 
     getTileUrl(tileId) {
-        const tileUrl = this.tileBaseUrl + tileId + '.svg.gz';
+        // Request the LOGICAL .svg; Caddy `precompressed br gzip` serves the
+        // .svg.br (or .svg.gz) variant with Content-Encoding, and the browser
+        // decompresses it natively — so we get plain SVG text, no manual gunzip.
+        // Brotli is ~35-40% smaller than gzip here, cutting served bandwidth.
+        const tileUrl = this.tileBaseUrl + tileId + '.svg';
         return this.tileVersion ? `${tileUrl}?v=${encodeURIComponent(this.tileVersion)}` : tileUrl;
     }
 
