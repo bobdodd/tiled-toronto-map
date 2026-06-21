@@ -798,7 +798,19 @@ class TileBuilder:
         clipPath.append(clipRect)
         defs.append(clipPath)
         svg.append(defs)
-        
+
+        # PROTOTYPE styling for in-road street labels so a standalone tile renders
+        # correctly (qlmanage / direct view). Dark text + white halo (paint-order)
+        # for AAA contrast over the soft map fills, centred on the path. For
+        # production this moves to the viewer CSS with a constant-screen-size var.
+        style = self.create_svg_element('style')
+        style.text = ("text.road-label{font-weight:600;font-size:var(--label-size,13px);"
+                      "font-family:-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;"
+                      "fill:#1a1a1a;paint-order:stroke;stroke:#ffffff;stroke-width:3px;"
+                      "vector-effect:non-scaling-stroke;stroke-linejoin:round;"
+                      "text-anchor:middle;pointer-events:none;}")
+        svg.append(style)
+
         # Add tile metadata
         svg.set('data-tile-lat', str(tile_lat))
         svg.set('data-tile-lng', str(tile_lng))
@@ -1015,7 +1027,87 @@ class TileBuilder:
         if feature.get('_aggregate_count'):
             group.set('data-aggregate', str(feature['_aggregate_count']))
         group.append(shape)
+        # Roads get two extras (Bob's road-rendering pass):
+        #  * a transparent ~24px-SCREEN HIT-CORRIDOR (WCAG 2.5.8 target size) so the
+        #    whole road is hittable regardless of its thin visible stroke — width
+        #    comes from CSS (.road-hit, vector-effect non-scaling-stroke);
+        #  * the in-road street NAME along the centreline, but only at bands where
+        #    the road's class is prominent (label density self-thins by zoom). The
+        #    visible text is aria-hidden — the group already announces the name —
+        #    but it's a parity win for residual-vision / magnification users.
+        if is_line and primary.get('category') == 'road':
+            shape.set('pointer-events', 'none')      # the corridor is the target
+            hit = copy.deepcopy(shape)
+            hit.set('class', 'road-hit')
+            hit.set('stroke', 'transparent')
+            hit.set('fill', 'none')
+            hit.set('pointer-events', 'stroke')
+            group.append(hit)
+            nm = props.get('name')
+            bz = getattr(self, '_band_zoom', None)
+            if nm and bz is not None and bz >= self._road_label_min_zoom(props.get('highway')):
+                lbl = self._road_label(geom, nm, bounds)
+                if lbl:
+                    group.append(lbl[0])
+                    group.append(lbl[1])
         return group, casing
+
+    # Label-density rule (Bob 2026-06-20): a road's name appears only from the zoom
+    # where its CLASS is prominent — arterials early (low zoom), residential late
+    # (high zoom) — so labels self-thin per viewport like every other layer.
+    _ROAD_LABEL_MIN_ZOOM = {
+        'motorway': 13, 'trunk': 13, 'motorway_link': 14, 'trunk_link': 14,
+        'primary': 14, 'primary_link': 15,
+        'secondary': 15, 'secondary_link': 16,
+        'tertiary': 16, 'tertiary_link': 16,
+        'residential': 17, 'unclassified': 17, 'living_street': 17, 'pedestrian': 17,
+        'service': 18, 'footway': 18, 'path': 18, 'cycleway': 18,
+    }
+
+    def _road_label_min_zoom(self, highway):
+        return self._ROAD_LABEL_MIN_ZOOM.get(highway, 18)   # default: only at max detail
+
+    def _road_label(self, geom, name, bounds):
+        # The label rides the road centreline via SVG textPath. Pick the longest
+        # sub-line, skip if there's no room for the name, and reverse right-to-left
+        # runs so the text never reads upside-down.
+        try:
+            if geom.geom_type == 'LineString':
+                line = geom
+            elif geom.geom_type == 'MultiLineString':
+                line = max(geom.geoms, key=lambda g: g.length)
+            else:
+                return None
+            pts = [self.coord_to_svg(c[1], c[0], bounds) for c in line.coords]
+        except Exception:
+            return None
+        if len(pts) < 2:
+            return None
+        if pts[-1][0] < pts[0][0]:        # keep text left-to-right
+            pts = pts[::-1]
+        length = sum(math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+                     for i in range(len(pts) - 1))
+        if length < max(40.0, len(name) * 7.5):   # no room for the name -> skip
+            return None
+        self._label_seq = getattr(self, '_label_seq', 0) + 1
+        pid = f"rl{self._label_seq}"
+        d = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+        path = self.create_svg_element('path', d=d, fill='none', stroke='none', id=pid)
+        path.set('aria-hidden', 'true')
+        text = self.create_svg_element('text', class_='road-label')
+        text.set('aria-hidden', 'true')
+        tp = self.create_svg_element('textPath')
+        tp.set('startOffset', '50%')
+        tp.set('href', f'#{pid}')
+        # Nudge the glyphs perpendicular to the path so the text sits CENTRED on the
+        # road band, not riding the centreline (default baseline-on-path). ~0.35em
+        # down ≈ half the cap height — the reliable, well-supported way (dominant-
+        # baseline isn't honoured for text-on-path in many renderers, incl. Quick
+        # Look). Paths are normalised left-to-right, so +dy is downward.
+        tp.set('dy', '0.35em')
+        tp.text = name
+        text.append(tp)
+        return path, text
 
     # ----- POI declutter (the "m-rule" for points) -------------------------
     # Same-type points closer together than a readable "m" can't be told apart,
@@ -1466,11 +1558,13 @@ class TileBuilder:
                  ('lod17', 17), ('lod16', 16), ('lod15', 15),
                  ('lod14', 14), ('lod13', 13), ('lod12', 12)]
         total_created = 0
+        self._label_seq = 0      # unique textPath ids for in-road street labels
         for band_name, band_zoom in bands:
             max_z = band_zoom    # every band culls tangibles below the target floor
             threshold_deg = target_px / (px_per_deg * (2 ** (band_zoom - 18)))
             do_proximity = True  # stage 2 (cross-type) at every band; at high zoom
             #                      the tiny threshold merges ~nothing -> individuals
+            self._band_zoom = band_zoom    # in-road label density keys off this
             self.tiles_dir = (full_tiles_dir if band_name is None
                               else self.output_dir / band_name / 'tiles')
             self.tiles_dir.mkdir(parents=True, exist_ok=True)

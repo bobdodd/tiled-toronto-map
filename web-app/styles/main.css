@@ -476,8 +476,38 @@ main {
    apart, so the dots sit tangent, not overlapping. Cluster markers are a little
    larger so they read as a group. Fallbacks keep markers visible if the var is
    ever unset. */
-#map-tiles circle { r: var(--target-r, 5px); }
+/* POI markers: a SMALL visible dot with a transparent 24px-screen TOUCH ring
+   (WCAG 2.5.8). The dot stays small so it never buries the map (Bob 2026-06-20) —
+   the target size is carried by the transparent stroke (pointer-events:all), not
+   by the visible mark. Sizes are constant-screen via vars set per zoom in
+   MapRenderer.updateViewBox (paint-order:stroke keeps the colour fill on top). */
+#map-tiles circle {
+    r: var(--dot-r, 5px);
+    stroke: transparent;
+    stroke-width: var(--hit-ring, 14px);
+    paint-order: stroke;
+    pointer-events: all;
+}
 #map-tiles g.cluster > circle { r: var(--cluster-r, 7px); }
+
+/* ---- Road rendering pass (target size + low-vision perceptibility) ----
+   Hit-corridor (WCAG 2.5.8): the baked transparent .road-hit stroke makes the
+   whole road a 24px-SCREEN hittable target regardless of its thin visible line.
+   non-scaling-stroke keeps it a constant 24px at every zoom; pointer-events:stroke
+   so only the corridor catches (the visible stroke is pointer-events:none). */
+#map-tiles .road-hit {
+    vector-effect: non-scaling-stroke;
+    stroke: transparent;
+    fill: none;
+    stroke-width: 24px;
+    pointer-events: stroke;
+}
+/* Never-hairline (low vision): pin road + casing strokes to a constant screen
+   width so they never thin to a hair when zoomed out. */
+#map-tiles g.road [stroke]:not([stroke="none"]),
+#map-tiles g.road-casings [stroke]:not([stroke="none"]) {
+    vector-effect: non-scaling-stroke;
+}
 
 /* Ensure proper rendering order */
 #roads-group {

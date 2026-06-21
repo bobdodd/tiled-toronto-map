@@ -194,16 +194,14 @@ export class MapRenderer {
         // Update the SVG viewBox for zooming
         this.svg.setAttribute('viewBox',
             `${this.viewBox.x} ${this.viewBox.y} ${this.viewBox.width} ${this.viewBox.height}`);
-        // Target size (WCAG 2.5.8): keep marker dots a constant 24px on SCREEN at
-        // every zoom by countering the viewBox scale. r is in user units, which the
-        // viewBox magnifies by 2^(zoom-18), so a 12px screen radius (24px target) =
-        // 12 * 2^(18-zoom) user units. CSS reads these as the marker radii
-        // (#map-tiles circle { r: var(--target-r) }). One property set per zoom —
-        // the browser re-sizes every marker in a single style pass. The aggregation
-        // already spaced markers >= 24px apart, so constant 24px dots stay tangent.
-        const r = 12 * Math.pow(2, 18 - this.zoom);
-        this.svg.style.setProperty('--target-r', r + 'px');
-        this.svg.style.setProperty('--cluster-r', (r * 1.4) + 'px');
+        // Constant-screen sizes: counter the viewBox scale (user units = screen px
+        // × 2^(18−zoom)). POI dots stay SMALL and visible; a transparent stroke
+        // ring carries the 24px touch target (WCAG 2.5.8) without burying the map.
+        const f = Math.pow(2, 18 - this.zoom);
+        this.svg.style.setProperty('--dot-r', (5 * f) + 'px');      // 10px visible dot
+        this.svg.style.setProperty('--cluster-r', (7 * f) + 'px');  // 14px cluster dot
+        this.svg.style.setProperty('--hit-ring', (14 * f) + 'px');  // → 24px transparent touch
+        this.svg.style.setProperty('--label-size', (13 * f) + 'px');
     }
     
     checkAndLoadTiles() {
