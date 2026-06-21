@@ -912,6 +912,11 @@ class MapApplication {
             // Clean up tiles that are far outside the current view
             this.cleanupDistantTiles();
 
+            // Warm neighbours once the view settles: the adjacent LOD bands (so a
+            // zoom across is instant) and a one-tile pan ring. The persistent
+            // band-cache keeps them; Brotli's bandwidth saving funds the prefetch.
+            this._schedulePrefetch(bounds);
+
             // Honest completion — report failures rather than counting survivors.
             this.announceStatus(stats && stats.failed > 0
                 ? `Map loaded — ${stats.loaded} tile${stats.loaded === 1 ? '' : 's'}, ${stats.failed} failed to load.`
@@ -970,8 +975,28 @@ class MapApplication {
         return bounds;
     }
 
+    // Prefetch neighbours after the user pauses (debounced), so it never fires
+    // mid-gesture. Adjacent bands make a zoom across instant; the ring smooths pan.
+    _schedulePrefetch(bounds) {
+        clearTimeout(this._prefetchTimer);
+        this._prefetchTimer = setTimeout(() => {
+            const mgr = this.svgTileManager;
+            const z = this.mapRenderer.zoom;
+            const cur = mgr.bandForZoom(z);
+            const zin = mgr.bandForZoom(z + 1);
+            const zout = mgr.bandForZoom(z - 1);
+            if (zin !== cur) mgr.prefetchArea(bounds, zin);
+            if (zout !== cur) mgr.prefetchArea(bounds, zout);
+            const ts = mgr.tileSize;
+            mgr.prefetchArea({
+                north: bounds.north + ts, south: bounds.south - ts,
+                east: bounds.east + ts, west: bounds.west - ts,
+            }, cur);
+        }, 450);
+    }
+
     renderSVGTiles(tiles) {
-        const tilesGroup = document.querySelector('#map-tiles') || 
+        const tilesGroup = document.querySelector('#map-tiles') ||
                          this.mapRenderer.svg.querySelector('#map-tiles');
         
         if (!tilesGroup) {

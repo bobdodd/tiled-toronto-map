@@ -50,12 +50,21 @@ export class SVGTileManager {
         this.tileIndex = null;
         this.tileVersion = null;
         this.existingTileIds = null; // ids that actually exist (from the index)
+        // Tile cache is keyed by BAND:tileId and PERSISTS across band switches, so
+        // zooming out then back reuses tiles instead of re-fetching (smoother zoom,
+        // less traffic). Sized well above one viewport (a z15 view is ~64 tiles) so
+        // the current band + its neighbours + a pan ring all stay resident.
         this.tileCache = new Map();
-        this.maxCacheSize = 20;
+        this.maxCacheSize = 400;
+        this.bandIndex = {};   // band -> {tileIndex, existingTileIds, tileVersion}
         this.tileSize = 0.01; // 0.01 degrees per tile (roughly 1km)
         this.loadedTiles = new Set();
         this.activeRequests = new Map();
     }
+
+    // Cache/request key — band-scoped, since the same tileId is different content
+    // per band.
+    cacheKey(tileId, band = this.currentBand) { return band + ':' + tileId; }
 
     // Which LOD band serves this zoom.
     bandForZoom(zoom) {
@@ -67,23 +76,21 @@ export class SVGTileManager {
         return band ? TILE_BASE + band + '/' : TILE_BASE;
     }
 
-    // Switch the active band: point at its tile dir + index and force a reload of
-    // that index (the existing tile set + cache-bust version differ per band). The
-    // tile cache is keyed by id, and the same id means different content per band,
-    // so it's cleared on a switch. Switches happen only when zoom crosses a band
-    // boundary, so this is rare.
+    // Switch the active band: point at its tile dir + index. The tile cache is
+    // band-scoped and PERSISTS (a zoom back to this band reuses it), and each
+    // band's index is remembered, so switching is fetch-free once a band's been
+    // seen. In-flight requests are NOT cancelled here — letting them finish + cache
+    // means a quick zoom back finds them ready.
     setBand(band) {
         if (band === this.currentBand) return;
         this.currentBand = band;
         const base = this.bandBase(band);
         this.tileBaseUrl = base + 'tiles/';
         this.indexUrl = base + 'tile-index.json';
-        this.tileIndex = null;
-        this.existingTileIds = null;
-        this.tileVersion = null;
-        this.cancelAllRequests();
-        this.tileCache.clear();
-        this.loadedTiles.clear();
+        const bi = this.bandIndex[band];
+        this.tileIndex = bi ? bi.tileIndex : null;
+        this.existingTileIds = bi ? bi.existingTileIds : null;
+        this.tileVersion = bi ? bi.tileVersion : null;
     }
 
     async loadTileIndex() {
@@ -101,8 +108,14 @@ export class SVGTileManager {
             // The set of tile ids that actually exist, so empty cells in a sparse
             // map aren't mistaken for load failures.
             this.existingTileIds = new Set((this.tileIndex.tiles || [])
-                .map(t => String(t.file || t.id || '').replace(/\.svg\.gz$/, ''))
+                .map(t => String(t.file || t.id || '').replace(/\.svg(\.gz)?$/, ''))
                 .filter(Boolean));
+            // Remember this band's index so a later switch back doesn't re-fetch it.
+            this.bandIndex[this.currentBand] = {
+                tileIndex: this.tileIndex,
+                existingTileIds: this.existingTileIds,
+                tileVersion: this.tileVersion,
+            };
             console.log(`Loaded tile index: ${this.tileIndex.tiles?.length || 0} tiles available (v${this.tileVersion || 'none'})`);
             return this.tileIndex;
         } catch (error) {
@@ -156,26 +169,27 @@ export class SVGTileManager {
     }
 
     async loadTile(tileId) {
-        if (this.tileCache.has(tileId)) {
-            return this.tileCache.get(tileId);
+        const key = this.cacheKey(tileId);
+        if (this.tileCache.has(key)) {
+            return this.tileCache.get(key);
         }
 
-        if (this.activeRequests.has(tileId)) {
-            return this.activeRequests.get(tileId).promise;
+        if (this.activeRequests.has(key)) {
+            return this.activeRequests.get(key).promise;
         }
 
         const url = this.getTileUrl(tileId);
         const controller = new AbortController();
         const promise = this.fetchTile(url, tileId, controller.signal);
-        this.activeRequests.set(tileId, { promise, controller });
+        this.activeRequests.set(key, { promise, controller });
 
         try {
             const svgContent = await promise;
-            this.cacheTree(tileId, svgContent);
-            this.activeRequests.delete(tileId);
+            this.cacheTree(key, svgContent);
+            this.activeRequests.delete(key);
             return svgContent;
         } catch (error) {
-            this.activeRequests.delete(tileId);
+            this.activeRequests.delete(key);
             // Aborted requests (cancelled on pan) are expected, not errors.
             if (error.name !== 'AbortError') {
                 console.error(`Failed to load tile ${tileId}:`, error);
@@ -276,12 +290,13 @@ export class SVGTileManager {
         }
     }
 
-    cacheTree(tileId, svgContent) {
-        if (this.tileCache.size >= this.maxCacheSize) {
+    cacheTree(key, svgContent) {   // key = band:tileId (see cacheKey)
+        if (this.tileCache.has(key)) this.tileCache.delete(key);   // refresh LRU position
+        else if (this.tileCache.size >= this.maxCacheSize) {
             const firstKey = this.tileCache.keys().next().value;
             this.tileCache.delete(firstKey);
         }
-        this.tileCache.set(tileId, svgContent);
+        this.tileCache.set(key, svgContent);
     }
 
     async loadTilesForArea(bounds, zoom) {
@@ -296,6 +311,11 @@ export class SVGTileManager {
         const wanted = (this.existingTileIds && this.existingTileIds.size)
             ? all.filter(tile => this.existingTileIds.has(tile.id))
             : all;
+        // Centre-first: request the tiles nearest the view centre before the edges,
+        // so the part the user is looking at fills in first.
+        const cx = (bounds.east + bounds.west) / 2, cy = (bounds.north + bounds.south) / 2;
+        wanted.sort((a, b) =>
+            ((a.lat - cy) ** 2 + (a.lng - cx) ** 2) - ((b.lat - cy) ** 2 + (b.lng - cx) ** 2));
 
         const results = await Promise.all(wanted.map(tile =>
             this.loadTile(tile.id).then(content => ({ ...tile, content }))
@@ -308,6 +328,40 @@ export class SVGTileManager {
             failed: wanted.length - tiles.length,
         };
         return { tiles, stats, band: this.currentBand };
+    }
+
+    // Warm the cache for an area of a (possibly NON-active) band, in the background,
+    // without rendering — so zooming to that band or panning into that area is
+    // instant. Funded by the Brotli bandwidth saving. Skips tiles already cached or
+    // in flight, and tiles that don't exist in that band's index.
+    async prefetchArea(bounds, band) {
+        if (band == null) return;
+        let bi = this.bandIndex[band];
+        if (!bi) {
+            try {
+                const r = await fetch(this.bandBase(band) + 'tile-index.json?t=' + Date.now());
+                const idx = await r.json();
+                bi = this.bandIndex[band] = {
+                    tileIndex: idx,
+                    existingTileIds: new Set((idx.tiles || [])
+                        .map(t => String(t.file || t.id || '').replace(/\.svg(\.gz)?$/, '')).filter(Boolean)),
+                    tileVersion: idx.version || null,
+                };
+            } catch (_) { return; }
+        }
+        const base = this.bandBase(band) + 'tiles/';
+        const ver = bi.tileVersion;
+        for (const t of this.getTilesForBounds(bounds)) {
+            if (bi.existingTileIds && bi.existingTileIds.size && !bi.existingTileIds.has(t.id)) continue;
+            const key = this.cacheKey(t.id, band);
+            if (this.tileCache.has(key) || this.activeRequests.has(key)) continue;
+            const url = base + t.id + '.svg' + (ver ? '?v=' + encodeURIComponent(ver) : '');
+            const controller = new AbortController();
+            const promise = this.fetchTile(url, t.id, controller.signal);
+            this.activeRequests.set(key, { promise, controller });
+            promise.then(c => { if (c) this.cacheTree(key, c); this.activeRequests.delete(key); })
+                   .catch(() => this.activeRequests.delete(key));
+        }
     }
 
     clearCache() {
