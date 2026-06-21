@@ -2067,8 +2067,13 @@ body.tooltip-below .poi-tooltip::after {
         --c-road:       #6b7280;  --c-road-casing:  #20242a;
     }
 
-    #map-tiles [fill]:not([fill="none"])     { fill: var(--c-misc-fill); }
-    #map-tiles [stroke]:not([stroke="none"]) { stroke: var(--c-misc-stroke); }
+    /* Generic re-colour for tangible features — but NEVER the overlay elements
+       that carry their own treatment: POI marker circles (small colour dot +
+       TRANSPARENT touch ring) and the transparent road hit-corridors. Without the
+       :not()s the dark catch-all paints their transparent strokes grey, turning
+       markers into donuts and hit-corridors into thick grey roads. */
+    #map-tiles [fill]:not([fill="none"]):not(circle)     { fill: var(--c-misc-fill); }
+    #map-tiles [stroke]:not([stroke="none"]):not(circle):not(.road-hit) { stroke: var(--c-misc-stroke); }
 
     #map-tiles g.water [fill]:not([fill="none"])            { fill: var(--c-water-fill); }
     #map-tiles g.water [stroke]:not([stroke="none"])        { stroke: var(--c-water-stroke); }
@@ -2080,8 +2085,13 @@ body.tooltip-below .poi-tooltip::after {
     #map-tiles g.vegetation [stroke]:not([stroke="none"])   { stroke: var(--c-veg-stroke); }
     #map-tiles g.landuse [fill]:not([fill="none"])          { fill: var(--c-land-fill); }
     #map-tiles g.landuse [stroke]:not([stroke="none"])      { stroke: var(--c-land-stroke); }
-    #map-tiles g.road [stroke]:not([stroke="none"])         { stroke: var(--c-road); }
+    #map-tiles g.road [stroke]:not([stroke="none"]):not(.road-hit) { stroke: var(--c-road); }
     #map-tiles g.road-casings [stroke]:not([stroke="none"]) { stroke: var(--c-road-casing); }
+
+    /* In-road labels on the dark map: the baked light-mode dark text would vanish,
+       so flip to a LIGHT fill with a dark halo. (Markers + hit-corridors keep their
+       transparent touch surfaces and POI colours via the :not()s above.) */
+    #map-tiles text.road-label { fill: #ececec; stroke: #16191d; }
 }
 
 @media (prefers-contrast: high) {
