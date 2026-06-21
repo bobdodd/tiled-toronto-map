@@ -552,43 +552,50 @@ main {
 
 #destination-search label {
     display: block;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.3rem;
     font-weight: 600;
-    font-size: 0.75rem;
+    font-size: 0.9rem;
 }
 
-#destination-search input {
+/* type="text" ONLY — without it this also matched the filter <input type=checkbox>
+   (ID specificity beating .search-a11y-filter input), blowing the checkbox to 100%
+   width and squeezing its label to zero (the "unlabelled checkboxes" bug). */
+#destination-search input[type="text"] {
     width: 100%;
-    padding: 0.375rem 0.5rem;
+    box-sizing: border-box;
+    padding: 0.55rem 0.65rem;
     border: 1px solid #ddd;
     border-radius: 4px;
-    font-size: 0.75rem;
-    margin-bottom: 0.375rem;
+    font-size: 1rem;          /* readable, and avoids iOS focus-zoom */
+    margin-bottom: 0.5rem;
 }
 
-#destination-search input:focus {
+#destination-search input[type="text"]:focus {
     outline: 3px solid #4285F4;
     outline-offset: 2px;
     border-color: #4285F4;
 }
 
-#destination-search button {
-    padding: 0.375rem 0.75rem;
+/* :not(.search-result) — the result list items are <button>s inside
+   #destination-search too; without this they'd inherit the blue Search-button
+   look (blue card + dark text = poor contrast). They get their own card style. */
+#destination-search button:not(.search-result) {
+    padding: 0.55rem 0.75rem;
     background: #4285F4;
     color: #fff;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.95rem;
     width: 100%;
     transition: background 0.2s;
 }
 
-#destination-search button:hover {
+#destination-search button:not(.search-result):hover {
     background: #3367D6;
 }
 
-#destination-search button:focus {
+#destination-search button:not(.search-result):focus {
     outline: 2px solid #0066ff;
     outline-offset: 2px;
 }
@@ -1889,7 +1896,7 @@ body.tooltip-below .poi-tooltip::after {
    muted grey a placeholder would be. */
 .search-hint {
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     line-height: 1.4;
     color: #444;
     margin-top: 0.125rem;
@@ -1924,10 +1931,22 @@ body.tooltip-below .poi-tooltip::after {
     flex: 0 0 auto;
 }
 
-.search-a11y-filter label {
-    font-size: 0.75rem;
-    font-weight: 400;
+/* More specific than `.accordion-content label` (whose display:block + overflow:
+   hidden is meant for the filter panel's long names, but here COLLAPSES this
+   flex-item label to nothing — the "unlabelled checkboxes" bug). Let it sit
+   inline in the row, take the remaining width, and never clip; explicit colour so
+   it survives both themes. */
+.search-a11y-filters .search-a11y-filter label {
+    display: inline;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: #1a1a1a;
     cursor: pointer;
 }
 
@@ -1954,7 +1973,7 @@ body.tooltip-below .poi-tooltip::after {
     border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
 }
 
 .search-result:hover {
@@ -2008,6 +2027,20 @@ body.tooltip-below .poi-tooltip::after {
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
+}
+
+/* Dark-mode treatment for the search panel. Placed AFTER the light-mode search
+   rules so it wins in dark: the light greys (#444 hint, #555 legend/detail, #1a1a1a
+   names) and the white result cards would otherwise read low-contrast / invisible
+   on the dark accordion. */
+@media (prefers-color-scheme: dark) {
+    .search-hint { color: #c4c4c4; }
+    .search-a11y-filters legend { color: #c4c4c4; }
+    .search-a11y-filters .search-a11y-filter label { color: #e8e8e8; }
+    .search-result { background: #2a2a2a; border-color: #444; }
+    .search-result:hover { background: #333; border-color: #5b8def; }
+    .search-result-name { color: #f0f0f0; }
+    .search-result-detail { color: #c4c4c4; }
 }
 
 .accordion-content input,
