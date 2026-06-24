@@ -541,17 +541,14 @@ main {
     paint-order: stroke;
 }
 
-/* Heading-up rotation: keep labels READABLE. The map content (#map-rotate) turns by
-   -heading; counter-rotate every tile label by +heading around its OWN centre
-   (transform-box: fill-box) so the net orientation is north-up — place names upright,
-   road names in their north-up direction, never upside-down — while each label stays
-   at its rotated position. The viewer sets --map-label-rot on #map-tiles (0 when
-   north-up, so rotate(0deg) is a no-op). One variable drives every label, including
-   ones in tiles loaded after the rotation started. */
-#map-tiles text {
+/* Heading-up rotation: labels RIDE the rotating map (a road name stays in its casing,
+   along the road). When the map's rotation would make a label read UPSIDE-DOWN, the
+   viewer adds .label-flip and we rotate it 180° around its own centre (transform-box:
+   fill-box) so it reads the right way up — still in the casing. */
+#map-tiles text.label-flip {
     transform-box: fill-box;
     transform-origin: center;
-    transform: rotate(var(--map-label-rot, 0deg));
+    transform: rotate(180deg);
 }
 
 #map-container:focus {

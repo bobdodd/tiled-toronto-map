@@ -223,15 +223,49 @@ export class MapRenderer {
         if (!this.rotateGroup) return;
         if (!this.rotation) {
             this.rotateGroup.removeAttribute('transform');
-            if (this.tilesGroup) this.tilesGroup.style.removeProperty('--map-label-rot');
+            this.applyLabelFlips();   // clears flips at north-up
             return;
         }
         const cx = this.viewBox.x + this.viewBox.width / 2;
         const cy = this.viewBox.y + this.viewBox.height / 2;
         this.rotateGroup.setAttribute('transform', `rotate(${-this.rotation} ${cx} ${cy})`);
-        // Counter-rotate the labels (CSS uses this) so text stays north-up-readable
-        // while the map turns. Map turns -rotation; labels turn +rotation = upright.
-        if (this.tilesGroup) this.tilesGroup.style.setProperty('--map-label-rot', `${this.rotation}deg`);
+        this.applyLabelFlips();
+    }
+
+    // Labels ride the rotating map (road names stay in their casing). When the
+    // rotation would make a label read UPSIDE-DOWN — its on-screen reading direction
+    // pointing leftward — add .label-flip so CSS rotates it 180° around its own centre
+    // and it reads the right way up, still in the casing. The baked north-up reading
+    // angle comes from the label's textPath (region labels are horizontal = 0°), cached
+    // on the element. Cheap: the visible label set is viewport-bounded.
+    applyLabelFlips() {
+        if (!this.tilesGroup) return;
+        const rot = this.rotation || 0;
+        const labels = this.tilesGroup.querySelectorAll('text.road-label, text.region-label');
+        labels.forEach((text) => {
+            let angle = text._labelAngle;
+            if (angle === undefined) { angle = this._labelAngle(text); text._labelAngle = angle; }
+            if (angle === null) return;
+            // On-screen reading direction = baked angle + the map's -rot turn; it's
+            // upside-down when the horizontal component goes negative.
+            const flip = Math.cos((angle - rot) * Math.PI / 180) < 0;
+            text.classList.toggle('label-flip', flip);
+        });
+    }
+
+    _labelAngle(text) {
+        if (text.classList.contains('region-label')) return 0;   // placed horizontal
+        const tp = text.querySelector('textPath');
+        const href = tp && (tp.getAttribute('href') || tp.getAttribute('xlink:href'));
+        if (!href) return null;
+        const path = this.svg.querySelector(href);
+        const d = path && path.getAttribute('d');
+        if (!d) return null;
+        const coords = d.match(/-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?/g);
+        if (!coords || coords.length < 2) return null;
+        const [fx, fy] = coords[0].split(',').map(Number);
+        const [lx, ly] = coords[coords.length - 1].split(',').map(Number);
+        return Math.atan2(ly - fy, lx - fx) * 180 / Math.PI;
     }
 
     checkAndLoadTiles() {
