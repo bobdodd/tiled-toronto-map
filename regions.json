@@ -31,10 +31,10 @@
       "source": "/Volumes/Bob/MapData/trent-lakes.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
-        "north": 44.680,
-        "south": 44.655,
-        "east": -78.350,
-        "west": -78.385
+        "north": 44.920,
+        "south": 44.460,
+        "east": -78.280,
+        "west": -78.420
       },
       "center": {
         "lat": 44.66675,
