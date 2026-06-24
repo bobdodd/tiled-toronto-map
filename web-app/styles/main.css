@@ -523,6 +523,24 @@ main {
     /* Road surface */
 }
 
+/* In-road street names. Bob: a thin minor-road casing isn't wide enough to back the
+   name, so it spilled onto the terrain as unreadable dark-on-green. Give the label a
+   WHITE HALO so it stays legible wherever it sits — on the road OR off it. The halo
+   is non-scaling (constant screen width) and painted BEHIND the fill; the text size
+   is the constant-screen --label-size. The dark-map + high-contrast blocks flip the
+   colours (light text, dark halo) and inherit the rest. (Halo + text invert together
+   under macOS Invert, so legibility survives.) */
+#map-tiles text.road-label {
+    font-size: var(--label-size);
+    font-weight: 600;
+    fill: #1a1a1a;
+    stroke: #ffffff;
+    stroke-width: 3.5px;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    paint-order: stroke;
+}
+
 #map-container:focus {
     outline: 3px solid #4285F4;
     outline-offset: -3px;
