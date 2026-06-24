@@ -233,7 +233,11 @@ export class SearchManager {
         this.setStatus(`${results.length} result${results.length === 1 ? '' : 's'}${more}.`);
     }
 
-    // A short context line: human category + address when we have one.
+    // A short context line: human category + address when we have one, and the
+    // containing place ("in King Edward Junior and Senior Public School") when
+    // the containment pass found a parent. The parent is what disambiguates the
+    // many generic POIs a search turns up — three "Running track" hits read very
+    // differently once each says which school it belongs to.
     detailLine(r) {
         const bits = [];
         const cat = r.subtype || r.category;
@@ -242,6 +246,7 @@ export class SearchManager {
             const a = [r.address.housenumber, r.address.street].filter(Boolean).join(' ');
             if (a) bits.push(a);
         }
+        if (r.parent && r.parent !== r.display) bits.push(`in ${r.parent}`);
         return bits.join(' · ');
     }
 
