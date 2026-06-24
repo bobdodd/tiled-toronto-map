@@ -1873,6 +1873,78 @@ class TileBuilder:
         'transit', 'historic', 'tourism', 'religious', 'man_made', 'park',
     })
 
+    def _sample_geo_points(self, geom, max_pts=80, step_deg=0.0005):
+        """Geo points for the `location` field — sampled ALONG the geometry, not just
+        its centroid. OpenSearch geo_distance over a multi-point field takes the
+        MINIMUM, so this measures to the NEAREST point of a road / river / outline
+        (you can stand 20 m from a long road whose centroid is 600 m away). Spacing
+        ~0.0005° ≈ 55 m, capped at max_pts so a long way can't bloat the doc."""
+        gt = geom.geom_type
+
+        def line_pts(line):
+            length = line.length
+            if length == 0:
+                p = line.interpolate(0)
+                return [{'lat': round(p.y, 6), 'lon': round(p.x, 6)}]
+            step = max(step_deg, length / max_pts)
+            out, d = [], 0.0
+            while d < length:
+                p = line.interpolate(d)
+                out.append({'lat': round(p.y, 6), 'lon': round(p.x, 6)})
+                d += step
+            pe = line.interpolate(length)
+            out.append({'lat': round(pe.y, 6), 'lon': round(pe.x, 6)})
+            return out
+
+        pts = []
+        try:
+            if gt == 'Point':
+                pts = [{'lat': round(geom.y, 6), 'lon': round(geom.x, 6)}]
+            elif gt == 'LineString':
+                pts = line_pts(geom)
+            elif gt == 'MultiLineString':
+                for ln in geom.geoms:
+                    pts += line_pts(ln)
+            elif gt == 'Polygon':
+                pts = line_pts(geom.exterior)
+                rp = geom.representative_point()
+                pts.append({'lat': round(rp.y, 6), 'lon': round(rp.x, 6)})
+            elif gt == 'MultiPolygon':
+                for poly in geom.geoms:
+                    pts += line_pts(poly.exterior)
+                rp = geom.representative_point()
+                pts.append({'lat': round(rp.y, 6), 'lon': round(rp.x, 6)})
+        except Exception:
+            pass
+        if not pts:
+            c = geom.centroid
+            pts = [{'lat': round(c.y, 6), 'lon': round(c.x, 6)}]
+        if len(pts) > max_pts:
+            stride = max(1, len(pts) // max_pts)
+            pts = pts[::stride]
+        return pts
+
+    def _geom_for_search(self, geom):
+        """Compact raw geometry (vertices, [lon,lat]) stored on the search doc so the
+        API can compute the EXACT point-to-line distance AND the nearest point — what
+        a blind user actually navigates by. Only for non-point features; points are
+        already exact from lat/lng. Lines store vertices (sparse — a straight road is
+        two points), polygons store the exterior ring."""
+        gt = geom.geom_type
+        r = lambda seq: [[round(x, 6), round(y, 6)] for x, y in seq]
+        try:
+            if gt == 'LineString':
+                return {'t': 'L', 'c': [r(geom.coords)]}
+            if gt == 'MultiLineString':
+                return {'t': 'L', 'c': [r(ln.coords) for ln in geom.geoms]}
+            if gt == 'Polygon':
+                return {'t': 'L', 'c': [r(geom.exterior.coords)]}
+            if gt == 'MultiPolygon':
+                return {'t': 'L', 'c': [r(p.exterior.coords) for p in geom.geoms]}
+        except Exception:
+            pass
+        return None
+
     def write_search_index(self, features):
         """Emit one NDJSON search document per findable feature — named things,
         POIs (washrooms, post boxes, benches...) and addresses — for bulk-loading
@@ -1929,8 +2001,13 @@ class TileBuilder:
                     'text': ' '.join(filter(None, [name, addr_str] + labels + ancestors)),
                     'lat': round(c.y, 6),
                     'lng': round(c.x, 6),
-                    'location': {'lat': round(c.y, 6), 'lon': round(c.x, 6)},
+                    # Multi-point along the geometry so geo_distance finds the NEAREST
+                    # point (lat/lng above stay the centroid, for display/jump-to).
+                    'location': self._sample_geo_points(f['geometry']),
                 }
+                geom = self._geom_for_search(f['geometry'])
+                if geom is not None:
+                    doc['geom'] = geom   # raw vertices for EXACT nearest-point in the API
                 if parent_name and parent_name != name:
                     doc['parent'] = parent_name
                     doc['parent_id'] = f.get('_named_parent_id')
