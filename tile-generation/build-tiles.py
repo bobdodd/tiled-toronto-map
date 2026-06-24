@@ -808,7 +808,15 @@ class TileBuilder:
                       "font-family:-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;"
                       "fill:#1a1a1a;paint-order:stroke;stroke:#ffffff;stroke-width:3px;"
                       "vector-effect:non-scaling-stroke;stroke-linejoin:round;"
-                      "text-anchor:middle;pointer-events:none;}")
+                      "text-anchor:middle;pointer-events:none;}"
+                      # Region (container-area) name, centred in the boundary.
+                      "text.region-label{font-weight:600;font-size:var(--label-size,13px);"
+                      "font-family:-apple-system,system-ui,'Segoe UI',Roboto,sans-serif;"
+                      "fill:#3c4043;paint-order:stroke;stroke:#ffffff;stroke-width:3px;"
+                      "vector-effect:non-scaling-stroke;stroke-linejoin:round;"
+                      "text-anchor:middle;dominant-baseline:middle;pointer-events:none;}"
+                      ".region-area{fill:#9aa0a6;fill-opacity:.10;stroke:#5f6368;"
+                      "stroke-width:2px;stroke-dasharray:6 4;vector-effect:non-scaling-stroke;}")
         svg.append(style)
 
         # Add tile metadata
@@ -816,22 +824,30 @@ class TileBuilder:
         svg.set('data-tile-lng', str(tile_lng))
         svg.set('data-bounds', json.dumps(bounds))
         
-        # Group features into per-base-category layers, rendering each through
-        # its taxonomy classification (base geometry + filterable overlays).
-        layers = {}
+        # Group features into per-category layers, rendering each through its
+        # taxonomy classification (base geometry + filterable overlays). The layer
+        # groups are appended to the svg in explicit TIER order (region < base <
+        # poi < accessibility), NOT OSM encounter order — so container areas (a
+        # campus) can never paint over their own contents, and POIs always sit on
+        # top of the base map. Within a tier, first-encounter order is preserved.
+        layers = {}            # category key -> <g>
         casing_layers = {}
+        layer_meta = {}        # category key -> (tier, encounter_index)
+        order = [0]
 
-        def layer_for(category):
+        def layer_for(category, tier):
             if category not in layers:
                 # No id on the layer group: it was the category name (e.g.
                 # "building"), which collided across tiles and nothing references.
                 g = self.create_svg_element(
                     'g', class_='layer', clip_path=f'url(#{clip_id})')
                 layers[category] = g
-                svg.append(g)
+                layer_meta[category] = (tier, order[0])
+                order[0] += 1
+                # NOT appended here — appended in tier order after the loop.
             return layers[category]
 
-        def casings_for(category):
+        def casings_for(category, tier):
             # A visual-only sub-layer holding every casing for this category,
             # inserted UNDER all the fills so e.g. road intersections stay
             # seamless. aria-hidden + pointer-events:none so it never steals the
@@ -840,24 +856,62 @@ class TileBuilder:
                 cg = self.create_svg_element('g', class_=f'{category}-casings')
                 cg.set('aria-hidden', 'true')
                 cg.set('pointer-events', 'none')
-                layer_for(category).insert(0, cg)
+                layer_for(category, tier).insert(0, cg)
                 casing_layers[category] = cg
             return casing_layers[category]
 
+        level_subs = {}
+
+        def level_deco_layer(kind):
+            # Pooled sub-layers inside the 'levels' layer: ALL halos under ALL casings
+            # under ALL the feature lines, so an overlay (the Gardiner, the PATH) stays
+            # CONTIGUOUS — a later segment's white halo can never paint over an earlier
+            # segment's coloured line (which broke it into fragments). Built lazily and
+            # inserted at the FRONT of the levels layer (halos lowest).
+            if not level_subs:
+                lv = layer_for('levels', self._LAYER_TIER['levels'])
+                casings_sg = self.create_svg_element('g', class_='levels-casings')
+                halos_sg = self.create_svg_element('g', class_='levels-halos')
+                for sg in (casings_sg, halos_sg):
+                    sg.set('aria-hidden', 'true')
+                    sg.set('pointer-events', 'none')
+                lv.insert(0, casings_sg)   # -> [casings, ...existing groups]
+                lv.insert(0, halos_sg)     # -> [halos, casings, ...]
+                level_subs['halo'] = halos_sg
+                level_subs['casing'] = casings_sg
+            return level_subs[kind]
+
         feature_count = 0
         for feature in features:  # flat list from the processor
-            element, casing = self.render_feature(feature, bounds)
+            element, casing, level_deco = self.render_feature(feature, bounds)
             if element is None:
                 continue
             cls = feature['classification']
-            category = (cls['base'] or cls['primary'])['category']
+            prim = cls['base'] or cls['primary']
+            if feature.get('_is_region'):
+                category, tier = 'region', self._LAYER_TIER['region']
+            elif feature.get('_plane') and feature['_plane'] != 'surface':
+                # Off-surface planes share ONE top-tier overlay layer; which one is
+                # visible is the viewer's data-active-plane (CSS), so they can live
+                # together here without z-fighting.
+                category, tier = 'levels', self._LAYER_TIER['levels']
+            else:
+                category = prim['category']
+                tier = self._LAYER_TIER.get(prim.get('layer', 'base'), 1)
             if casing is not None:
-                casings_for(category).append(casing)
-            layer_for(category).append(element)
+                casings_for(category, tier).append(casing)
+            if level_deco:                                    # [halo, casing]
+                level_deco_layer('halo').append(level_deco[0])
+                level_deco_layer('casing').append(level_deco[1])
+            layer_for(category, tier).append(element)
             feature_count += 1
 
         if feature_count == 0:
             return None  # Don't create empty tiles
+
+        # Paint in tier order (then encounter order within a tier).
+        for category in sorted(layers, key=lambda c: layer_meta[c]):
+            svg.append(layers[category])
 
         return svg
 
@@ -873,6 +927,272 @@ class TileBuilder:
         styles = self.feature_types.get(self._CAT2BUCKET.get(category, category), {}).get('styles', {})
         return (styles.get(subtype) or styles.get('default')
                 or {'fill': '#d9d9d9', 'stroke': '#999999', 'stroke_width': 1})
+
+    # Explicit PAINT-ORDER tiers (low = drawn first = underneath). Z-order used to
+    # be accidental — create_tile_svg appended each category layer in OSM
+    # encounter order, so a "container" area (a campus) could land ON TOP of its
+    # own streets. Now layers sort by tier, derived from the taxonomy `layer`
+    # field, with a REGION tier below everything for container areas.
+    # 'levels' is the TOP tier: an active off-surface plane (PATH / subway / Gardiner)
+    # must paint OVER the dimmed street level so its clear-space halo clears the base
+    # beneath it. Off-surface features are hidden until their plane is selected, so
+    # sitting on top costs nothing in the default street-level view.
+    _LAYER_TIER = {'region': 0, 'base': 1, 'poi': 2, 'accessibility': 3, 'levels': 4}
+
+    # Container AREAS — a campus / grounds is a named *region*, not an opaque
+    # sheet. They're amenity-layer polygons that today paint over the streets and
+    # buildings inside them (parity loss). Routed to the region tier and styled as
+    # a labelled boundary + faint fill drawn UNDER their contents (facet C). A
+    # single BUILDING (building=university) is NOT a region — only the amenity AREA.
+    _REGION_SUBTYPES = {'university', 'college', 'school', 'hospital'}
+
+    def _is_region(self, feature):
+        # A container region is a BASE-LESS AREA (the campus/grounds boundary has
+        # no building/landuse geometry of its own) that carries an amenity
+        # university/college/school/hospital classification ANYWHERE — primary OR
+        # overlay. Checking only `primary` was wrong: a campus tagged wheelchair=yes
+        # gets an accessibility/mobility PRIMARY, pushing amenity into an overlay
+        # (this is exactly how TMU is mapped, so it was missed and stayed an opaque
+        # blob). Requiring base is None excludes university BUILDINGS (they have a
+        # base) that merely also carry an amenity=university tag.
+        cls = feature.get('classification') or {}
+        if cls.get('base') is not None:
+            return False
+        g = feature.get('geometry')
+        if g is None or g.geom_type not in ('Polygon', 'MultiPolygon'):
+            return False
+        for e in [cls.get('primary')] + (cls.get('overlays') or []):
+            if e and e.get('category') == 'amenity' and e.get('subtype') in self._REGION_SUBTYPES:
+                return True
+        return False
+
+    # ---- Spatial-containment hierarchy (the information model) --------------
+    # OSM almost never groups a school's buildings/track/etc. under the school (only
+    # ~40 type=site relations city-wide, ~none for schools) — the relationship is
+    # IMPLICIT in geometry. So we DERIVE it: each feature's parent is the SMALLEST
+    # container that strictly contains it, computed PER PLANE (Bob: a surface
+    # school's children are surface features; never cross planes). Containers NEST —
+    # an entrance inside a building inside a campus — so the pass builds a containment
+    # FOREST and each feature carries the chain of its NAMED ancestors (nearest ->
+    # outermost), feeding the explore descriptions, the search context, and the
+    # keyboard hierarchy nav.
+    #
+    # Container ELIGIBILITY is by TAGS (not the rendered classification: a school is
+    # often amenity=school AND landuse=education, so it has a landuse base and isn't a
+    # "region"). Two tiers (Bob, 2026-06-23):
+    #  - NAMED grounds/complexes: institutional grounds, parks, sports complexes,
+    #    places of worship, station areas. A NAME is required — an unnamed one can't
+    #    give "in <place>" context.
+    #  - STRUCTURAL rings: buildings, parking, pitches. Eligible WITHOUT a name —
+    #    they nest entrances/POIs/accessible bays and are labelled by type for
+    #    keyboard nav, voicing the nearest NAMED ancestor. There are ~524k buildings
+    #    but only ~8k named, so requiring a name would drop the building ring for
+    #    almost every indoor POI. Bob's gate — a structural ring "earns it only if it
+    #    contains something" — is enforced for FREE by smallest-container selection:
+    #    an empty shell is never chosen as anyone's parent, so no pruning pass needed.
+    _CONTAINER_AMENITY = {'school', 'university', 'college', 'hospital',
+                          'kindergarten', 'place_of_worship'}
+    _CONTAINER_LANDUSE = {'education', 'institutional'}
+    _CONTAINER_LEISURE_NAMED = {'park', 'sports_centre', 'stadium'}
+    _CONTAINER_LEISURE_STRUCT = {'pitch'}
+
+    def _container_eligible(self, feature):
+        """Can this feature's TYPE be a container node? (Whether it actually BECOMES
+        a parent is decided geometrically — an empty shell parents nothing.)"""
+        g = feature.get('geometry')
+        if g is None or g.geom_type not in ('Polygon', 'MultiPolygon'):
+            return False
+        p = feature.get('properties') or {}
+        # Structural rings — no name required.
+        if ((p.get('building') and p.get('building') != 'no')
+                or p.get('amenity') == 'parking'
+                or p.get('leisure') in self._CONTAINER_LEISURE_STRUCT):
+            return True
+        # Named grounds / complexes / station areas — name required.
+        if not p.get('name'):
+            return False
+        return (p.get('amenity') in self._CONTAINER_AMENITY
+                or p.get('landuse') in self._CONTAINER_LANDUSE
+                or p.get('leisure') in self._CONTAINER_LEISURE_NAMED
+                or p.get('railway') == 'station'
+                or p.get('public_transport') == 'station'
+                or p.get('station') == 'subway')
+
+    _GROUND_AMENITY = {'school', 'university', 'college', 'hospital', 'kindergarten'}
+
+    def _container_rank(self, props):
+        """Containment RANK so a child's parent must have rank >= its own: GROUND
+        grounds (landuse / parks / institution campuses) = 2 are the OUTER rings;
+        STRUCTURAL rings (building / parking / pitch / place of worship / station) =
+        1 sit INSIDE grounds; non-containers = 0. This stops pure geometry from
+        nesting a courtyard 'park' inside the elevated building above it (a building
+        never becomes a park's parent), while still letting a building nest in a
+        school ground and a park nest in a bigger park."""
+        p = props or {}
+        if (p.get('landuse') in self._CONTAINER_LANDUSE
+                or p.get('leisure') in self._CONTAINER_LEISURE_NAMED
+                or p.get('amenity') in self._GROUND_AMENITY):
+            return 2
+        if ((p.get('building') and p.get('building') != 'no')
+                or p.get('amenity') in ('parking', 'place_of_worship')
+                or p.get('leisure') in self._CONTAINER_LEISURE_STRUCT
+                or p.get('railway') == 'station'
+                or p.get('public_transport') == 'station'
+                or p.get('station') == 'subway'):
+            return 1
+        return 0
+
+    def assign_parents(self, features):
+        """Build the per-plane containment FOREST: stamp each feature with its direct
+        parent (smallest container strictly larger that holds it) and its chain of
+        NAMED ancestors (nearest -> outermost). Recursive — containers nest inside
+        containers — and strictly per plane (a surface feature never gets a transit
+        parent)."""
+        try:
+            from shapely import STRtree
+        except Exception:
+            from shapely.strtree import STRtree
+        for f in features:
+            if '_plane' not in f:
+                f['_plane'] = self._plane_for(f)
+        # eligible containers grouped by plane -> per-plane STRtree (+ area list)
+        trees = {}
+        for plane in {f['_plane'] for f in features}:
+            conts = [f for f in features
+                     if f['_plane'] == plane and self._container_eligible(f)]
+            if conts:
+                trees[plane] = (STRtree([c['geometry'] for c in conts]), conts,
+                                [c['geometry'].area for c in conts],
+                                [self._container_rank(c.get('properties')) for c in conts])
+        # Pass 1: direct parent = smallest container STRICTLY LARGER than f that
+        # contains its representative point AND has rank >= f's own (grounds contain
+        # buildings, not vice versa). "Strictly larger" lets containers nest without
+        # picking themselves or a coincident twin, and makes a cycle impossible (area
+        # strictly decreases down the chain).
+        for f in features:
+            info = trees.get(f['_plane'])
+            if not info:
+                continue
+            tree, conts, areas, ranks = info
+            g = f['geometry']
+            try:
+                pt = g.representative_point()
+            except Exception:
+                continue
+            f_area = g.area if g.geom_type in ('Polygon', 'MultiPolygon') else 0.0
+            f_rank = self._container_rank(f.get('properties'))
+            best, best_area = None, None
+            for i in tree.query(pt):
+                if conts[i] is f or areas[i] <= f_area or ranks[i] < f_rank:
+                    continue
+                if conts[i]['geometry'].contains(pt) and (best is None or areas[i] < best_area):
+                    best, best_area = conts[i], areas[i]
+            if best is not None:
+                f['_parent'] = (best.get('properties') or {}).get('osm_id')
+        # Pass 2: walk the parent pointers to collect each feature's NAMED ancestor
+        # chain (nearest -> outermost), skipping unnamed structural rings. _parent
+        # stays the DIRECT parent (the ring you "enter" in keyboard nav, named or
+        # not); _ancestor_names + _named_parent_id carry the named context for the
+        # description and search.
+        by_id = {}
+        for f in features:
+            oid = (f.get('properties') or {}).get('osm_id')
+            if oid is not None and oid not in by_id:
+                by_id[oid] = f
+        n = 0
+        for f in features:
+            if f.get('_parent') is not None:
+                n += 1
+            names, ids, seen, cur, depth = [], [], set(), f, 0
+            while depth < 16:
+                pid = cur.get('_parent')
+                if pid is None or pid in seen:
+                    break
+                seen.add(pid)
+                par = by_id.get(pid)
+                if par is None:
+                    break
+                pp = par.get('properties') or {}
+                if pp.get('name'):
+                    names.append(pp.get('name'))
+                    ids.append(pp.get('osm_id'))
+                cur, depth = par, depth + 1
+            if names:
+                f['_ancestor_names'] = names
+                f['_parent_name'] = names[0]       # nearest NAMED ancestor
+                f['_named_parent_id'] = ids[0]
+        return n
+
+    # ---- Multi-level model (facet 1) — the vertical stack -----------------
+    # Bob's ordering (top -> bottom): Gardiner (elevated road) ABOVE surface ABOVE
+    # PATH (underground pedestrian) ABOVE subway/LRT tunnel. So four ordered planes;
+    # SURFACE is the pedestrian-primary default. The split is by PEDESTRIAN
+    # RELEVANCE + feature TYPE, NOT the raw OSM `layer` integer: a car-only elevated
+    # deck (the Gardiner) goes ABOVE, but a walkable footbridge at the same layer
+    # stays SURFACE; underground PEDESTRIAN ways are the PATH (-1), underground RAIL
+    # is the subway (-2). Real Toronto signals (verified in the PBF):
+    #   subway   : railway=subway/light_rail + tunnel=yes (layer -2/-3)
+    #   PATH     : highway=footway/corridor  + tunnel=yes / layer<0 / level<0
+    #   Gardiner : highway=motorway(_link)   + bridge=yes / layer>=1
+    _PLANE_ORDER = {'transit': -2, 'path': -1, 'surface': 0, 'above': 1}
+    _PLANE_LABEL = {'transit': 'Rail transit (subway / streetcar / LRT)',
+                    'path': 'Underground walkway (PATH)',
+                    'surface': 'Street level',
+                    'above': 'Elevated road'}
+    _ELEVATED_CAR = {'motorway', 'motorway_link', 'trunk', 'trunk_link'}
+    _PED_WAYS = {'footway', 'path', 'steps', 'corridor', 'pedestrian',
+                 'sidewalk', 'living_street'}
+
+    @staticmethod
+    def _as_int(v):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return None
+
+    def _plane_for(self, feature):
+        """Map a feature to one of the four vertical planes (see _PLANE_ORDER).
+        Default is 'surface' — most of the map, and what loads first."""
+        p = feature.get('properties') or {}
+
+        # PATH plane — the Toronto PATH is a branded pedestrian NETWORK, identified
+        # by membership in its route=foot relation (authoritative — also carries the
+        # PATH's entrances and amenity POIs) or by name=PATH on a segment. It is NOT
+        # "any underground footway": the PATH spans tunnels, at-grade links AND
+        # elevated skywalks, while station UNDERPASSES (underground footways that
+        # are not the PATH) must stay on the surface. So we key off network identity,
+        # never depth. (Bob, 2026-06-21 — this replaced an underground heuristic that
+        # wrongly grabbed underpasses and missed at-grade PATH.)
+        if feature.get('_path_member') or p.get('name') == 'PATH':
+            return 'path'
+
+        highway = p.get('highway')
+        railway = p.get('railway')
+        layer = self._as_int(p.get('layer'))
+
+        # RAIL TRANSIT — subway, streetcar (tram) and LRT are ONE FLAT overlay
+        # regardless of depth (Bob, 2026-06-23): subways aren't all underground,
+        # streetcar is mostly at grade, LRT is a mix. So all rail-transit LINES and
+        # their STATIONS / STOPS / ENTRANCES / PLATFORMS go on the 'transit' plane,
+        # never split by tunnel/level. Heavy rail (GO/VIA, railway=rail) is included as
+        # the rail-transit network too; only BUS stops stay on the street.
+        bus = (highway == 'bus_stop' or p.get('bus') == 'yes')
+        if (railway in ('subway', 'light_rail', 'tram', 'rail', 'monorail',
+                        'narrow_gauge', 'funicular', 'subway_entrance', 'tram_stop',
+                        'station', 'halt', 'stop', 'platform')
+                or p.get('station') in ('subway', 'light_rail', 'train')
+                or (p.get('public_transport') in ('platform', 'stop_position', 'station')
+                    and not bus)):
+            return 'transit'
+
+        # ABOVE — a CAR-ONLY elevated deck (the Gardiner). A walkable bridge
+        # (footway/cycleway/ordinary street carrying sidewalks) does NOT match here,
+        # so it stays SURFACE — pedestrian relevance, per Bob.
+        elevated = (p.get('bridge') in ('yes', 'viaduct')
+                    or (layer is not None and layer >= 1))
+        if highway in self._ELEVATED_CAR and elevated:
+            return 'above'
+        return 'surface'
 
     def _svg_points(self, coords, bounds):
         # shapely coords are (lon, lat); coord_to_svg takes (lat, lng)
@@ -922,7 +1242,7 @@ class TileBuilder:
         cls = feature['classification']
         primary = cls['primary']
         if primary is None:
-            return None, None
+            return None, None, None
         # Clip the geometry to this tile (+ a small margin so strokes that cross a
         # boundary stay continuous; the viewer trims the margin). Each tile then
         # carries only its own slice of a feature instead of the feature's full
@@ -933,10 +1253,10 @@ class TileBuilder:
                        bounds['east'] + margin, bounds['north'] + margin)
         geom = feature['geometry'].intersection(clip_box)
         if geom.is_empty:
-            return None, None
+            return None, None, None
         shape = self._geometry_element(geom, bounds)
         if shape is None:
-            return None, None
+            return None, None, None
 
         style = self._style_for(primary['category'], primary['subtype'])
         # Two styling schemas. Line features (roads, paths, footways, cycleways,
@@ -963,6 +1283,22 @@ class TileBuilder:
             shape.set('stroke-linejoin', 'round')
             if style.get('dasharray'):
                 shape.set('stroke-dasharray', style['dasharray'])
+        elif feature.get('_is_region'):
+            # Container region (campus / grounds): a FAINT fill so the streets and
+            # buildings inside show through + a STRONG GREY dashed boundary, drawn
+            # under everything (tier 0). Replaces the opaque amenity fill that used
+            # to obscure the contents. Invert-safe: the non-text contrast is carried
+            # on the grey luminance boundary, not a coloured edge. The .region-area
+            # class lets the viewer CSS own the dark-mode treatment (and is excluded
+            # from the dark catch-alls, like .road-hit). Attrs are baked too so a
+            # standalone tile (Chrome / qlmanage) renders the same.
+            shape.set('class', 'region-area')
+            shape.set('fill', '#9aa0a6')
+            shape.set('fill-opacity', '0.10')
+            shape.set('stroke', '#5f6368')
+            shape.set('stroke-width', '2')
+            shape.set('stroke-dasharray', '6,4')
+            shape.set('vector-effect', 'non-scaling-stroke')
         else:
             if shape.get('fill') != 'none' and style.get('fill') is not None:
                 shape.set('fill', style['fill'])
@@ -974,9 +1310,32 @@ class TileBuilder:
                 shape.set('stroke-dasharray', style['dasharray'])
 
         props = feature['properties']
-        # primary class + every overlay class, flattened + de-duplicated
+        # Vertical plane (aggregation may have stamped it). Computed here so the
+        # underpass annotation can be stripped from the PATH (which is its own plane).
+        plane = feature.get('_plane') or self._plane_for(feature)
+        feature['_plane'] = plane     # read by create_tile_svg for the z-tier
+        # 'underpasses' is an ANNOTATION overlay on a non-PATH underground pedestrian
+        # way (so it shows by default + has its own filter). The PATH is its OWN
+        # plane, never an underpass, so strip the overlay from any non-surface
+        # feature — it won't be styled dotted, filtered as an underpass, or so named.
+        overlays = cls['overlays']
+        is_underpass = (plane == 'surface'
+                        and any(o.get('id') == 'underpasses' for o in overlays))
+        if plane != 'surface':
+            overlays = [o for o in overlays if o.get('id') != 'underpasses']
+        if is_underpass:
+            # Tag the visible line so the dotted style owns its colour in both themes
+            # (the .underpass group class drives the hide/show filter; this drives
+            # the look). Same pattern as .level-line / .region-area.
+            shape.set('class', (shape.get('class', '') + ' underpass-line').strip())
+        if (cls.get('base') or {}).get('category') == 'underground_parking':
+            # Underground car parking: tag the shape for its distinct dotted-fill
+            # style (the .underground_parking group class drives the off-by-default
+            # hide/show filter; this drives the look + the catch-all carve-outs).
+            shape.set('class', (shape.get('class', '') + ' ugparking').strip())
+        # primary class + every (effective) overlay class, flattened + de-duplicated
         tokens = []
-        for sc in [primary['svgClass']] + [o['svgClass'] for o in cls['overlays']]:
+        for sc in [primary['svgClass']] + [o['svgClass'] for o in overlays]:
             for tok in sc.split():
                 if tok not in tokens:
                     tokens.append(tok)
@@ -991,7 +1350,7 @@ class TileBuilder:
         # food, ... Accessible toilets", not typed as a toilet. (The address marker
         # isn't a type.) Accessibility/other attributes follow as overlay labels.
         type_source = (cls.get('base')
-                       or next((o for o in cls['overlays']
+                       or next((o for o in overlays
                                 if o.get('layer') == 'poi' and o.get('subtype') != 'address'), None)
                        or primary)
         type_label = type_source.get('label') or type_source['category'].replace('-', ' ').title()
@@ -1011,7 +1370,7 @@ class TileBuilder:
         # address it's already stated ("… at 505 University Avenue"), so the extra
         # "Addresses" word is noise. The address CLASS stays, so it's still
         # filterable — only the redundant spoken label goes.
-        overlay_labels = [o['label'] for o in cls['overlays']
+        overlay_labels = [o['label'] for o in overlays
                           if o.get('label') and o is not type_source
                           and o.get('subtype') != 'address' and o.get('id') != 'addresses']
         aria = f"{base_label}. {', '.join(overlay_labels)}" if overlay_labels else base_label
@@ -1019,14 +1378,84 @@ class TileBuilder:
         # ("5 Benches") — use it verbatim, not the per-feature name assembly.
         if feature.get('_aggregate_label'):
             aria = feature['_aggregate_label']
+        # Hierarchy CONTEXT (the information model): if this feature sits inside one
+        # or more NAMED containers (a school's track, a campus building, a hospital
+        # wing), append "in <place>" so explore-by-touch announces the relationship a
+        # sighted user reads from the map. We voice the NEAREST named ring and the
+        # OUTERMOST named one — "Entrance, in Smith Hall, in King Edward School" —
+        # giving the specific + the landmark while skipping unnamed structural rings
+        # and middle rings so the announcement stays short. Skipped for aggregates
+        # and for a ring that just repeats this feature's own name.
+        named = feature.get('_ancestor_names')
+        if named and not feature.get('_aggregate_label'):
+            rings = list(dict.fromkeys([named[0], named[-1]]))  # nearest + outermost
+            for r in rings:
+                if r and r != base_label:
+                    aria = f"{aria}, in {r}"
 
         group = self.create_svg_element('g', class_=' '.join(tokens), role='img', aria_label=aria)
         group.set('data-osm-id', str(props.get('osm_id', '')))
-        if cls['overlays']:
-            group.set('data-overlays', ' '.join(o['id'] for o in cls['overlays']))
+        if feature.get('_parent') is not None:
+            # The container's osm_id — the hook for keyboard hierarchy navigation
+            # (tab containers, enter, tab the children that point back here).
+            group.set('data-parent', str(feature['_parent']))
+        if overlays:
+            group.set('data-overlays', ' '.join(o['id'] for o in overlays))
         if feature.get('_aggregate_count'):
             group.set('data-aggregate', str(feature['_aggregate_count']))
+        # Multi-level model (facet 1): tag the feature's vertical plane (computed
+        # above) so the viewer can show one plane at a time. SURFACE (the default,
+        # ~97%) is left UNTAGGED — absence means surface — so the common case adds no
+        # bytes; only the sparse below/above features carry the attribute.
+        if plane != 'surface':
+            group.set('data-level', plane)
         group.append(shape)
+        # Active-plane PROMINENCE (facet 1): when its plane is selected, an
+        # off-surface feature must read as a BOLD CASED ROUTE floating over the
+        # dimmed street level — a thin underground footway is invisible otherwise
+        # (Bob, on the PATH). For LINES, stack a wide light HALO (a clear-space moat
+        # that punches through the ghosted base) + a dark CASING beneath the main
+        # line; for AREAS, flag a solid fill + outline. Widths/colours are
+        # constant-screen via the .level-* CSS and only paint when the plane is
+        # active (the whole group is hidden otherwise). The feature also rides the
+        # top z-tier (see create_tile_svg) so the halo clears the base beneath it.
+        # Level decorations (halo + casing) are POOLED, not nested in the group:
+        # create_tile_svg lays ALL halos under ALL casings under ALL lines, so a later
+        # segment's white halo never paints over an earlier segment's coloured line
+        # (that broke the Gardiner into disconnected fragments). Returned for pooling.
+        level_deco = []
+        if plane != 'surface':
+            gt = geom.geom_type
+            if gt in ('LineString', 'MultiLineString'):
+                for cls_name in ('level-halo', 'level-casing'):   # -> [halo, casing]
+                    deco = copy.deepcopy(shape)
+                    deco.set('class', cls_name)
+                    deco.set('fill', 'none')
+                    deco.set('pointer-events', 'none')
+                    deco.attrib.pop('stroke-dasharray', None)     # halo/casing are solid
+                    # Carry the plane: pooled OUTSIDE the data-level group, the halo/
+                    # casing need their own data-level so the plane show/hide CSS
+                    # hides them off their plane (else they'd leak onto the surface).
+                    deco.set('data-level', plane)
+                    level_deco.append(deco)
+                shape.set('class', (shape.get('class', '') + ' level-line').strip())
+                # Off-surface lines that AREN'T category 'road' (rail-transit lines
+                # class as 'railway'; the Gardiner used to class as a bridge) won't get
+                # a hit-corridor from the road pass below — so without this the wide
+                # halo is just pointer-events:none and hover falls through to whatever
+                # is beneath. Add the corridor here so the overlay line is hoverable
+                # and names itself (the group carries role=img + aria-label).
+                if primary.get('category') != 'road':
+                    shape.set('pointer-events', 'none')
+                    hit = copy.deepcopy(shape)
+                    hit.set('class', 'road-hit')
+                    hit.set('stroke', 'transparent')
+                    hit.set('fill', 'none')
+                    hit.set('pointer-events', 'stroke')
+                    hit.attrib.pop('stroke-dasharray', None)
+                    group.append(hit)
+            elif gt in ('Polygon', 'MultiPolygon'):
+                shape.set('class', (shape.get('class', '') + ' level-area').strip())
         # Roads get two extras (Bob's road-rendering pass):
         #  * a transparent ~24px-SCREEN HIT-CORRIDOR (WCAG 2.5.8 target size) so the
         #    whole road is hittable regardless of its thin visible stroke — width
@@ -1050,7 +1479,29 @@ class TileBuilder:
                 if lbl:
                     group.append(lbl[0])
                     group.append(lbl[1])
-        return group, casing
+        # A container region gets its NAME drawn inside the boundary, once, in the
+        # tile that holds the FULL geometry's representative point (guaranteed
+        # inside the polygon) — so a campus spanning many tiles is labelled exactly
+        # once, no cross-tile dedup needed. aria-hidden (the group already announces
+        # the name); constant-screen size via --label-size, white halo for contrast.
+        if feature.get('_is_region') and props.get('name'):
+            try:
+                pt = feature['geometry'].representative_point()
+                if (bounds['west'] <= pt.x <= bounds['east']
+                        and bounds['south'] <= pt.y <= bounds['north']):
+                    lx, ly = self.coord_to_svg(pt.y, pt.x, bounds)
+                    txt = self.create_svg_element(
+                        'text', x=lx, y=ly, class_='region-label')
+                    txt.set('aria-hidden', 'true')
+                    txt.text = props['name']
+                    group.append(txt)
+            except Exception:
+                pass
+        # An underpass is a light dotted annotation — drop the road casing so it
+        # reads as dots, not a cased route (the dotted style is in main.css).
+        if is_underpass:
+            casing = None
+        return group, casing, level_deco
 
     # Label-density rule (Bob 2026-06-20): a road's name appears only from the zoom
     # where its CLASS is prominent — arterials early (low zoom), residential late
@@ -1136,6 +1587,11 @@ class TileBuilder:
         for p in pois:
             cls = p.get('classification') or {}
             prim = cls.get('primary') or {}
+            # PLANE is part of the key: a PATH-level POI must NEVER merge with a
+            # street-level POI sitting at the same spot but a different depth — that
+            # would re-flatten exactly the vertical ambiguity the level model exists
+            # to remove. Same type + same cell + same plane → one marker.
+            plane = self._plane_for(p)
             try:
                 c = p['geometry'].centroid
                 cx, cy = c.x, c.y
@@ -1144,10 +1600,10 @@ class TileBuilder:
                 continue
             cell = (math.floor(cx / threshold), math.floor(cy / threshold))
             if self._is_address(prim):
-                key = ('addr', (p.get('properties') or {}).get('addr:street', ''), cell)
+                key = ('addr', (p.get('properties') or {}).get('addr:street', ''), plane, cell)
             else:
                 key = ('poi', prim.get('id'),
-                       frozenset(o['id'] for o in cls.get('overlays', [])), cell)
+                       frozenset(o['id'] for o in cls.get('overlays', [])), plane, cell)
             groups[key].append((p, cx, cy))
         out = list(keep_aside)
         for key, members in groups.items():
@@ -1156,7 +1612,11 @@ class TileBuilder:
             elif key[0] == 'addr':
                 out.append(self._median_address([m[0] for m in members]))
             else:
-                out.append(self._aggregate_marker(members))
+                marker = self._aggregate_marker(members)
+                # Carry the cluster's plane so the synthetic marker (empty
+                # properties) stays on its level instead of resolving to surface.
+                marker['_plane'] = self._plane_for(members[0][0])
+                out.append(marker)
         return out
 
     def _is_address(self, prim):
@@ -1257,11 +1717,18 @@ class TileBuilder:
             except Exception:
                 keep_aside.append(f)
                 continue
-            cells[(math.floor(cx / threshold), math.floor(cy / threshold))].append((f, cx, cy))
+            # Plane is part of the cell key here too — proximity clustering must stay
+            # within one vertical plane (a PATH cluster never absorbs a street POI).
+            plane = f.get('_plane') or self._plane_for(f)
+            cells[(plane, math.floor(cx / threshold), math.floor(cy / threshold))].append((f, cx, cy))
         out = list(keep_aside)
         for members in cells.values():
-            out.append(members[0][0] if len(members) == 1
-                       else self._proximity_marker(members))
+            if len(members) == 1:
+                out.append(members[0][0])
+            else:
+                marker = self._proximity_marker(members)
+                marker['_plane'] = members[0][0].get('_plane') or self._plane_for(members[0][0])
+                out.append(marker)
         return out
 
     def _proximity_marker(self, members):
@@ -1445,6 +1912,13 @@ class TileBuilder:
                     e['label'] for e in ([primary] + overlays) if e and e.get('label')))
                 addr_str = ' '.join(filter(None, (addr.get('housenumber'), addr.get('street'))))
                 access = {k.replace(':', '_'): props[k] for k in self._A11Y_KEYS if k in props}
+                # Hierarchy CONTEXT (the information model): the NAMED containers this
+                # feature nests inside (a campus building inside a school inside...).
+                # ALL named ancestors go into `text` so searching ANY of them surfaces
+                # a feature levels down; the displayed `parent` is the NEAREST named
+                # one ("Running track — King Edward School") for clean disambiguation.
+                ancestors = f.get('_ancestor_names') or []
+                parent_name = ancestors[0] if ancestors else None
                 doc = {
                     'osm_id': props.get('osm_id'),
                     'name': name,
@@ -1452,11 +1926,14 @@ class TileBuilder:
                     'category': lead['category'] if lead else None,
                     'subtype': lead.get('subtype') if lead else None,
                     'types': labels,
-                    'text': ' '.join(filter(None, [name, addr_str] + labels)),
+                    'text': ' '.join(filter(None, [name, addr_str] + labels + ancestors)),
                     'lat': round(c.y, 6),
                     'lng': round(c.x, 6),
                     'location': {'lat': round(c.y, 6), 'lon': round(c.x, 6)},
                 }
+                if parent_name and parent_name != name:
+                    doc['parent'] = parent_name
+                    doc['parent_id'] = f.get('_named_parent_id')
                 if addr:
                     doc['address'] = addr
                 if access:
@@ -1481,8 +1958,16 @@ class TileBuilder:
         print("Parsing OSM extract once for the whole region...", flush=True)
         handler = OSMHandler(self.bounds, taxonomy)
         handler.apply_file(str(osm_file), locations=True)
+        handler.mark_path_members()    # flag PATH route-relation members (the PATH plane)
         features = handler.features
+        print(f"  PATH relation members: {len(handler.path_way_ids)} ways, "
+              f"{len(handler.path_node_ids)} nodes", flush=True)
         print(f"Collected {len(features)} features; bucketing into tiles...", flush=True)
+
+        # Derive the spatial-containment hierarchy (per plane) BEFORE the search index
+        # and tiling, so the parent context flows into both.
+        parented = self.assign_parents(features)
+        print(f"  Containment: {parented} features assigned a parent container", flush=True)
 
         # Build the search index from the SAME parse (named things, POIs and
         # addresses; accessibility tags as filterable fields) so it can never
@@ -1490,9 +1975,18 @@ class TileBuilder:
         self.write_search_index(features)
 
         size = self.tile_size
-        south, west = self.bounds['south'], self.bounds['west']
-        n_lat = max(1, round((self.bounds['north'] - south) / size))
-        n_lng = max(1, round((self.bounds['east'] - west) / size))
+        # Snap the tiling ORIGIN down to the GLOBAL grid (aligned to 0,0), matching
+        # the viewer's coordsToTileId (floor(coord/size)). Every region then lands on
+        # the SAME worldwide grid, so locations SNAP TOGETHER on one map — Toronto,
+        # Trent Lakes and future places coexist with empty cells between. A region
+        # whose bounds aren't grid-aligned (e.g. 44.655) would otherwise produce
+        # offset tiles (44.655_…) the viewer — which only ever requests grid cells
+        # (44.650_…) — could never match, so the map would show blank there. Count
+        # rounds UP so the north/east edge cells survive the origin moving down.
+        south = math.floor(self.bounds['south'] / size) * size
+        west = math.floor(self.bounds['west'] / size) * size
+        n_lat = max(1, int(math.ceil((self.bounds['north'] - south) / size - 1e-9)))
+        n_lng = max(1, int(math.ceil((self.bounds['east'] - west) / size - 1e-9)))
 
         # One pass: assign each feature to every tile its bbox overlaps. Inclusive
         # floor with a small epsilon — lat/0.01 can land just below an integer in
@@ -1523,7 +2017,12 @@ class TileBuilder:
         target_px = float(os.environ.get('TARGET_PX', '24'))
         px_per_deg = self.svg_size / size
         for f in features:
-            if (f.get('classification') or {}).get('base') is None:
+            # Tag container AREAS once (campus / grounds) — they render directly in
+            # the region tier, NOT through POI aggregation, and get a real
+            # extent-based min_zoom like any tangible (a big campus shows at every
+            # band; a small school-grounds culls when zoomed right out).
+            f['_is_region'] = self._is_region(f)
+            if (f.get('classification') or {}).get('base') is None and not f['_is_region']:
                 f['min_zoom'] = 0.0
                 continue
             try:
@@ -1531,7 +2030,17 @@ class TileBuilder:
                 extent_px = max(mxx - mnx, mxy - mny) * px_per_deg
             except Exception:
                 extent_px = 0.0
-            f['min_zoom'] = (18 + math.log2(target_px / extent_px)) if extent_px > 0 else 99.0
+            if extent_px > 0:
+                f['min_zoom'] = 18 + math.log2(target_px / extent_px)
+            elif (f['geometry'].geom_type == 'Point'
+                  and (f['classification'].get('base') or {}).get('category') == 'underground_parking'):
+                # Underground parking is 97% NODES; as a base-layer point it has zero
+                # extent and would size-cull to nothing. It's a legitimate marker, so
+                # always show it. (Scoped to this category on purpose — other base
+                # points, e.g. natural=tree nodes, stay culled so they don't flood.)
+                f['min_zoom'] = 0.0
+            else:
+                f['min_zoom'] = 99.0
 
         # LOD bands: the full set (served at zoom >= 18) plus coarser sets that drop
         # features below the "m" floor for that zoom. Coarser bands skip tiles that
@@ -1570,13 +2079,17 @@ class TileBuilder:
             self.tiles_dir.mkdir(parents=True, exist_ok=True)
             created = 0
             for (i, j), tile_features in buckets.items():
+                # tangibles AND container regions render directly (subject to the
+                # target-size cull); regions are NOT fed to POI aggregation.
                 tangible = [f for f in tile_features
-                            if (f.get('classification') or {}).get('base') is not None
+                            if (f.get('_is_region')
+                                or (f.get('classification') or {}).get('base') is not None)
                             and (max_z is None or f.get('min_zoom', 0) <= max_z)]
-                # stage 1: same-type aggregation (all bands)
+                # stage 1: same-type aggregation (all bands) — points only, regions excluded
                 pois = self.aggregate_pois(
                     [f for f in tile_features
-                     if (f.get('classification') or {}).get('base') is None],
+                     if (f.get('classification') or {}).get('base') is None
+                     and not f.get('_is_region')],
                     threshold_deg)
                 # stage 2: cross-type proximity clustering (coarse bands only)
                 if do_proximity:

@@ -29,6 +29,39 @@ class OSMHandler(osmium.SimpleHandler):
         self.taxonomy = taxonomy or Taxonomy.load()
         self.wkb = osmium.geom.WKBFactory()
         self.features = []
+        # The Toronto PATH is a branded pedestrian NETWORK (a route=foot relation,
+        # ref/name=PATH), spanning tunnels, at-grade links and elevated skywalks —
+        # NOT just "underground footways" (which also include station underpasses
+        # that are NOT the PATH). We collect the relation's member way/node ids so
+        # the generator can assign exactly the PATH to the underground plane. The
+        # member sets fill in during the pass (relations come after ways in a PBF),
+        # so callers mark features AFTER apply_file returns.
+        self.path_way_ids = set()
+        self.path_node_ids = set()
+
+    def relation(self, r):
+        tags = {t.k: t.v for t in r.tags}
+        if tags.get('route') == 'foot' and (tags.get('name') == 'PATH'
+                                            or tags.get('ref') == 'PATH'):
+            for m in r.members:
+                mt = str(m.type)
+                if mt.startswith('w'):
+                    self.path_way_ids.add(m.ref)
+                elif mt.startswith('n'):
+                    self.path_node_ids.add(m.ref)
+
+    def mark_path_members(self):
+        """Set `_path_member` on each collected feature (ways by way-id, nodes by
+        node-id). Call once after apply_file, when the relation sets are complete."""
+        for f in self.features:
+            oid = (f.get('properties') or {}).get('osm_id')
+            gt = f['geometry'].geom_type
+            if gt == 'Point':
+                f['_path_member'] = oid in self.path_node_ids
+            elif gt in ('LineString', 'MultiLineString'):
+                f['_path_member'] = oid in self.path_way_ids
+            else:
+                f['_path_member'] = False     # areas: rely on name=PATH
 
     def is_in_bounds(self, lat, lon):
         return (self.bounds['south'] <= lat <= self.bounds['north'] and

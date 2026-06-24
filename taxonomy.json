@@ -26,6 +26,8 @@
     "tourism":       { "label": "Tourism & culture", "layer": "poi" },
     "building":      { "label": "Buildings", "layer": "base" },
     "road":          { "label": "Roads & paths", "layer": "base" },
+    "underpass":     { "label": "Underpasses", "layer": "annotation" },
+    "underground_parking": { "label": "Underground parking", "layer": "base" },
     "park":          { "label": "Parks & recreation", "layer": "base" },
     "vegetation":    { "label": "Vegetation", "layer": "base" },
     "landuse":       { "label": "Land use", "layer": "base" },
@@ -561,7 +563,8 @@
       "ui": { "filterGroup": "Historic", "rotorGroup": "Tourism" }, "status": "planned" },
 
     { "id": "bridges", "category": "man_made",
-      "match": [ { "man_made": "bridge" }, { "bridge": "yes" } ], "subtype": "bridge",
+      "_comment": "A bridge STRUCTURE is man_made=bridge. `bridge=yes` is just an ATTRIBUTE on a road/rail (the road IS the feature, on a bridge) — matching it here mis-classified every road bridge (incl. the elevated Gardiner) as a 'bridge structure', so it never went through the road pass that adds the hit-corridor and lost its road identity/tooltip. Match only the real structure.",
+      "match": { "man_made": "bridge" }, "subtype": "bridge",
       "geometry": ["way", "area"], "label": "Bridges",
       "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
 
@@ -628,6 +631,18 @@
     { "id": "transit", "category": "transit",
       "match": [ { "highway": "bus_stop" }, { "railway": "subway_entrance" } ], "subtype": "stop",
       "geometry": ["node"], "label": "Transit stops",
+      "ui": { "filterGroup": "Public Transit", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "streetcar-stops", "category": "transit",
+      "_comment": "Streetcar / tram stops (railway=tram_stop) were not matched, so the surface streetcar stops were invisible (Bob, Union loop). The generator routes these to the flat rail-transit overlay.",
+      "match": [ { "railway": "tram_stop" }, { "public_transport": "stop_position", "tram": "yes" } ], "subtype": "tram_stop",
+      "geometry": ["node"], "label": "Streetcar stops",
+      "ui": { "filterGroup": "Public Transit", "rotorGroup": "Transportation" }, "status": "implemented" },
+
+    { "id": "transit-stations", "category": "transit",
+      "_comment": "Subway / rail STATION markers (railway=station, station=subway/light_rail). Only AIRPORT stations were matched before, so Union and the subway stations had no station POI. Placed AFTER airport rules wouldn't help (this runs first) — airport stations still get the more specific airport label via their own rule order; here we catch the general case.",
+      "match": [ { "railway": "station" }, { "station": "subway" }, { "station": "light_rail" } ], "subtype": "station",
+      "geometry": ["node", "area"], "label": "Stations",
       "ui": { "filterGroup": "Public Transit", "rotorGroup": "Transportation" }, "status": "implemented" },
 
     { "id": "transit-platforms", "category": "transit",
@@ -945,6 +960,14 @@
       "geometry": ["way"], "label": "Roads",
       "ui": { "filterGroup": "Roads & Highways", "rotorGroup": "Transportation" }, "status": "implemented" },
 
+    { "id": "underpasses", "category": "underpass",
+      "_comment": "Non-PATH underground pedestrian connections (station underpasses, ped tunnels). An ANNOTATION overlay on the footway (base stays road) so it shows by default + has its own hide/show filter; the dotted style is in main.css. The match is the underground-pedestrian condition; the generator STRIPS this class from PATH features (plane != surface), since the PATH is its own plane, not an underpass.",
+      "match": [ { "highway": ["footway", "steps", "corridor", "path"], "tunnel": "yes" },
+                 { "highway": ["footway", "steps", "corridor", "path"], "layer": { "<": 0 } },
+                 { "highway": ["footway", "steps", "corridor", "path"], "level": { "<": 0 } } ],
+      "geometry": ["way"], "label": "Underpasses",
+      "ui": { "filterGroup": "Roads & Highways", "rotorGroup": "Transportation" }, "status": "implemented" },
+
     { "id": "landuse-generic", "category": "landuse",
       "match": { "landuse": ["residential", "commercial", "industrial", "retail", "construction", "brownfield", "cemetery", "quarry", "landfill", "railway", "port", "depot", "garages", "religious", "education", "institutional", "military"] }, "subtypeFrom": "landuse",
       "geometry": ["area"], "label": "Land use",
@@ -964,6 +987,14 @@
       "match": { "sport": true }, "subtype": "sport",
       "geometry": ["node", "way", "area"], "label": "Sports facilities",
       "ui": { "filterGroup": "Recreation", "rotorGroup": "Recreation" }, "status": "implemented" },
+
+    { "id": "underground-parking", "category": "underground_parking",
+      "_comment": "Underground car parking — its OWN base category (so it can be HIDDEN by default + toggled, unlike surface parking which shows). Vehicle infra: ui.default='off' keeps it out of the pedestrian default view. Must precede parking-generic so an underground lot wins this base over the generic one. Distinct dotted-fill style in main.css (.ugparking).",
+      "match": [ { "amenity": "parking", "parking": "underground" },
+                 { "amenity": "parking", "layer": { "<": 0 } },
+                 { "amenity": "parking", "level": { "<": 0 } } ], "subtype": "underground",
+      "geometry": ["node", "way", "area"], "label": "Underground parking",
+      "ui": { "filterGroup": "Accessible Transport", "rotorGroup": "Accessibility", "default": "off" }, "status": "implemented" },
 
     { "id": "parking-generic", "category": "parking",
       "match": [ { "amenity": ["parking", "bicycle_parking", "motorcycle_parking"] }, { "parking": true } ], "subtypeFrom": "amenity",
