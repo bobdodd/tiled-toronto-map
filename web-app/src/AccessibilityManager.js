@@ -370,13 +370,19 @@ export class AccessibilityManager {
                    r.bottom > vp.top && r.top < vp.bottom;
         };
 
+        // Multi-level model: keyboard navigation follows whatever is VISIBLE. The
+        // level checkboxes hide off-toggle planes with display:none, so those features
+        // are zero-size and dropped by the onScreen check below — no separate
+        // plane test needed. So Tab visits exactly the planes currently switched on
+        // (e.g. street + Gardiner together), in any combination.
         const elements = document.querySelectorAll('#map-tiles ' + selectors.join(', '));
         let tabIndex = 9000;
         let count = 0;
         elements.forEach((el) => {
             // Skip features hidden by a base filter.
             if (el.closest('[style*="display: none"], [style*="display:none"]')) return;
-            // Skip features outside the visible viewport.
+            // Skip features outside the visible viewport (also skips display:none
+            // off-toggle planes, which have zero size).
             if (!onScreen(el)) return;
             el.setAttribute('tabindex', String(tabIndex++));
             count++;

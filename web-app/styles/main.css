@@ -538,9 +538,119 @@ main {
    contrast media query darkens these further. */
 #map-tiles :is(g.building, g.landuse, g.park, g.vegetation, g.water, g.parking,
                g.religious, g.natural, g.aeroway, g.indoor, g.man_made,
-               g.barrier, g.railway) [stroke]:not([stroke="none"]),
+               g.barrier, g.railway) [stroke]:not([stroke="none"]):not(.level-line):not(.level-halo):not(.level-casing):not(.level-area):not(.underpass-line),
 #map-tiles g.road-casings [stroke]:not([stroke="none"]) {
     stroke: #5f5f5f;
+}
+
+
+/* ---- Multi-level model: independent OVERLAY toggles (checkboxes) -------
+   Tile features carry data-level for off-surface planes (path / subway / above); the
+   street level is untagged. Each plane is an independent checkbox (Bob, 2026-06-23):
+   LevelSwitch adds a `show-<plane>` class to #map-tiles when its box is checked, so
+   you can show any COMBINATION (e.g. street + Gardiner + subway). Pure CSS so it also
+   governs tiles injected later. */
+/* An off-surface plane is hidden UNLESS its toggle is on. */
+#map-tiles:not(.show-above)  [data-level="above"]  { display: none; }
+#map-tiles:not(.show-path)   [data-level="path"]   { display: none; }
+#map-tiles:not(.show-transit) [data-level="transit"] { display: none; }
+/* The street level (untagged groups + their per-category casings) hides only if its
+   own toggle is off. (Exclude the pooled level casings, which follow their plane.) */
+#map-tiles:not(.show-surface) :is([role="img"]:not([data-level]), [class$="-casings"]:not(.levels-casings)) { display: none; }
+/* The whole map keeps working as usual when an overlay is on (Bob, 2026-06-23) —
+   FULL brightness AND fully interactive (hover, keyboard, tooltips). An overlay just
+   sits ON TOP and COVERS its own footprint: where the Gardiner is drawn it's opaque
+   and its wide hit-corridor (below) intercepts the pointer, so you get the Gardiner
+   there, not Lake Shore peeping through — everywhere else the street is untouched. */
+
+/* Active sub-plane PROMINENCE: when its plane is selected, an off-surface feature
+   reads as a BOLD CASED ROUTE over the FULL-BRIGHTNESS street level — a wide light
+   HALO (clear-space moat that punches clear space through the base map) + a dark
+   CASING + a bold coloured line. This halo is what makes the overlay legible without
+   dimming anything else. The .level-* parts are baked by the generator and only
+   paint when the feature is shown (its plane is active); they ride the top z-tier so
+   the halo clears the base. Constant screen width via non-scaling-stroke. */
+#map-tiles :is(.level-halo, .level-casing, .level-line) {
+    fill: none; vector-effect: non-scaling-stroke;
+    stroke-linecap: round; stroke-linejoin: round; pointer-events: none;
+}
+#map-tiles .level-halo   { stroke: #f4f3ef; stroke-width: 18px; }
+#map-tiles .level-casing { stroke: #2c3034; stroke-width: 10px; }
+#map-tiles .level-line   { stroke-width: 6px; stroke-dasharray: none; }
+#map-tiles [data-level="path"]   .level-line { stroke: #1565c0; }
+#map-tiles [data-level="transit"] .level-line { stroke: #7b1fa2; }
+#map-tiles [data-level="above"]  .level-line { stroke: #c0561f; }
+/* The elevated road (Gardiner) COVERS its whole footprint, like a solid deck on top
+   of the map: a WIDE opaque halo spans the parallel carriageways (covering the
+   surface POIs / labels / Lake Shore beneath), the casing is the structure edge, and
+   the orange lanes ride on top. A matching wide HIT-corridor means hovering anywhere
+   across the deck reports "Gardiner Expressway", never the surface peeping through.
+   Scoped to the above plane so the PATH/subway keep their slim cased look. The rest
+   of the map stays fully interactive — only the deck's own footprint is covered. */
+/* NB: the halo is POOLED (a sibling of the feature group, carrying data-level on
+   ITSELF), so it's matched by .level-halo[data-level=...], not a descendant selector.
+   The hit-corridor stays INSIDE the group, so it is a descendant. */
+#map-tiles .level-halo[data-level="above"] { stroke-width: 44px; }  /* light deck surface, spans + COVERS the footprint */
+#map-tiles [data-level="above"] .road-hit  { stroke-width: 44px; }  /* match: whole deck reports the Gardiner */
+/* Off-surface AREAS (e.g. the PATH concourse): solid prominent fill + dark edge. */
+#map-tiles .level-area {
+    vector-effect: non-scaling-stroke; stroke: #2c3034; stroke-width: 2px; paint-order: stroke;
+}
+#map-tiles [data-level="path"]   .level-area { fill: #cfe3f7; fill-opacity: 0.9; }
+#map-tiles [data-level="transit"] .level-area { fill: #e7d6f2; fill-opacity: 0.9; }
+#map-tiles [data-level="above"]  .level-area { fill: #f3ddcf; fill-opacity: 0.9; }
+@media (prefers-color-scheme: dark) {
+    #map-tiles .level-halo   { stroke: #14171a; }
+    #map-tiles .level-casing { stroke: #c9cdd1; }
+    #map-tiles [data-level="path"]   .level-line { stroke: #6db3f2; }
+    #map-tiles [data-level="transit"] .level-line { stroke: #c79df0; }
+    #map-tiles [data-level="above"]  .level-line { stroke: #f0a06b; }
+    #map-tiles .level-area { stroke: #c9cdd1; }
+    #map-tiles [data-level="path"]   .level-area { fill: #16314a; }
+    #map-tiles [data-level="transit"] .level-area { fill: #2e1a40; }
+    #map-tiles [data-level="above"]  .level-area { fill: #43271a; }
+}
+
+/* Underpasses — non-PATH underground pedestrian connections (station underpasses,
+   ped tunnels). A DOTTED surface annotation, shown by default with its own filter
+   (the .underpass group class drives hide/show; this styles the line). Distinct from
+   the PATH (its own plane) and from ordinary footways. Round dots via a 0-length
+   dash + round cap; constant screen size. */
+#map-tiles .underpass-line {
+    stroke: #5a6b7a;
+    stroke-width: 2.5px;
+    stroke-dasharray: 0 7;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+}
+@media (prefers-color-scheme: dark) {
+    #map-tiles .underpass-line { stroke: #a6b6c4; }
+}
+
+/* Underground parking — vehicle infrastructure, OFF by default (its own filter).
+   When toggled on it reads as an 'underground structure': a muted fill with a dashed
+   outline (areas), distinct from surface parking. Carved out of the dark catch-alls
+   so the colour holds. Areas get the dashed stroke; a node keeps its marker hit-ring
+   (stroke only on polygon/path) and just takes the fill colour. */
+#map-tiles .ugparking { fill: #2f6090; }
+#map-tiles :is(polygon, path).ugparking {
+    fill-opacity: 0.45; stroke: #1f4366;
+    stroke-width: 1.5px; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke;
+}
+@media (prefers-color-scheme: dark) {
+    #map-tiles .ugparking { fill: #6fa3d6; }
+    #map-tiles :is(polygon, path).ugparking { fill: #1c3450; fill-opacity: 0.55; stroke: #7ea8d6; }
+}
+
+/* Level switcher control (in the accordion, like Filters / Rotor) */
+#level-switch { border: 0; margin: 0; padding: 0; }
+#level-switch .level-hint { font-size: 0.8125rem; color: #3a3a3a; margin: 0 0 0.5rem; line-height: 1.4; }
+.level-option { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.4rem 0.25rem; cursor: pointer; }
+.level-option input { margin: 0; flex: none; }
+.level-sub { color: #555; }
+@media (prefers-color-scheme: dark) {
+    #level-switch .level-hint { color: #c7c7c7; }
+    .level-sub { color: #b8b8b8; }
 }
 
 
@@ -2102,11 +2212,12 @@ body.tooltip-below .poi-tooltip::after {
 
     /* Generic re-colour for tangible features — but NEVER the overlay elements
        that carry their own treatment: POI marker circles (small colour dot +
-       TRANSPARENT touch ring) and the transparent road hit-corridors. Without the
-       :not()s the dark catch-all paints their transparent strokes grey, turning
-       markers into donuts and hit-corridors into thick grey roads. */
-    #map-tiles [fill]:not([fill="none"]):not(circle)     { fill: var(--c-misc-fill); }
-    #map-tiles [stroke]:not([stroke="none"]):not(circle):not(.road-hit) { stroke: var(--c-misc-stroke); }
+       TRANSPARENT touch ring), the transparent road hit-corridors, and the faint
+       container-region fills/boundaries (.region-area, own dark rule below).
+       Without the :not()s the dark catch-all paints their transparent strokes
+       grey, turning markers into donuts and hit-corridors into thick grey roads. */
+    #map-tiles [fill]:not([fill="none"]):not(circle):not(.region-area):not(.level-area):not(.ugparking)     { fill: var(--c-misc-fill); }
+    #map-tiles [stroke]:not([stroke="none"]):not(circle):not(.road-hit):not(.region-area):not(.level-line):not(.level-halo):not(.level-casing):not(.level-area):not(.underpass-line):not(.ugparking) { stroke: var(--c-misc-stroke); }
 
     #map-tiles g.water [fill]:not([fill="none"])            { fill: var(--c-water-fill); }
     #map-tiles g.water [stroke]:not([stroke="none"])        { stroke: var(--c-water-stroke); }
@@ -2125,6 +2236,11 @@ body.tooltip-below .poi-tooltip::after {
        so flip to a LIGHT fill with a dark halo. (Markers + hit-corridors keep their
        transparent touch surfaces and POI colours via the :not()s above.) */
     #map-tiles text.road-label { fill: #ececec; stroke: #16191d; }
+
+    /* Container regions on the dark map: keep the faint fill + a light grey dashed
+       boundary, and flip the centred name to light text with a dark halo. */
+    #map-tiles .region-area    { fill: #c7ccd1; fill-opacity: .08; stroke: #aab0b6; }
+    #map-tiles text.region-label { fill: #e8eaed; stroke: #16191d; }
 }
 
 @media (prefers-contrast: high) {
@@ -2139,7 +2255,7 @@ body.tooltip-below .poi-tooltip::after {
 
     #map-tiles :is(g.building, g.landuse, g.park, g.vegetation, g.water, g.parking,
                    g.religious, g.natural, g.aeroway, g.indoor, g.man_made,
-                   g.barrier, g.railway) [stroke]:not([stroke="none"]),
+                   g.barrier, g.railway) [stroke]:not([stroke="none"]):not(.level-line):not(.level-halo):not(.level-casing):not(.level-area):not(.underpass-line),
     #map-tiles g.road-casings [stroke]:not([stroke="none"]) {
         stroke: #1a1a1a;
     }

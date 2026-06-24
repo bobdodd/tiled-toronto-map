@@ -12,12 +12,25 @@
 export class FilterManager {
     constructor(taxonomy) {
         this.taxonomy = taxonomy;
-        // Base categories show by default; overlays start off (highlight on demand).
+        // 'base' and 'annotation' layers HIDE/SHOW and start ON; 'poi' /
+        // 'accessibility' overlays HIGHLIGHT on demand and start off.
         this.filters = {};
         for (const feature of taxonomy.features) {
-            this.filters[feature.id] = taxonomy.layerOf(feature) === 'base';
+            // hide/show layers start ON, unless the feature opts out
+            // (ui.default === 'off' — e.g. underground parking, vehicle infra kept
+            // out of the pedestrian default view).
+            this.filters[feature.id] = this.isHideShow(feature) && !this.isDefaultOff(feature);
         }
         this.setupEventListeners();
+    }
+
+    // Layers whose filter shows/hides (rather than highlights).
+    isHideShow(feature) {
+        return ['base', 'annotation'].includes(this.taxonomy.layerOf(feature));
+    }
+
+    isDefaultOff(feature) {
+        return !!(feature.ui && feature.ui.default === 'off');
     }
 
     setupEventListeners() {
@@ -46,7 +59,7 @@ export class FilterManager {
         const feature = this.taxonomy.getById(id);
         if (!feature) return;
         const elements = document.querySelectorAll('#map-tiles ' + this.taxonomy.selectorFor(feature));
-        if (this.taxonomy.layerOf(feature) === 'base') {
+        if (this.isHideShow(feature)) {
             elements.forEach((el) => { el.style.display = enabled ? '' : 'none'; });
         } else {
             // Overlay: highlight matching features without hiding their base geometry.
@@ -59,8 +72,7 @@ export class FilterManager {
         if (!region) return;
         const feature = this.taxonomy.getById(id);
         const label = (feature && feature.label) || id;
-        const isBase = feature && this.taxonomy.layerOf(feature) === 'base';
-        const verb = isBase
+        const verb = (feature && this.isHideShow(feature))
             ? (enabled ? 'shown' : 'hidden')
             : (enabled ? 'highlighted' : 'highlight cleared');
         // Clear then set so identical consecutive toggles still announce.
