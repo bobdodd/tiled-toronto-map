@@ -8,6 +8,7 @@ import { TaxonomyClient } from './TaxonomyClient.js';
 import { buildFilterUI } from './FilterUI.js';
 import { setupTooltip } from './Tooltip.js';
 import { SearchManager } from './SearchManager.js';
+import { LevelSwitch } from './LevelSwitch.js';
 
 class MapApplication {
     constructor() {
@@ -20,7 +21,16 @@ class MapApplication {
         this.isTracking = false;
         this.isNavigating = false;
         this.hasInitialLocation = false;
-        
+
+        // Live-tracking SPEECH state. Raw coordinates never auto-announce (the panel
+        // is not a live region); instead we throttle "near <place>" announcements so
+        // a ~1/sec GPS watch can't spam the screen reader — speak only when the user
+        // has moved a real distance AND a quiet interval has passed AND the nearest
+        // NAMED feature has actually changed.
+        this.lastProximityPos = null;   // {lat,lng} we last announced from
+        this.lastProximityTime = 0;     // ms timestamp of last proximity announce
+        this.lastProximityId = null;    // osm id of last-announced nearby feature
+
         this.init().catch((e) => console.error('Map init failed:', e));
 
     }
@@ -62,6 +72,16 @@ class MapApplication {
             originalUpdateVisibility(id, enabled);
             this.accessibilityManager.updateTabOrder();
         };
+
+        // Vertical plane switcher (street / underground / elevated). Sets the
+        // active plane on #map-tiles (CSS shows one plane at a time) and re-scopes
+        // the rotor to it. Default is street level.
+        this.levelSwitch = new LevelSwitch({
+            announce: (msg) => this.announceStatus(msg),
+            onChange: () => {
+                if (this.accessibilityManager) this.accessibilityManager.updateTabOrder();
+            },
+        });
         
         // Initialize SVG tile manager
         this.svgTileManager = new SVGTileManager();
@@ -213,7 +233,12 @@ class MapApplication {
         document.getElementById('toggle-tracking').addEventListener('click', (e) => {
             this.toggleLocationTracking(e.currentTarget);
         });
-        
+
+        // On-demand "Where am I?" — speaks the nearest named places on request,
+        // the quiet alternative to auto-announcing every GPS tick.
+        const whereBtn = document.getElementById('where-am-i');
+        if (whereBtn) whereBtn.addEventListener('click', () => this.whereAmI());
+
         // Debug controls
         document.getElementById('set-location').addEventListener('click', () => {
             this.setMockLocation();
@@ -622,7 +647,13 @@ class MapApplication {
     toggleLocationTracking(button) {
         this.isTracking = !this.isTracking;
         button.setAttribute('aria-pressed', this.isTracking);
-        
+
+        // Swap the icon so the on/off state is glanceable, not just the aria-pressed
+        // tint (which is subtle in the default theme). Decorative — the icon is
+        // aria-hidden; aria-pressed carries the state to screen readers.
+        const icon = button.querySelector('.icon');
+        if (icon) icon.textContent = this.isTracking ? '🛰️' : '📍';
+
         if (this.isTracking) {
             this.locationTracker.startTracking();
             this.announceStatus('Location tracking enabled');
@@ -658,6 +689,86 @@ class MapApplication {
             this.mapRenderer.setCenter(position.lat, position.lng);
             this.hasInitialLocation = true;
         }
+
+        // Throttled, semantic spoken feedback (NOT the raw coordinates above).
+        this.maybeAnnounceProximity(position);
+    }
+
+    // Speak the nearest NAMED place only when it's worth it: the user has moved a
+    // real distance, a quiet interval has passed, and the nearest feature is both
+    // genuinely close and different from the last one announced. This keeps a ~1/sec
+    // GPS watch from flooding the screen reader while still calling out where you are
+    // as you move past things.
+    async maybeAnnounceProximity(position) {
+        const now = Date.now();
+        if (now - this.lastProximityTime < 8000) return;            // quiet interval
+        if (this.lastProximityPos) {
+            const moved = this.locationTracker.calculateDistance(
+                this.lastProximityPos.lat, this.lastProximityPos.lng,
+                position.lat, position.lng);
+            if (moved < 15) return;                                  // moved enough?
+        }
+        const near = await this.fetchNearby(position.lat, position.lng, 1);
+        const f = near[0];
+        if (!f || f.distance_m > 60) return;                        // genuinely close?
+        if (f.id === this.lastProximityId) return;                  // something new?
+        this.lastProximityId = f.id;
+        this.lastProximityPos = { lat: position.lat, lng: position.lng };
+        this.lastProximityTime = now;
+        this.announceStatus(`Near ${f.display}.`);
+    }
+
+    // On-demand readout: the nearest couple of named places with distance and
+    // compass direction. Spoken on request, so it's never unsolicited.
+    async whereAmI() {
+        const pos = this.locationTracker.getCurrentPosition();
+        if (!pos) {
+            this.announceStatus('Location not available yet. Turn on Track Location first.');
+            return;
+        }
+        // Cap to a sane radius: the map is sparse between locations, so the 2nd
+        // nearest named feature can be in another town tens of km away — don't read
+        // that out as "nearby".
+        const near = (await this.fetchNearby(pos.lat, pos.lng, 2))
+            .filter((f) => f.distance_m <= 3000);
+        if (!near.length) {
+            this.announceStatus('No named places nearby.');
+            return;
+        }
+        const parts = near.map((f) => {
+            const dir = this.cardinal(
+                this.locationTracker.calculateBearing(pos.lat, pos.lng, f.lat, f.lng));
+            return `${f.display}, ${this.phraseDistance(f.distance_m)} ${dir}`;
+        });
+        this.announceStatus(parts.join('. ') + '.');
+    }
+
+    // Same-origin proxy in front of the map-features geo index. Returns [] on any
+    // failure so tracking never throws into the update loop.
+    async fetchNearby(lat, lng, limit) {
+        try {
+            const res = await fetch(`/api/map-nearby?lat=${lat}&lng=${lng}&limit=${limit}`);
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.results || [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // 8-point compass word from a bearing in degrees.
+    cardinal(bearing) {
+        const dirs = ['north', 'northeast', 'east', 'southeast',
+                      'south', 'southwest', 'west', 'northwest'];
+        return dirs[Math.round(((bearing % 360) + 360) % 360 / 45) % 8];
+    }
+
+    // Spoken distance: "right here" when on top of it, else rounded metres up to a
+    // kilometre, then kilometres — readable, not GPS-precise.
+    phraseDistance(metres) {
+        if (metres < 8) return 'right here';
+        if (metres < 1000) return `${Math.round(metres / 5) * 5} metres`;
+        return `${(metres / 1000).toFixed(1)} kilometres`;
     }
 
     handleLocationError(error) {
@@ -946,10 +1057,17 @@ class MapApplication {
         const viewportWidthDegrees = width / pixelsPerDegree;
         const viewportHeightDegrees = height / pixelsPerDegree;
         
-        // Add some padding to ensure we load tiles around the edges
-        // At high zoom levels, reduce padding to avoid loading too many tiles
-        const paddingMultiplier = zoom > 20 ? 0.5 : 1;
-        const padding = degreesPerTile * paddingMultiplier;
+        // A11Y-TREE FIX (downtown TalkBack freeze, confirmed 2026-06-24): load ONLY
+        // the tiles overlapping the visible viewport — NO load-ahead padding. Each
+        // downtown tile carries ~1840 labelled role=img nodes; the old 1-tile padding
+        // ring (+ the 2-tile keep buffer below) put a 5–7-tile square in the DOM,
+        // ballooning the accessibility tree to 60–90k nodes — Chrome serialises that
+        // whole tree to TalkBack and Android's a11y framework ANRs, hanging the PHONE.
+        // Trade-off accepted for now: tiles pop in at the leading edge while panning.
+        // Do NOT restore preloading until explore-by-touch is moved OFF the
+        // screen-reader's a11y tree (planned: custom Web Speech API) — any real
+        // padding/keep ring re-freezes TalkBack downtown.
+        const padding = 0;
         
         const bounds = {
             north: center.lat + viewportHeightDegrees / 2 + padding,
@@ -978,6 +1096,12 @@ class MapApplication {
     // Prefetch neighbours after the user pauses (debounced), so it never fires
     // mid-gesture. Adjacent bands make a zoom across instant; the ring smooths pan.
     _schedulePrefetch(bounds) {
+        // A11Y-TREE FIX (downtown TalkBack freeze): prefetch DISABLED. It only warms
+        // the in-memory cache (not the DOM), so it isn't the a11y-tree culprit — kept
+        // off so ALL preloading stays off the table. Safe to re-enable once
+        // explore-by-touch is decoupled from the screen-reader a11y tree; harmless to
+        // leave off (it only affected pan/zoom smoothness, not correctness).
+        return;
         clearTimeout(this._prefetchTimer);
         this._prefetchTimer = setTimeout(() => {
             const mgr = this.svgTileManager;
@@ -1063,8 +1187,10 @@ class MapApplication {
         
         if (!tilesGroup) return;
         
-        // Add a buffer to prevent removing tiles too aggressively
-        const buffer = 0.02; // 2 extra tiles in each direction
+        // A11Y-TREE FIX (downtown TalkBack freeze): keep ONLY viewport tiles in the
+        // DOM (was 0.02 = a 2-tile ring). Smaller DOM = smaller accessibility tree.
+        // Don't restore the ring until explore-by-touch is off the a11y tree.
+        const buffer = 0;
         const expandedBounds = {
             north: bounds.north + buffer,
             south: bounds.south - buffer,

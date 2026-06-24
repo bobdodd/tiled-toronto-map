@@ -30,7 +30,15 @@
                 <span class="icon" aria-hidden="true">📍</span>
                 <span class="label">Track Location</span>
             </button>
-            
+
+            <!-- On-demand spoken read-out of the nearest named places. Sits right
+                 after Track Location (its natural pair) so it's easy to find; shares
+                 the tab stop after tracking. -->
+            <button id="where-am-i" class="control-button" tabindex="4">
+                <span class="icon" aria-hidden="true">🧭</span>
+                <span class="label">Where am I?</span>
+            </button>
+
             <!-- Search Accordion -->
             <div class="accordion-item">
                 <button class="accordion-header" aria-expanded="false" aria-controls="navigation-content" tabindex="5">
@@ -66,6 +74,25 @@
                 </div>
             </div>
             
+            <!-- Map Level Accordion -->
+            <div class="accordion-item">
+                <button class="accordion-header" aria-expanded="false" aria-controls="level-content" tabindex="3500">
+                    <span class="icon" aria-hidden="true">🛗</span>
+                    <span class="label">Map level</span>
+                    <span class="accordion-arrow">▼</span>
+                </button>
+                <div id="level-content" class="accordion-content" hidden>
+                    <fieldset id="level-switch">
+                        <legend>Map level — show any combination</legend>
+                        <p class="level-hint" id="level-hint">Toronto stacks vertically. The street level is on by default; the underground and elevated levels are overlays you can switch on or off independently, in any combination.</p>
+                        <label class="level-option"><input type="checkbox" name="map-level" value="above" tabindex="3501"> <span class="level-name">Elevated road <span class="level-sub">(Gardiner)</span></span></label>
+                        <label class="level-option"><input type="checkbox" name="map-level" value="surface" checked tabindex="3502"> <span class="level-name">Street level</span></label>
+                        <label class="level-option"><input type="checkbox" name="map-level" value="path" tabindex="3503"> <span class="level-name">Underground walkway <span class="level-sub">(PATH)</span></span></label>
+                        <label class="level-option"><input type="checkbox" name="map-level" value="transit" tabindex="3504"> <span class="level-name">Rail transit <span class="level-sub">(subway / streetcar / LRT)</span></span></label>
+                    </fieldset>
+                </div>
+            </div>
+
             <!-- Rotor Accordion -->
             <div class="accordion-item">
                 <button class="accordion-header" aria-expanded="false" aria-controls="rotor-content" tabindex="4000">
@@ -172,7 +199,13 @@
         </div>
         
 
-        <div id="location-info" class="location-info" aria-live="polite" aria-atomic="true">
+        <!-- Location read-out. NOT a live region: a GPS watch fires ~1/sec and the
+             coordinates jitter at the 6th decimal even when stationary, so an
+             aria-live panel here spams the screen reader with raw numbers. The
+             coordinates stay VISIBLE and readable on demand; spoken feedback comes
+             from the throttled proximity announcements + the "Where am I?" button,
+             which speak NAMED places, not numbers, through #map-announcements. -->
+        <div id="location-info" class="location-info">
             <p>Current location: <span id="current-location">Unknown</span></p>
             <p>Accuracy: <span id="location-accuracy">N/A</span></p>
         </div>
