@@ -44,6 +44,27 @@
       "tileSize": 0.01
     },
     {
+      "id": "peterborough",
+      "label": "Peterborough, ON",
+      "localDir": "/Volumes/Bob/MapData/peterborough-tiles",
+      "remotePath": "/srv/tiles/peterborough/",
+      "baseUrl": "https://tiles.a11ybob.com/peterborough/",
+      "source": "/Volumes/Bob/MapData/peterborough.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
+      "bounds": {
+        "north": 44.355,
+        "south": 44.260,
+        "east": -78.270,
+        "west": -78.370
+      },
+      "center": {
+        "lat": 44.3091,
+        "lng": -78.3197
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
       "id": "vancouver",
       "label": "Vancouver (YVR)",
       "localDir": "tile-generation/vancouver-svg-tiles",
