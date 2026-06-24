@@ -221,10 +221,17 @@ export class MapRenderer {
 
     applyRotation() {
         if (!this.rotateGroup) return;
-        if (!this.rotation) { this.rotateGroup.removeAttribute('transform'); return; }
+        if (!this.rotation) {
+            this.rotateGroup.removeAttribute('transform');
+            if (this.tilesGroup) this.tilesGroup.style.removeProperty('--map-label-rot');
+            return;
+        }
         const cx = this.viewBox.x + this.viewBox.width / 2;
         const cy = this.viewBox.y + this.viewBox.height / 2;
         this.rotateGroup.setAttribute('transform', `rotate(${-this.rotation} ${cx} ${cy})`);
+        // Counter-rotate the labels (CSS uses this) so text stays north-up-readable
+        // while the map turns. Map turns -rotation; labels turn +rotation = upright.
+        if (this.tilesGroup) this.tilesGroup.style.setProperty('--map-label-rot', `${this.rotation}deg`);
     }
 
     checkAndLoadTiles() {
