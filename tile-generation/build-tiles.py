@@ -833,6 +833,7 @@ class TileBuilder:
         layers = {}            # category key -> <g>
         casing_layers = {}
         layer_meta = {}        # category key -> (tier, encounter_index)
+        cat_geom_rank = {}     # category key -> 0 area / 1 line / 2 point (min over its feats)
         order = [0]
 
         def layer_for(category, tier):
@@ -898,6 +899,11 @@ class TileBuilder:
             else:
                 category = prim['category']
                 tier = self._LAYER_TIER.get(prim.get('layer', 'base'), 1)
+            # Within a tier, AREAS paint under LINES under POINTS, so a landuse / woods
+            # / water fill can never cover a road that shares the tier.
+            gt = feature['geometry'].geom_type
+            gr = 0 if gt in ('Polygon', 'MultiPolygon') else (1 if gt in ('LineString', 'MultiLineString') else 2)
+            cat_geom_rank[category] = min(cat_geom_rank.get(category, 9), gr)
             if casing is not None:
                 casings_for(category, tier).append(casing)
             if level_deco:                                    # [halo, casing]
@@ -909,8 +915,11 @@ class TileBuilder:
         if feature_count == 0:
             return None  # Don't create empty tiles
 
-        # Paint in tier order (then encounter order within a tier).
-        for category in sorted(layers, key=lambda c: layer_meta[c]):
+        # Paint order: TIER first, then within a tier AREAS (polygons) under LINES
+        # (roads) under POINTS — so a landuse / woods / water fill can never cover a
+        # road — then first-encounter order.
+        for category in sorted(layers,
+                               key=lambda c: (layer_meta[c][0], cat_geom_rank.get(c, 9), layer_meta[c][1])):
             svg.append(layers[category])
 
         return svg
