@@ -9,6 +9,7 @@ import { buildFilterUI } from './FilterUI.js';
 import { setupTooltip } from './Tooltip.js';
 import { SearchManager } from './SearchManager.js';
 import { LevelSwitch } from './LevelSwitch.js';
+import { HeadingProvider } from './HeadingProvider.js';
 
 class MapApplication {
     constructor() {
@@ -30,6 +31,15 @@ class MapApplication {
         this.lastProximityPos = null;   // {lat,lng} we last announced from
         this.lastProximityTime = 0;     // ms timestamp of last proximity announce
         this.lastProximityId = null;    // osm id of last-announced nearby feature
+
+        // Device compass (which way the user faces) for clock-face directions; falls
+        // back to cardinal points when there's no magnetometer / permission.
+        this.heading = new HeadingProvider();
+
+        // Heading-up map rotation (opt-in; default north-up). When on, the map turns
+        // with the compass and follows the avatar so it stays centred.
+        this.headingUp = false;
+        this._rotRAF = null;
 
         this.init().catch((e) => console.error('Map init failed:', e));
 
@@ -238,6 +248,10 @@ class MapApplication {
         // the quiet alternative to auto-announcing every GPS tick.
         const whereBtn = document.getElementById('where-am-i');
         if (whereBtn) whereBtn.addEventListener('click', () => this.whereAmI());
+
+        // Heading-up rotation toggle.
+        const headingUpBtn = document.getElementById('toggle-heading-up');
+        if (headingUpBtn) headingUpBtn.addEventListener('click', (e) => this.toggleHeadingUp(e.currentTarget));
 
         // Debug controls
         document.getElementById('set-location').addEventListener('click', () => {
@@ -656,11 +670,16 @@ class MapApplication {
 
         if (this.isTracking) {
             this.locationTracker.startTracking();
+            // Start the compass here too — this click is the user gesture iOS needs
+            // to grant DeviceOrientation permission. Fire-and-forget: if it isn't
+            // available, directions just stay cardinal.
+            this.heading.start();
             this.announceStatus('Location tracking enabled');
         } else {
             this.locationTracker.stopTracking();
+            this.heading.stop();
             this.announceStatus('Location tracking disabled');
-            
+
             // When tracking is disabled, revert avatar to center position
             const center = this.mapRenderer.center;
             this.avatar.setPosition(center.lat, center.lng, false);
@@ -669,6 +688,47 @@ class MapApplication {
 
     // Navigation is now handled by accordion, remove old toggle method
 
+    toggleHeadingUp(button) {
+        this.headingUp = !this.headingUp;
+        button.setAttribute('aria-pressed', this.headingUp);
+        // Swap the icon for a glanceable state, like Track Location does.
+        const icon = button.querySelector('.icon');
+        if (this.headingUp) {
+            if (icon) icon.textContent = '🔼';   // up = the way you face is up
+            this.announceStatus('Heading up. The map turns to face the way you are going.');
+            this.heading.start();              // ensure the compass is running
+            this._startRotationLoop();
+        } else {
+            if (icon) icon.textContent = '🔄';   // back to north-up
+            this._stopRotationLoop();
+            this.mapRenderer.setRotation(0);
+            this.announceStatus('North up.');
+        }
+        // The loaded area differs (heading-up loads the rotated corners), so reload.
+        this.loadMapTiles(true);
+    }
+
+    // Drive the map rotation from the smoothed compass heading. rAF-paced, but only
+    // writes a new transform when the heading actually moved (>0.5 deg) so a steady
+    // hold doesn't thrash the DOM. If there's no usable heading, fall to north-up.
+    _startRotationLoop() {
+        let last = null;
+        const tick = () => {
+            if (!this.headingUp) return;
+            const h = this.heading.getHeading();
+            const target = (h === null) ? 0 : h;
+            const moved = last === null
+                || Math.abs(((target - last + 540) % 360) - 180) > 0.5;
+            if (moved) { this.mapRenderer.setRotation(target); last = target; }
+            this._rotRAF = requestAnimationFrame(tick);
+        };
+        this._rotRAF = requestAnimationFrame(tick);
+    }
+
+    _stopRotationLoop() {
+        if (this._rotRAF) cancelAnimationFrame(this._rotRAF);
+        this._rotRAF = null;
+    }
 
     handleLocationUpdate(position) {
         // Update location display
@@ -684,10 +744,13 @@ class MapApplication {
         // Update map
         this.mapRenderer.drawUserLocation(position.lat, position.lng, position.accuracy);
         
-        // Center map on location if first update
+        // Center map on location on the first fix; and keep FOLLOWING it in
+        // heading-up mode, so the avatar stays at the centre the map rotates around.
         if (!this.hasInitialLocation) {
             this.mapRenderer.setCenter(position.lat, position.lng);
             this.hasInitialLocation = true;
+        } else if (this.headingUp) {
+            this.mapRenderer.setCenter(position.lat, position.lng);
         }
 
         // Throttled, semantic spoken feedback (NOT the raw coordinates above).
@@ -715,7 +778,8 @@ class MapApplication {
         this.lastProximityId = f.id;
         this.lastProximityPos = { lat: position.lat, lng: position.lng };
         this.lastProximityTime = now;
-        this.announceStatus(`Near ${f.display}.`);
+        const dir = this.directionTo(position.lat, position.lng, f.lat, f.lng);
+        this.announceStatus(`Near ${f.display}, ${dir}.`);
     }
 
     // On-demand readout: the nearest couple of named places with distance and
@@ -736,9 +800,9 @@ class MapApplication {
             return;
         }
         const parts = near.map((f) => {
-            const dir = this.cardinal(
-                this.locationTracker.calculateBearing(pos.lat, pos.lng, f.lat, f.lng));
-            return `${f.display}, ${this.phraseDistance(f.distance_m)} ${dir}`;
+            if (f.distance_m < 8) return `${f.display}, right here`;
+            const dir = this.directionTo(pos.lat, pos.lng, f.lat, f.lng);
+            return `${f.display}, ${this.phraseDistance(f.distance_m)}, ${dir}`;
         });
         this.announceStatus(parts.join('. ') + '.');
     }
@@ -761,6 +825,21 @@ class MapApplication {
         const dirs = ['north', 'northeast', 'east', 'southeast',
                       'south', 'southwest', 'west', 'northwest'];
         return dirs[Math.round(((bearing % 360) + 360) % 360 / 45) % 8];
+    }
+
+    // Direction phrase from one point to another. With a live compass heading we
+    // describe it as a CLOCK-FACE bearing relative to where the user is facing
+    // (12 o'clock = straight ahead, 3 = to the right, 6 = behind, 9 = to the left);
+    // with no magnetometer / permission we fall back to the cardinal compass word.
+    directionTo(fromLat, fromLng, toLat, toLng) {
+        const bearing = this.locationTracker.calculateBearing(fromLat, fromLng, toLat, toLng);
+        const heading = this.heading ? this.heading.getHeading() : null;
+        if (heading !== null) {
+            const rel = (((bearing - heading) % 360) + 360) % 360; // 0 = dead ahead
+            const hour = Math.round(rel / 30) || 12;               // 0 -> 12 o'clock
+            return `at ${hour} o'clock`;
+        }
+        return `to the ${this.cardinal(bearing)}`;
     }
 
     // Spoken distance: "right here" when on top of it, else rounded metres up to a
@@ -1067,13 +1146,25 @@ class MapApplication {
         // Do NOT restore preloading until explore-by-touch is moved OFF the
         // screen-reader's a11y tree (planned: custom Web Speech API) — any real
         // padding/keep ring re-freezes TalkBack downtown.
-        const padding = 0;
-        
+        //
+        // EXCEPTION — heading-up mode: a rotated viewport pulls its diagonal CORNERS
+        // into view, so we load a square big enough to cover the rotated view (half-
+        // side = the viewport's half-DIAGONAL) for ANY heading. This is opt-in, so the
+        // default north-up view stays viewport-only and TalkBack-safe.
+        let padLat = 0, padLng = 0;
+        if (this.headingUp) {
+            const halfDiag = 0.5 * Math.sqrt(
+                viewportWidthDegrees * viewportWidthDegrees +
+                viewportHeightDegrees * viewportHeightDegrees);
+            padLat = Math.max(0, halfDiag - viewportHeightDegrees / 2);
+            padLng = Math.max(0, halfDiag - viewportWidthDegrees / 2);
+        }
+
         const bounds = {
-            north: center.lat + viewportHeightDegrees / 2 + padding,
-            south: center.lat - viewportHeightDegrees / 2 - padding,
-            east: center.lng + viewportWidthDegrees / 2 + padding,
-            west: center.lng - viewportWidthDegrees / 2 - padding
+            north: center.lat + viewportHeightDegrees / 2 + padLat,
+            south: center.lat - viewportHeightDegrees / 2 - padLat,
+            east: center.lng + viewportWidthDegrees / 2 + padLng,
+            west: center.lng - viewportWidthDegrees / 2 - padLng
         };
         
         // Ensure bounds cover at least one tile

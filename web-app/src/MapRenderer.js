@@ -6,7 +6,10 @@ export class MapRenderer {
         this.labelsGroup = svgElement.querySelector('#map-labels');
         this.locationGroup = svgElement.querySelector('#user-location');
         this.routeGroup = svgElement.querySelector('#navigation-route');
-        
+        // Wrapper around the map CONTENT (not the avatar) for heading-up rotation.
+        this.rotateGroup = svgElement.querySelector('#map-rotate');
+        this.rotation = 0; // degrees of heading shown "up"; 0 = north-up
+
         this.tileSize = 256;
         this.zoom = 18; // Default = 1:1 with project()'s 1000px/0.01° scale (init sizes the viewBox to viewport.width, which is the zoom-18 size); zoom out to 15, in to 23
         // Center on the middle of the shifted tile coverage area
@@ -194,6 +197,8 @@ export class MapRenderer {
         // Update the SVG viewBox for zooming
         this.svg.setAttribute('viewBox',
             `${this.viewBox.x} ${this.viewBox.y} ${this.viewBox.width} ${this.viewBox.height}`);
+        // Keep the heading-up rotation pinned to the (new) viewBox centre.
+        this.applyRotation();
         // Constant-screen sizes: counter the viewBox scale (user units = screen px
         // × 2^(18−zoom)). POI dots stay SMALL and visible; a transparent stroke
         // ring carries the 24px touch target (WCAG 2.5.8) without burying the map.
@@ -203,7 +208,25 @@ export class MapRenderer {
         this.svg.style.setProperty('--hit-ring', (14 * f) + 'px');  // → 24px transparent touch
         this.svg.style.setProperty('--label-size', (13 * f) + 'px');
     }
-    
+
+    // Heading-up rotation: rotate the map CONTENT so the user's heading points up,
+    // around the current viewBox centre (which, in follow mode, is the avatar). The
+    // avatar + compass UI live outside #map-rotate, so they stay put. Negative angle
+    // because SVG rotate() is clockwise and we're bringing the heading bearing to the
+    // top of the screen.
+    setRotation(deg) {
+        this.rotation = ((deg % 360) + 360) % 360;
+        this.applyRotation();
+    }
+
+    applyRotation() {
+        if (!this.rotateGroup) return;
+        if (!this.rotation) { this.rotateGroup.removeAttribute('transform'); return; }
+        const cx = this.viewBox.x + this.viewBox.width / 2;
+        const cy = this.viewBox.y + this.viewBox.height / 2;
+        this.rotateGroup.setAttribute('transform', `rotate(${-this.rotation} ${cx} ${cy})`);
+    }
+
     checkAndLoadTiles() {
         // Check if current viewBox extends beyond loaded tiles
         // This would trigger the app.js tile loading logic
