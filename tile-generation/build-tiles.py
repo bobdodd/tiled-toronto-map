@@ -131,6 +131,25 @@ class TileBuilder:
                     'default': {'fill': '#8e9aaf', 'stroke': '#5d6674', 'stroke_width': 1}
                 }
             },
+            # man_made structures. Without this bucket _style_for returns {} and they
+            # render invisibly (Bob: "we're not rendering man-made objects"). Lines/
+            # ways (pier, breakwater, dyke, groyne) use color/width; areas + nodes
+            # (tower, mast, storage_tank, silo, water_tower) use fill/stroke.
+            'man_made': {
+                'styles': {
+                    'pier':        {'color': '#9a8f7a', 'width': 2.5, 'fill': '#cfc7b5', 'stroke': '#9a8f7a', 'stroke_width': 1},
+                    'breakwater':  {'color': '#9a8f7a', 'width': 2.5},
+                    'groyne':      {'color': '#9a8f7a', 'width': 2},
+                    'dyke':        {'color': '#b3a994', 'width': 2.5, 'fill': '#cfc7b5', 'stroke': '#9c917b', 'stroke_width': 1},
+                    'embankment':  {'color': '#b3a994', 'width': 2},
+                    'tower':       {'fill': '#9a9a9a', 'stroke': '#6a6a6a', 'stroke_width': 1.5},
+                    'mast':        {'fill': '#9a9a9a', 'stroke': '#6a6a6a', 'stroke_width': 1.5},
+                    'water_tower': {'fill': '#c4c4c4', 'stroke': '#8f8f8f', 'stroke_width': 1},
+                    'storage_tank':{'fill': '#c4c4c4', 'stroke': '#8f8f8f', 'stroke_width': 1},
+                    'silo':        {'fill': '#c4c4c4', 'stroke': '#8f8f8f', 'stroke_width': 1},
+                    'default':     {'fill': '#b8b8b8', 'stroke': '#888888', 'stroke_width': 1},
+                }
+            },
             'landuse': {
                 'tags': {
                     'landuse': ['residential', 'commercial', 'industrial', 'retail', 
@@ -1488,6 +1507,14 @@ class TileBuilder:
                 if lbl:
                     group.append(lbl[0])
                     group.append(lbl[1])
+            # Bridge deck: a SURFACE road carrying bridge=yes gets a darker, wider
+            # casing so it reads as an elevated structure with edges (the standard
+            # bridge look). Off-surface elevated roads (the Gardiner) are already
+            # handled by the plane system.
+            if casing is not None and props.get('bridge') == 'yes' and plane == 'surface':
+                casing.set('class', (casing.get('class', '') + ' bridge-deck').strip())
+                casing.set('stroke', '#5a5a5a')
+                casing.set('stroke-width', str(float(style.get('casing_width', width + 2)) + 4))
         # A container region gets its NAME drawn inside the boundary, once, in the
         # tile that holds the FULL geometry's representative point (guaranteed
         # inside the polygon) — so a campus spanning many tiles is labelled exactly
@@ -2127,7 +2154,7 @@ class TileBuilder:
             if extent_px > 0:
                 f['min_zoom'] = 18 + math.log2(target_px / extent_px)
             elif (f['geometry'].geom_type == 'Point'
-                  and (f['classification'].get('base') or {}).get('category') == 'underground_parking'):
+                  and (f['classification'].get('base') or {}).get('category') in ('underground_parking', 'man_made')):
                 # Underground parking is 97% NODES; as a base-layer point it has zero
                 # extent and would size-cull to nothing. It's a legitimate marker, so
                 # always show it. (Scoped to this category on purpose — other base

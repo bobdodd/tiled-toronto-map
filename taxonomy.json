@@ -593,6 +593,16 @@
       "geometry": ["way"], "label": "Breakwaters",
       "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "planned" },
 
+    { "id": "storage-tanks", "category": "man_made",
+      "match": { "man_made": "storage_tank" }, "subtype": "storage_tank",
+      "geometry": ["node", "area"], "label": "Storage tanks",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "implemented" },
+
+    { "id": "dykes", "category": "man_made",
+      "match": { "man_made": "dyke" }, "subtype": "dyke",
+      "geometry": ["way"], "label": "Dykes",
+      "ui": { "filterGroup": "Man-made", "rotorGroup": "Buildings" }, "status": "implemented" },
+
     { "id": "fences", "category": "barrier",
       "match": { "barrier": "fence" }, "subtype": "fence",
       "geometry": ["way"], "label": "Fences",
