@@ -2102,6 +2102,14 @@ class TileBuilder:
             if (f.get('classification') or {}).get('base') is None and not f['_is_region']:
                 f['min_zoom'] = 0.0
                 continue
+            # Linear features (roads, rivers, paths, rail) are CONTINUOUS but split into
+            # many OSM ways — length-culling a SHORT segment by its extent leaves GAPS
+            # in the line (a long road fragments; rural roads, split at every curve, are
+            # the worst). Never extent-cull lines; they show at every band (importance/
+            # label thinning is handled separately). Only AREA tangibles + points cull.
+            if f['geometry'].geom_type in ('LineString', 'MultiLineString'):
+                f['min_zoom'] = 0.0
+                continue
             try:
                 mnx, mny, mxx, mxy = f['geometry'].bounds
                 extent_px = max(mxx - mnx, mxy - mny) * px_per_deg

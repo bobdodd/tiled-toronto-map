@@ -49,8 +49,11 @@ def merge_band(rel, locations):
                 bounds["east"] = max(bounds["east"], b["east"])
                 bounds["west"] = min(bounds["west"], b["west"])
     ordered = sorted(tiles.values(), key=lambda t: t["file"])
+    # Version must change when tile CONTENT changes, not just the file set — the
+    # viewer cache-busts tiles with ?v=<version>, so include each tile's byte size
+    # (a re-render that adds/removes features changes the size).
     version = hashlib.sha1(
-        (rel + "|" + "|".join(t["file"] for t in ordered)).encode()
+        (rel + "|" + "|".join(f"{t['file']}:{t.get('size_bytes', '')}" for t in ordered)).encode()
     ).hexdigest()[:12]
     return ordered, bounds, version
 
