@@ -31,12 +31,24 @@
                 <span class="label">Track Location</span>
             </button>
 
-            <!-- On-demand spoken read-out of the nearest named places. Sits right
-                 after Track Location (its natural pair) so it's easy to find; shares
-                 the tab stop after tracking. -->
-            <button id="where-am-i" class="control-button" tabindex="4">
+            <!-- Three spoken location descriptions, increasing depth. They sit right
+                 after Track Location (their natural pair) and share its tab stop.
+                 QUICK: one-line "where am I". AUTO: a running commentary as you move
+                 AND as you turn (rotation counts as movement — vital when you're
+                 jostled round in a crowd). DETAILED: the full surround, read into a
+                 modal. All three also caption to the visible panel below for
+                 Deaf/deafened and sighted users. -->
+            <button id="describe-quick" class="control-button" tabindex="4">
                 <span class="icon" aria-hidden="true">🧭</span>
-                <span class="label">Where am I?</span>
+                <span class="label">Quick describe</span>
+            </button>
+            <button id="describe-auto" class="control-button" aria-pressed="false" tabindex="4">
+                <span class="icon" aria-hidden="true">🔇</span>
+                <span class="label">Describe as I move</span>
+            </button>
+            <button id="describe-detailed" class="control-button" tabindex="4">
+                <span class="icon" aria-hidden="true">📋</span>
+                <span class="label">Detailed surroundings</span>
             </button>
 
             <!-- Heading-up toggle (off by default = north-up). On, the map turns so
@@ -223,6 +235,15 @@
             <p>Current location: <span id="current-location">Unknown</span></p>
             <p>Accuracy: <span id="location-accuracy">N/A</span></p>
         </div>
+
+        <!-- Captions: the VISIBLE twin of everything spoken, for Deaf/deafened and
+             sighted users. aria-hidden so screen readers don't double-announce — the
+             speech itself comes from #map-announcements. Latest line is emphasised;
+             a short scrollback keeps the last few so you can re-read what just went by. -->
+        <div id="captions-panel" class="captions-panel" aria-hidden="true">
+            <h2 class="captions-title">Spoken</h2>
+            <ol id="captions-log" class="captions-log"></ol>
+        </div>
     </main>
 
     <div id="debug-panel" class="debug-panel" style="display: none;">
@@ -241,6 +262,19 @@
         <span class="poi-tooltip-title"></span>
     </div>
     <div id="poiMarker" class="poi-marker" aria-hidden="true" hidden></div>
+
+    <!-- Detailed surroundings: a one-off, deliberate full read-out. A real modal
+         dialog (focus trapped, Escape closes, focus returns to its button) is right
+         HERE because it's requested on demand and you want to dwell on / scroll it —
+         unlike the continuous Auto-describe, which must never steal focus. -->
+    <div id="detail-modal" class="detail-modal" role="dialog" aria-modal="true"
+         aria-labelledby="detail-modal-title" hidden>
+        <div class="detail-modal__panel" role="document">
+            <h2 id="detail-modal-title" class="detail-modal__title">Your surroundings</h2>
+            <div id="detail-modal-body" class="detail-modal__body"></div>
+            <button id="detail-modal-close" class="detail-modal__close" type="button">Close</button>
+        </div>
+    </div>
 
     <!-- Pako library for gzip decompression fallback (self-hosted, no CDN) -->
     <script src="vendor/pako.min.js"></script>

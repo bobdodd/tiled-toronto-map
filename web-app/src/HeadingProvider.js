@@ -26,6 +26,23 @@ export class HeadingProvider {
         this._cos = null;
         this._handler = (e) => this._onOrientation(e);
         this._eventName = null;
+        // GPS course-over-ground, fed from the geolocation watch. When you're moving,
+        // this is a reliable heading that is IMMUNE to magnetometer error — a
+        // miscalibrated compass can read ~180° off (seen on Pixel). Used in preference
+        // to the magnetometer above a walking pace; the compass takes over when you
+        // stop (where GPS course is undefined and only the compass knows your facing).
+        this._gpsCourse = null;
+        this._gpsSpeed = 0;
+        this._gpsCourseTime = 0;
+    }
+
+    // Feed the geolocation watch's course (degrees, 0 = North, clockwise) and speed
+    // (m/s). Either may be null when the GPS can't determine them (usually stationary).
+    setGpsCourse(course, speed) {
+        this._gpsSpeed = (typeof speed === 'number' && speed >= 0) ? speed : 0;
+        this._gpsCourse = (typeof course === 'number' && !isNaN(course))
+            ? ((course % 360) + 360) % 360 : null;
+        this._gpsCourseTime = Date.now();
     }
 
     isSupported() {
@@ -109,6 +126,28 @@ export class HeadingProvider {
     // device has no magnetometer / permission was refused / no reading yet / the
     // reading is currently too inaccurate to trust.
     getHeading() {
+        // Above a walking pace, trust GPS course-over-ground (immune to magnetometer
+        // error) while it's fresh; otherwise fall back to the smoothed magnetometer.
+        // Null if neither is usable.
+        const moving = this._gpsSpeed >= 1.0
+            && this._gpsCourse !== null
+            && (Date.now() - this._gpsCourseTime) < 4000;
+        if (moving) return this._gpsCourse;
         return (this.available && this._accurate) ? this.heading : null;
+    }
+
+    // True when the heading currently comes from GPS course (i.e. you're moving). Lets
+    // callers explain the source / treat stationary-compass headings more cautiously.
+    isFromGps() {
+        return this._gpsSpeed >= 1.0
+            && this._gpsCourse !== null
+            && (Date.now() - this._gpsCourseTime) < 4000;
+    }
+
+    // True when GPS says you're moving above a walking pace. Drives whether a
+    // cross-street's INTERSECTION (you're travelling toward it) or its NEAREST point
+    // (it's simply off to your side) is the distance worth reporting.
+    isMoving() {
+        return this._gpsSpeed >= 1.0 && (Date.now() - this._gpsCourseTime) < 4000;
     }
 }

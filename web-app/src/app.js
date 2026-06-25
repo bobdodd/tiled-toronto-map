@@ -41,6 +41,22 @@ class MapApplication {
         this.headingUp = false;
         this._rotRAF = null;
 
+        // "Describe as I move" — a running spoken commentary. Driven by BOTH position
+        // (handleLocationUpdate) and HEADING: a turn is movement too, so being spun
+        // round in a crowd re-orients you. Off by default — opt-in, never unsolicited.
+        this.autoDescribe = false;
+        this._autoTO = null;            // settle-poll timer handle
+        this._lastFacing = null;        // last ANNOUNCED facing (deg) — turn detection
+        this._settleH = null;           // heading the settle window is centred on
+        this._settleStart = 0;          // when the heading last settled
+        this._lastRoadId = null;        // road we last said you were on (transitions)
+        this._lastSpokenId = null;      // last feature announced (avoid repeats)
+        // Cache of the last ranked nearby set + where it was taken, so a TURN can
+        // re-orient the same POIs to your new facing without another query.
+        this._lastNearby = [];
+        this._lastNearbyPos = null;
+        this._modalReturnFocus = null;  // element to restore focus to on modal close
+
         this.init().catch((e) => console.error('Map init failed:', e));
 
     }
@@ -244,10 +260,21 @@ class MapApplication {
             this.toggleLocationTracking(e.currentTarget);
         });
 
-        // On-demand "Where am I?" — speaks the nearest named places on request,
-        // the quiet alternative to auto-announcing every GPS tick.
-        const whereBtn = document.getElementById('where-am-i');
-        if (whereBtn) whereBtn.addEventListener('click', () => this.whereAmI());
+        // Three spoken location descriptions at increasing depth.
+        const quickBtn = document.getElementById('describe-quick');
+        if (quickBtn) quickBtn.addEventListener('click', () => this.quickDescribe());
+        const autoBtn = document.getElementById('describe-auto');
+        if (autoBtn) autoBtn.addEventListener('click', (e) => this.toggleAutoDescribe(e.currentTarget));
+        const detailBtn = document.getElementById('describe-detailed');
+        if (detailBtn) detailBtn.addEventListener('click', () => this.detailedDescribe());
+
+        // Detailed-surroundings modal: close button + click-outside.
+        const detailClose = document.getElementById('detail-modal-close');
+        if (detailClose) detailClose.addEventListener('click', () => this.closeDetailModal());
+        const detailModal = document.getElementById('detail-modal');
+        if (detailModal) detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) this.closeDetailModal();
+        });
 
         // Heading-up rotation toggle.
         const headingUpBtn = document.getElementById('toggle-heading-up');
@@ -731,10 +758,14 @@ class MapApplication {
     }
 
     handleLocationUpdate(position) {
+        // Feed GPS course-over-ground to the compass: while moving it's a reliable
+        // heading immune to magnetometer error (the Pixel read ~180° off in Buckhorn).
+        this.heading.setGpsCourse(position.heading, position.speed);
+
         // Update location display
         const locationElement = document.getElementById('current-location');
         const accuracyElement = document.getElementById('location-accuracy');
-        
+
         locationElement.textContent = `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
         accuracyElement.textContent = `${Math.round(position.accuracy)}m`;
         
@@ -757,61 +788,286 @@ class MapApplication {
         this.maybeAnnounceProximity(position);
     }
 
-    // Speak the nearest NAMED place only when it's worth it: the user has moved a
-    // real distance, a quiet interval has passed, and the nearest feature is both
-    // genuinely close and different from the last one announced. This keeps a ~1/sec
-    // GPS watch from flooding the screen reader while still calling out where you are
-    // as you move past things.
+    // ── QUICK describe ───────────────────────────────────────────────────────
+    // One short line on demand: which way you face, the road you're on, and the
+    // single most worth-mentioning thing near you. The fast "where am I".
+    async quickDescribe() {
+        const pos = this.locationTracker.getCurrentPosition();
+        if (!pos) {
+            this.announceStatus('Location not available yet. Turn on Track Location first.');
+            return;
+        }
+        const near = await this.fetchNearby(pos.lat, pos.lng, 4);
+        this._lastNearby = near;
+        this._lastNearbyPos = { lat: pos.lat, lng: pos.lng };
+        if (!near.length) { this.announceStatus('Nothing notable nearby.'); return; }
+        const onRoad = near.find((f) => f.category === 'road' && f.distance_m <= 30);
+        const heading = this.heading ? this.heading.getHeading() : null;
+        const parts = [];
+        if (heading !== null) parts.push(`Facing ${this.cardinal(heading)}`);
+        if (onRoad) parts.push(`on ${onRoad.display}`);
+        const f = near.find((x) => x !== onRoad);
+        if (f) parts.push(`${f.display} ${this._where(pos, f)}, ${this.phraseDistance(f.distance_m)}`);
+        this.announceStatus((parts.join(', ') || 'Location found') + '.');
+    }
+
+    // ── DETAILED surroundings ────────────────────────────────────────────────
+    // The full surround, on demand: facing, the road you're on, then everything
+    // notable grouped by direction (ahead / right / behind / left when there's a
+    // compass, else by compass point). Spoken AND opened in a modal to read.
+    async detailedDescribe() {
+        const pos = this.locationTracker.getCurrentPosition();
+        if (!pos) {
+            this.announceStatus('Location not available yet. Turn on Track Location first.');
+            return;
+        }
+        const near = (await this.fetchNearby(pos.lat, pos.lng, 10))
+            .filter((f) => f.distance_m <= 3000);
+        this._lastNearby = near;
+        this._lastNearbyPos = { lat: pos.lat, lng: pos.lng };
+        if (!near.length) {
+            this.announceStatus('Nothing notable nearby.');
+            this.openDetailModal('<p>Nothing notable nearby.</p>');
+            return;
+        }
+        const { speech, html } = this._describeSurround(pos, near);
+        this.announceStatus(speech);
+        this.openDetailModal(html);
+    }
+
+    // ── AUTO describe (running commentary) ────────────────────────────────────
+    // Position path: called from each GPS fix (gated here on the toggle). Announce a
+    // CHANGE in the road you're on, else the most significant fresh feature in earshot.
     async maybeAnnounceProximity(position) {
+        if (!this.autoDescribe) return;
         const now = Date.now();
         if (now - this.lastProximityTime < 8000) return;            // quiet interval
         if (this.lastProximityPos) {
             const moved = this.locationTracker.calculateDistance(
                 this.lastProximityPos.lat, this.lastProximityPos.lng,
                 position.lat, position.lng);
-            if (moved < 15) return;                                  // moved enough?
+            if (moved < 12) return;
         }
-        const near = await this.fetchNearby(position.lat, position.lng, 1);
-        const f = near[0];
-        if (!f || f.distance_m > 60) return;                        // genuinely close?
-        if (f.id === this.lastProximityId) return;                  // something new?
-        this.lastProximityId = f.id;
+        const near = await this.fetchNearby(position.lat, position.lng, 5);
+        if (!near.length) return;
+        this._lastNearby = near;
+        this._lastNearbyPos = { lat: position.lat, lng: position.lng };
+        const onRoad = near.find((f) => f.category === 'road' && f.distance_m <= 30);
+        let msg = null, id = null;
+        if (onRoad && ('road:' + onRoad.id) !== this._lastRoadId) {
+            msg = `On ${onRoad.display}.`; id = 'road:' + onRoad.id; this._lastRoadId = id;
+        } else {
+            const f = near.find((x) => x.significance >= 2 && x.id !== this._lastSpokenId
+                && !(onRoad && x.id === onRoad.id) && x.distance_m <= 120);
+            if (f) { msg = `${f.display} ${this._where(position, f)}, ${this.phraseDistance(f.distance_m)}.`; id = f.id; }
+        }
+        if (!msg) return;
+        this._lastSpokenId = id;
         this.lastProximityPos = { lat: position.lat, lng: position.lng };
         this.lastProximityTime = now;
-        const dir = this.directionTo(position.lat, position.lng, f.lat, f.lng);
-        this.announceStatus(`Near ${f.display}, ${dir}.`);
+        this.announceStatus(msg);
     }
 
-    // On-demand readout: the nearest couple of named places with distance and
-    // compass direction. Spoken on request, so it's never unsolicited.
-    async whereAmI() {
-        const pos = this.locationTracker.getCurrentPosition();
-        if (!pos) {
-            this.announceStatus('Location not available yet. Turn on Track Location first.');
-            return;
+    toggleAutoDescribe(button) {
+        this.autoDescribe = !this.autoDescribe;
+        button.setAttribute('aria-pressed', this.autoDescribe);
+        const icon = button.querySelector('.icon');
+        if (this.autoDescribe) {
+            if (icon) icon.textContent = '🔊';
+            this.heading.start();                 // turns are announced even before a fix
+            this._lastFacing = null; this._settleH = null;
+            this._lastRoadId = null; this._lastSpokenId = null;
+            this.lastProximityTime = 0; this.lastProximityPos = null;
+            this._startAutoHeadingWatch();
+            this.announceStatus(this.isTracking
+                ? 'Describing as you move. I will call out where you are and tell you when you turn.'
+                : 'Describing as you turn. Turn on Track Location too, to hear places as you move.');
+        } else {
+            if (icon) icon.textContent = '🔇';
+            this._stopAutoHeadingWatch();
+            this.announceStatus('Stopped the running description.');
         }
-        // Cap to a sane radius: the map is sparse between locations, so the 2nd
-        // nearest named feature can be in another town tens of km away — don't read
-        // that out as "nearby".
-        const near = (await this.fetchNearby(pos.lat, pos.lng, 2))
-            .filter((f) => f.distance_m <= 3000);
-        if (!near.length) {
-            this.announceStatus('No named places nearby.');
-            return;
-        }
-        const parts = near.map((f) => {
-            if (f.distance_m < 8) return `${f.display}, right here`;
-            const dir = this.directionTo(pos.lat, pos.lng, f.lat, f.lng);
-            return `${f.display}, ${this.phraseDistance(f.distance_m)}, ${dir}`;
-        });
-        this.announceStatus(parts.join('. ') + '.');
     }
 
-    // Same-origin proxy in front of the map-features geo index. Returns [] on any
-    // failure so tracking never throws into the update loop.
+    _startAutoHeadingWatch() { this._stopAutoHeadingWatch(); this._autoTick(); }
+    _stopAutoHeadingWatch() { if (this._autoTO) { clearTimeout(this._autoTO); this._autoTO = null; } }
+
+    // Rotation IS movement: poll the compass and, when it SETTLES (held ~1s, so we
+    // don't babble while you're being pushed around), announce the new facing if you
+    // turned far enough since the last call-out. A turn re-orients the cached POIs to
+    // your new heading without another query — that's the whole point in a crowd.
+    _autoTick() {
+        if (!this.autoDescribe) return;
+        const h = this.heading ? this.heading.getHeading() : null;
+        if (h !== null && h !== undefined) {
+            if (this._settleH === null || Math.abs(this._angDiff(h, this._settleH)) > 12) {
+                this._settleH = h; this._settleStart = Date.now();          // still turning
+            } else if (Date.now() - this._settleStart > 900) {              // settled
+                if (this._lastFacing === null) {
+                    this._lastFacing = h;                                   // first lock, silent
+                } else if (Math.abs(this._angDiff(h, this._lastFacing)) >= 30) {
+                    this._announceTurn(h, this._angDiff(h, this._lastFacing));
+                    this._lastFacing = h;
+                }
+            }
+        }
+        this._autoTO = setTimeout(() => this._autoTick(), 400);
+    }
+
+    _announceTurn(facing, signed) {
+        const dir = signed > 0 ? 'right' : 'left';
+        const a = Math.abs(signed);
+        let mag;
+        if (a >= 150) mag = 'turned right around';
+        else if (a >= 110) mag = `a big turn to your ${dir}`;
+        else if (a >= 65) mag = `a quarter-turn to your ${dir}`;
+        else mag = `a small turn to your ${dir}`;
+        let msg = `Now facing ${this.cardinal(facing)} — ${mag}.`;
+        const pos = (this.locationTracker.getCurrentPosition && this.locationTracker.getCurrentPosition())
+            || this._lastNearbyPos;
+        if (pos && this._lastNearby.length) {
+            const re = this._lastNearby.slice(0, 2).map((f) => `${f.display} ${this._where(pos, f)}`);
+            if (re.length) msg += ' ' + re.join('; ') + '.';
+        }
+        this.announceStatus(msg);
+    }
+
+    // Signed smallest angle a-b in -180..180. Positive = a is clockwise of b (= a
+    // RIGHT turn, since bearings increase clockwise from north).
+    _angDiff(a, b) { return ((((a - b) % 360) + 540) % 360) - 180; }
+
+    // Direction of f from pos as a short phrase: clock-face when we have a compass
+    // ("at 2 o'clock"), else the cardinal word ("to the east").
+    _where(pos, f) {
+        const d = this._relClock(pos, f);
+        return d.hour ? `at ${d.hour} o'clock` : `to the ${d.cardinal}`;
+    }
+
+    // {hour, cardinal, bucket} for f relative to pos. With a heading, hour is the
+    // clock-face position and bucket groups it ahead/right/behind/left; without one,
+    // both fall back to the 8-point compass.
+    _relClock(pos, f) {
+        const bearing = this.locationTracker.calculateBearing(pos.lat, pos.lng, f.lat, f.lng);
+        const heading = this.heading ? this.heading.getHeading() : null;
+        if (heading !== null) {
+            const rel = (((bearing - heading) % 360) + 360) % 360;       // 0 = dead ahead
+            const hour = Math.round(rel / 30) || 12;
+            let bucket;
+            if (rel < 60 || rel >= 300) bucket = 'ahead';
+            else if (rel < 120) bucket = 'right';
+            else if (rel < 240) bucket = 'behind';
+            else bucket = 'left';
+            return { hour, cardinal: null, bucket };
+        }
+        const card = this.cardinal(bearing);
+        return { hour: null, cardinal: card, bucket: card };
+    }
+
+    // Build the Detailed read-out: a lead line (facing + road you're on) then every
+    // notable feature grouped by direction. Returns plain {speech} and escaped {html}.
+    _describeSurround(pos, near) {
+        const onRoad = near.find((f) => f.category === 'road' && f.distance_m <= 30);
+        const heading = this.heading ? this.heading.getHeading() : null;
+        const lead = [];
+        if (heading !== null) lead.push(`Facing ${this.cardinal(heading)}`);
+        if (onRoad) lead.push(`on ${onRoad.display}`);
+        const leadLine = lead.length ? lead.join(', ') + '.' : 'Location found.';
+
+        const order = heading !== null
+            ? ['ahead', 'right', 'behind', 'left']
+            : ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+        const labels = { ahead: 'Ahead', right: 'To your right', behind: 'Behind you', left: 'To your left' };
+
+        const groups = {};
+        for (const f of near) {
+            if (f === onRoad) continue;
+            const d = this._relClock(pos, f);
+            (groups[d.bucket] ||= []).push({ f, d });
+        }
+
+        const speechParts = [leadLine];
+        const htmlParts = [`<p>${this._esc(leadLine)}</p>`];
+        for (const key of order) {
+            const items = groups[key];
+            if (!items || !items.length) continue;
+            const label = labels[key] || ('To the ' + key);
+            const phrases = items.map(({ f, d }) => {
+                const dist = this.phraseDistance(f.distance_m);
+                const at = d.hour ? ` (${d.hour} o'clock)` : '';
+                return {
+                    speech: `${f.display}, ${dist}`,
+                    html: `<li>${this._esc(f.display)}, ${dist}${at}</li>`,
+                };
+            });
+            speechParts.push(`${label}: ${phrases.map((p) => p.speech).join('; ')}`);
+            htmlParts.push(`<h3>${this._esc(label)}</h3><ul>${phrases.map((p) => p.html).join('')}</ul>`);
+        }
+        return { speech: speechParts.join('. ') + '.', html: htmlParts.join('') };
+    }
+
+    openDetailModal(html) {
+        const modal = document.getElementById('detail-modal');
+        const body = document.getElementById('detail-modal-body');
+        if (!modal || !body) return;
+        body.innerHTML = html;
+        this._modalReturnFocus = document.activeElement;
+        modal.hidden = false;
+        const close = document.getElementById('detail-modal-close');
+        if (close) close.focus();
+        // Trap focus on the close button (the only control inside) and close on Escape.
+        this._modalKeydown = (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); this.closeDetailModal(); }
+            else if (e.key === 'Tab') { e.preventDefault(); if (close) close.focus(); }
+        };
+        modal.addEventListener('keydown', this._modalKeydown);
+    }
+
+    closeDetailModal() {
+        const modal = document.getElementById('detail-modal');
+        if (!modal) return;
+        modal.hidden = true;
+        if (this._modalKeydown) { modal.removeEventListener('keydown', this._modalKeydown); this._modalKeydown = null; }
+        if (this._modalReturnFocus && this._modalReturnFocus.focus) this._modalReturnFocus.focus();
+    }
+
+    _esc(s) {
+        return String(s).replace(/[&<>"']/g, (c) =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Translate the active map filters into significance hints for the API: base
+    // layers the user has HIDDEN -> `off` (demote, mention only as background);
+    // accessibility/POI overlays they've turned ON -> `on` (boost — opting in says
+    // "this matters to me"). Token = "category" or "category:subtype".
+    filterTokens() {
+        const off = new Set(), on = new Set();
+        const fm = this.filterManager;
+        if (fm && this.taxonomy) {
+            for (const [id, enabled] of Object.entries(fm.filters)) {
+                const feat = this.taxonomy.getById(id);
+                if (!feat || !feat.category) continue;
+                const tok = (feat.subtype != null) ? `${feat.category}:${feat.subtype}` : `${feat.category}`;
+                if (fm.isHideShow(feat)) { if (!enabled) off.add(tok); }
+                else if (enabled) on.add(tok);
+            }
+        }
+        return { off: [...off].join(','), on: [...on].join(',') };
+    }
+
+    // Same-origin proxy in front of the map-features geo index. Carries the active
+    // filter state so results are significance-ranked in line with what the user has
+    // asked to see. Returns [] on any failure so tracking never throws.
     async fetchNearby(lat, lng, limit) {
         try {
-            const res = await fetch(`/api/map-nearby?lat=${lat}&lng=${lng}&limit=${limit}`);
+            const { off, on } = this.filterTokens();
+            const qs = new URLSearchParams({ lat: String(lat), lng: String(lng), limit: String(limit) });
+            if (off) qs.set('off', off);
+            if (on) qs.set('on', on);
+            // Only while travelling does a cross-street's intersection matter more than
+            // its nearest point — tell the API so it doesn't report a road that runs
+            // beside you as "at the corner ahead" when you're standing still.
+            if (this.heading && this.heading.isMoving()) qs.set('moving', '1');
+            const res = await fetch(`/api/map-nearby?${qs.toString()}`);
             if (!res.ok) return [];
             const data = await res.json();
             return data.results || [];
@@ -998,9 +1254,25 @@ class MapApplication {
         // other mid-phrase. Polite, not assertive: status should never interrupt
         // the screen reader mid-sentence.
         const region = document.getElementById('map-announcements');
-        if (!region) return;
-        region.textContent = '';
-        region.textContent = message;
+        if (region) {
+            region.textContent = '';
+            region.textContent = message;
+        }
+        // Mirror to the VISIBLE captions panel for Deaf/deafened and sighted users.
+        this._caption(message);
+    }
+
+    // Append a spoken line to the visible captions log. The panel is aria-hidden, so
+    // this never double-announces to a screen reader — the speech comes from the live
+    // region above. Keeps a short scrollback so a line you missed can be re-read.
+    _caption(message) {
+        const log = document.getElementById('captions-log');
+        if (!log) return;
+        const li = document.createElement('li');
+        li.textContent = message;
+        log.appendChild(li);
+        while (log.children.length > 8) log.removeChild(log.firstChild);
+        log.scrollTop = log.scrollHeight;
     }
 
     announceMapChange() {

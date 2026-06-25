@@ -2288,3 +2288,114 @@ body.tooltip-below .poi-tooltip::after {
         stroke: #1a1a1a;
     }
 }
+
+/* ── Captions panel: the visible twin of everything spoken ─────────────────────
+   Soft fill + a strong GREY border so the boundary survives macOS Invert Colours
+   (colour edges flip hue and lose contrast; a grey luminance edge doesn't). The
+   latest line is emphasised; older lines stay at body legibility (never shrink
+   below body — re-reading what just went by is exactly when legibility matters). */
+.captions-panel {
+    margin-top: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    background: #f4f6f8;
+    border: 2px solid #5a5a5a;
+    border-radius: 6px;
+}
+.captions-title {
+    margin: 0 0 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #2a2a2a;
+}
+.captions-log {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    max-height: 9rem;
+    overflow-y: auto;
+}
+.captions-log li {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.35;
+    color: #3a3a3a;            /* recent lines: comfortably past AAA 7:1 on the fill */
+}
+.captions-log li:last-child {
+    color: #111;
+    font-weight: 600;          /* the just-spoken line stands out */
+}
+.captions-log:empty::after {
+    content: "Spoken descriptions appear here.";
+    color: #555;
+    font-size: 0.9375rem;
+}
+
+/* ── Detailed surroundings modal ─────────────────────────────────────────────
+   A real dialog for the deliberate one-off read-out (focus trapped in JS, Escape
+   closes, focus returns to its button). The continuous Auto-describe never uses
+   this — it would steal focus every few seconds. Grey panel border for invert. */
+.detail-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+}
+.detail-modal[hidden] { display: none; }
+.detail-modal__panel {
+    width: 100%;
+    max-width: 32rem;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+    background: #fff;
+    border: 2px solid #5a5a5a;
+    border-radius: 8px;
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.3);
+}
+.detail-modal__title {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    color: #111;
+}
+.detail-modal__body {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #1a1a1a;
+}
+.detail-modal__body h3 {
+    margin: 0.875rem 0 0.25rem;
+    font-size: 1rem;
+    color: #111;
+}
+.detail-modal__body ul { margin: 0.25rem 0; padding-left: 1.25rem; }
+.detail-modal__body li { margin: 0.15rem 0; }
+.detail-modal__close {
+    margin-top: 1rem;
+    padding: 0.5rem 1.25rem;
+    border: 2px solid #0066ff;
+    border-radius: 6px;
+    background: #fff;
+    color: #0033aa;
+    font-size: 1rem;
+    cursor: pointer;
+}
+.detail-modal__close:hover { background: #e3f2fd; }
+.detail-modal__close:focus { outline: 2px solid #0066ff; outline-offset: 2px; }
+
+@media (prefers-contrast: high) {
+    .captions-panel,
+    .detail-modal__panel { border-color: #000; border-width: 3px; }
+    .captions-log li { color: #000; }
+    .captions-log li:last-child { color: #000; }
+    .detail-modal { background: rgba(0, 0, 0, 0.7); }
+    .detail-modal__close { border-color: #000; color: #000; }
+}
