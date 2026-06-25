@@ -32,13 +32,13 @@
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
         "north": 44.920,
-        "south": 44.460,
-        "east": -78.280,
-        "west": -78.420
+        "south": 44.410,
+        "east": -78.070,
+        "west": -78.660
       },
       "center": {
-        "lat": 44.66675,
-        "lng": -78.36403
+        "lat": 44.665,
+        "lng": -78.365
       },
       "defaultZoom": 18,
       "tileSize": 0.01
