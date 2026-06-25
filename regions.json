@@ -9,10 +9,11 @@
       "remotePath": "/srv/tiles/toronto/",
       "baseUrl": "https://tiles.a11ybob.com/toronto/",
       "source": "/Volumes/Bob/MapData/toronto-city.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
-        "north": 43.86,
+        "north": 43.92,
         "south": 43.58,
-        "east": -79.12,
+        "east": -78.93,
         "west": -79.64
       },
       "center": {

@@ -932,7 +932,9 @@ class TileBuilder:
             feature_count += 1
 
         if feature_count == 0:
-            return None  # Don't create empty tiles
+            # Empty cell -> still emit the bare tile shell, so lake / rural cells are
+            # CREATED, not left as gaps. (The caller writes a tile for every grid cell.)
+            return svg
 
         # Paint order: TIER first, then within a tier AREAS (polygons) under LINES
         # (roads) under POINTS — so a landuse / woods / water fill can never cover a
@@ -2199,7 +2201,11 @@ class TileBuilder:
                               else self.output_dir / band_name / 'tiles')
             self.tiles_dir.mkdir(parents=True, exist_ok=True)
             created = 0
-            for (i, j), tile_features in buckets.items():
+            # Every cell in the rectangle gets a tile — NO gaps. Empty lake / rural
+            # cells are created too (create_tile_svg returns a blank shell for them),
+            # so the map is fully tiled at every zoom band, not just where content is.
+            for i, j in ((a, b) for a in range(n_lat) for b in range(n_lng)):
+                tile_features = buckets.get((i, j), [])
                 # tangibles AND container regions render directly (subject to the
                 # target-size cull); regions are NOT fed to POI aggregation.
                 tangible = [f for f in tile_features
@@ -2216,8 +2222,6 @@ class TileBuilder:
                 if do_proximity:
                     pois = self.cluster_proximity(pois, threshold_deg)
                 feats = tangible + pois
-                if not feats:
-                    continue
                 lat = round(south + i * size, 4)
                 lng = round(west + j * size, 4)
                 svg = self.create_tile_svg(lat, lng, feats)
