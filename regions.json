@@ -11,9 +11,9 @@
       "source": "/Volumes/Bob/MapData/toronto-city.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
-        "north": 43.92,
+        "north": 44.00,
         "south": 43.50,
-        "east": -78.93,
+        "east": -78.79,
         "west": -79.83
       },
       "center": {
