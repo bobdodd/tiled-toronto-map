@@ -993,11 +993,10 @@ class MapApplication {
             const label = labels[key] || ('To the ' + key);
             const phrases = items.map(({ f, d }) => {
                 const dist = this.phraseDistance(f.distance_m);
-                const at = d.hour ? ` (${d.hour} o'clock)` : '';
-                return {
-                    speech: `${f.display}, ${dist}`,
-                    html: `<li>${this._esc(f.display)}, ${dist}${at}</li>`,
-                };
+                const clock = d.hour ? `, ${d.hour} o'clock` : '';
+                // ONE string for both ear and eye — what you hear is what you see.
+                const text = `${f.display}, ${dist}${clock}`;
+                return { speech: text, html: `<li>${this._esc(text)}</li>` };
             });
             speechParts.push(`${label}: ${phrases.map((p) => p.speech).join('; ')}`);
             htmlParts.push(`<h3>${this._esc(label)}</h3><ul>${phrases.map((p) => p.html).join('')}</ul>`);
