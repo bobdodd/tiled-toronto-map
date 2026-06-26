@@ -85,6 +85,27 @@
       },
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "burlington",
+      "label": "Burlington — western slice (Brampton → Niagara Falls latitude; expand eastward later)",
+      "localDir": "/Volumes/Bob/MapData/burlington-svg-tiles",
+      "remotePath": "/srv/tiles/burlington/",
+      "baseUrl": "https://tiles.a11ybob.com/burlington/",
+      "source": "/Volumes/Bob/MapData/burlington.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
+      "bounds": {
+        "north": 44.00,
+        "south": 43.03,
+        "east": -79.71,
+        "west": -79.95
+      },
+      "center": {
+        "lat": 43.515,
+        "lng": -79.83
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
