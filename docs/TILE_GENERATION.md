@@ -148,27 +148,33 @@ region's own root tile count (e.g. 6344 + 2977 + 100 + 1702 = 11123).
 
 ## Search index (OpenSearch)
 
-The `map-features` index already holds every other region, so **append** the new
-region — do **not** rebuild from scratch unless you mean to.
+**Source of truth: `/home/ubuntu/map-data/` on the VPS holds one NDJSON per
+region** — `map-features.ndjson` (Toronto, historical name), `trent-lakes.ndjson`,
+`peterborough.ndjson`, `calgary.ndjson`, … A full reindex rebuilds `map-features`
+from the **concatenation of all of them**, so a region only persists across
+reindexes if its NDJSON lives here.
 
-- **`scripts/upsert-map.ts <ndjson>` — append/upsert (SAFE).** Keyed by `osm_id`,
-  no delete; adds one region and leaves the rest untouched. Use this to add a
-  region.
-- **`scripts/index-map.ts <ndjson>` — DROP and recreate (DANGER).** Deletes the
-  whole index first, then rebuilds from the one file given. Only for a
-  from-scratch rebuild of the entire index (and then you must concatenate *every*
-  region's NDJSON). It WILL wipe all other regions if pointed at one file.
-
-Run on the VPS (where OpenSearch + `tsx` live):
+So adding a region is a **dual write** — update the live index AND drop the
+region's NDJSON into `/home/ubuntu/map-data/`:
 
 ```bash
-# copy the region's NDJSON up, then append it
-scp /Volumes/Bob/MapData/calgary-svg-tiles/search/map-features.ndjson \
-    <user>@<host>:/tmp/calgary.ndjson
-ssh <vps> 'cd /home/ubuntu/a11ybob-website && \
-  OPENSEARCH_URL=http://localhost:9200 \
-  node_modules/.bin/tsx scripts/upsert-map.ts /tmp/calgary.ndjson'
+# 1. Put the region's NDJSON in the source-of-truth dir (durable; survives reindex).
+gzip -c <region-localDir>/search/map-features.ndjson \
+  | ssh <vps> 'gunzip > /home/ubuntu/map-data/<region>.ndjson'
+
+# 2a. ADD it to the live index — append/upsert, SAFE (keyed by osm_id, no delete,
+#     leaves every other region untouched). This is how you add one region:
+ssh <vps> 'cd /home/ubuntu/a11ybob-website && OPENSEARCH_URL=http://localhost:9200 \
+  node_modules/.bin/tsx scripts/upsert-map.ts /home/ubuntu/map-data/<region>.ndjson'
+
+# 2b. OR full reindex from scratch (DANGER: scripts/index-map.ts DROPS the index
+#     first). Only when you mean to rebuild everything — feed it ALL regions:
+ssh <vps> 'cd /home/ubuntu/a11ybob-website && cat /home/ubuntu/map-data/*.ndjson > /tmp/all.ndjson && \
+  OPENSEARCH_URL=http://localhost:9200 node_modules/.bin/tsx scripts/index-map.ts /tmp/all.ndjson'
 ```
+
+`index-map.ts` deduplicates by `osm_id`, so the indexed count is slightly below
+the line sum (features shared across regions collapse).
 
 ## Verify
 
