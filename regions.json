@@ -66,26 +66,6 @@
       "tileSize": 0.01
     },
     {
-      "id": "vancouver",
-      "label": "Vancouver (YVR)",
-      "localDir": "tile-generation/vancouver-svg-tiles",
-      "remotePath": "/srv/tiles/vancouver/",
-      "baseUrl": "https://tiles.a11ybob.com/vancouver/",
-      "source": "tile-generation/toronto-svg-tiles/data/yvr-area.osm.pbf",
-      "bounds": {
-        "north": 49.24,
-        "south": 49.17,
-        "east": -123.15,
-        "west": -123.22
-      },
-      "center": {
-        "lat": 49.195,
-        "lng": -123.18
-      },
-      "defaultZoom": 16,
-      "tileSize": 0.01
-    },
-    {
       "id": "calgary",
       "label": "Calgary",
       "localDir": "/Volumes/Bob/MapData/calgary-svg-tiles",
