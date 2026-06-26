@@ -47,7 +47,9 @@
     "sensory":       { "label": "Sensory accessibility", "layer": "accessibility" },
     "mobility":      { "label": "Mobility access", "layer": "accessibility" },
     "transport":     { "label": "Accessible transport", "layer": "accessibility" },
-    "terrain":       { "label": "Terrain & surface", "layer": "accessibility" }
+    "terrain":       { "label": "Terrain & surface", "layer": "accessibility" },
+    "place":         { "label": "Places", "layer": "poi" },
+    "boundary":      { "label": "Areas", "layer": "base" }
   },
   "_terrain_note": "The 'terrain' category is an accessibility OVERLAY (highlight + rotor, never hides the base path) like the others, but is deliberately ABSENT from the search index's POI category set (build-tiles.py _SEARCH_POI_CATS). Surface/smoothness/width/incline/lit are way-attributes that ride on tens of thousands of roads; they belong on the map as filters, not as named search results. Node POIs (kerbs, crossings, steps) stay in facility/mobility so they remain findable.",
 
@@ -58,6 +60,8 @@
     "landuse": { "residential": "Residential area", "commercial": "Commercial area", "industrial": "Industrial area", "retail": "Retail area", "construction": "Construction site", "brownfield": "Brownfield site", "cemetery": "Cemetery", "quarry": "Quarry", "landfill": "Landfill", "railway": "Railway area", "port": "Port area", "depot": "Depot", "garages": "Garages", "religious": "Religious grounds", "education": "Educational institution", "institutional": "Institutional area", "military": "Military area" },
     "vegetation": { "forest": "Forest", "wood": "Woods", "tree_row": "Tree line", "tree": "Tree", "scrub": "Scrubland", "heath": "Heathland", "grass": "Grass area", "meadow": "Meadow", "grassland": "Grassland", "greenfield": "Green field", "fell": "Fell", "bare_rock": "Bare rock", "scree": "Scree", "shingle": "Shingle", "sand": "Sand", "mud": "Mud", "wetland": "Wetland", "marsh": "Marsh", "swamp": "Swamp", "bog": "Bog", "fen": "Fen", "farmland": "Farmland", "farmyard": "Farmyard", "orchard": "Orchard", "vineyard": "Vineyard", "allotments": "Allotments", "greenhouse_horticulture": "Greenhouse horticulture", "plant_nursery": "Plant nursery", "flowerbed": "Flowerbed", "conservation": "Conservation area", "nature_reserve": "Nature reserve", "national_park": "National park", "protected_area": "Protected area" },
     "park": { "park": "Park", "garden": "Garden", "playground": "Playground", "dog_park": "Dog park", "recreation_ground": "Recreation ground", "common": "Common land", "fitness_centre": "Fitness centre", "fitness_station": "Outdoor fitness station", "sports_centre": "Sports centre", "stadium": "Stadium", "track": "Running track", "pitch": "Sports pitch", "golf_course": "Golf course", "miniature_golf": "Miniature golf", "disc_golf_course": "Disc golf course", "swimming_pool": "Swimming pool", "water_park": "Water park", "marina": "Marina", "slipway": "Boat slipway", "beach_resort": "Beach resort", "village_green": "Village green" },
+    "place": { "city": "City", "town": "Town", "village": "Village", "hamlet": "Hamlet", "suburb": "Suburb", "quarter": "Quarter", "neighbourhood": "Neighbourhood", "borough": "Borough", "locality": "Locality", "isolated_dwelling": "Settlement" },
+    "boundary": { "4": "Province", "6": "Region", "8": "Municipality", "10": "Ward", "administrative": "Administrative area", "protected_area": "Protected area", "national_park": "National park" },
     "religious": { "christian": "Christian place of worship", "church": "Church", "cathedral": "Cathedral", "chapel": "Chapel", "muslim": "Islamic place of worship", "mosque": "Mosque", "jewish": "Jewish place of worship", "synagogue": "Synagogue", "hindu": "Hindu temple", "temple": "Temple", "buddhist": "Buddhist temple", "sikh": "Sikh gurdwara", "monastery": "Monastery", "shrine": "Shrine", "default": "Place of worship" },
     "parking": { "surface": "Surface parking", "underground": "Underground parking", "multi-storey": "Multi-storey parking", "rooftop": "Rooftop parking", "street_side": "Street-side parking", "garage_boxes": "Garage boxes", "bicycle_parking": "Bicycle parking", "motorcycle_parking": "Motorcycle parking", "default": "Parking" },
     "aeroway": { "aerodrome": "Airport", "apron": "Aircraft apron", "gate": "Airport gate", "hangar": "Aircraft hangar", "helipad": "Helipad", "heliport": "Heliport", "holding_position": "Aircraft holding position", "jet_bridge": "Jet bridge", "navigationaid": "Navigation aid", "parking_position": "Aircraft parking position", "runway": "Runway", "taxilane": "Taxilane", "taxiway": "Taxiway", "terminal": "Airport terminal", "windsock": "Windsock", "default": "Airport feature" },
@@ -978,6 +982,18 @@
       "geometry": ["way"], "label": "Underpasses",
       "ui": { "filterGroup": "Roads & Highways", "rotorGroup": "Transportation" }, "status": "implemented" },
 
+    { "id": "places", "category": "place",
+      "match": { "place": ["city", "town", "village", "hamlet", "suburb", "quarter", "neighbourhood", "borough", "locality", "isolated_dwelling"] }, "subtypeFrom": "place",
+      "geometry": ["node", "area"], "label": "Places",
+      "ui": { "filterGroup": "Places", "rotorGroup": "Places" }, "status": "implemented" },
+    { "id": "protected-areas", "category": "park",
+      "match": [ { "boundary": ["protected_area", "national_park"] } ], "subtype": "protected_area",
+      "geometry": ["area"], "label": "Protected area",
+      "ui": { "filterGroup": "Natural", "rotorGroup": "Natural" }, "status": "implemented" },
+    { "id": "admin-areas", "category": "boundary",
+      "match": { "boundary": "administrative" }, "subtypeFrom": "admin_level",
+      "geometry": ["area"], "label": "Administrative area",
+      "ui": { "filterGroup": "Places", "rotorGroup": "Places" }, "status": "implemented" },
     { "id": "landuse-generic", "category": "landuse",
       "match": { "landuse": ["residential", "commercial", "industrial", "retail", "construction", "brownfield", "cemetery", "quarry", "landfill", "railway", "port", "depot", "garages", "religious", "education", "institutional", "military"] }, "subtypeFrom": "landuse",
       "geometry": ["area"], "label": "Land use",

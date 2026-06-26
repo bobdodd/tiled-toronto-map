@@ -748,7 +748,10 @@ class TileBuilder:
 
         b = self.bounds
         bbox = f"{b['west']},{b['south']},{b['east']},{b['north']}"
-        cmd = f"osmium extract --overwrite -b {bbox} {big} -o {target}"
+        # --strategy=smart pulls in a relation's COMPLETE geometry even when it spans the
+        # bbox edge — so large boundary multipolygons (a provincial park, a township) that
+        # cross the region edge still assemble, which the named-region containment needs.
+        cmd = f"osmium extract --overwrite --strategy=smart -b {bbox} {big} -o {target}"
         print(f"Extracting region bounds: {cmd}")
         if os.system(cmd) != 0:
             sys.exit("Error: osmium extract failed (install osmium-tool).")
@@ -2002,9 +2005,18 @@ class TileBuilder:
                 name = props.get('name')
                 addr = {k[5:]: v for k, v in props.items() if k.startswith('addr:')}
                 cats = {primary['category'] if primary else None} | {o['category'] for o in overlays}
+                primary_cat = primary['category'] if primary else None
                 is_poi = bool(cats & self._SEARCH_POI_CATS)
-                if not (name or addr.get('housenumber') or addr.get('street') or is_poi):
-                    continue  # generic unnamed base geometry — not findable
+                # Area-character categories (water, woods, landuse zones, named regions)
+                # are emitted EVEN WHEN UNNAMED, so the read-out can describe the feel of a
+                # place (nearby ponds, "you're in a residential area / in a named park").
+                # They carry kind='area' below so they enrich descriptions without
+                # cluttering the named search. Settlements (place=) are findable by name.
+                AREA_CATS = {'water', 'vegetation', 'natural', 'landuse', 'boundary'}
+                findable = bool(name or addr.get('housenumber') or addr.get('street')
+                                or is_poi or primary_cat == 'place')
+                if not findable and primary_cat not in AREA_CATS:
+                    continue  # truly generic geometry — nothing to say about it
                 c = f['geometry'].centroid
                 if c.is_empty:
                     continue
@@ -2043,9 +2055,26 @@ class TileBuilder:
                     # point (lat/lng above stay the centroid, for display/jump-to).
                     'location': self._sample_geo_points(f['geometry']),
                 }
-                geom = self._geom_for_search(f['geometry'])
+                # Big area / boundary polygons: simplify the stored ring (used only for
+                # nearest-point + point-in-polygon containment, never display) so a park
+                # or township boundary doesn't bloat the index.
+                geom_src = f['geometry']
+                if primary_cat in AREA_CATS and geom_src.geom_type in ('Polygon', 'MultiPolygon'):
+                    try:
+                        s = geom_src.simplify(0.0003, preserve_topology=False)
+                        if not s.is_empty:
+                            geom_src = s
+                    except Exception:
+                        pass
+                geom = self._geom_for_search(geom_src)
                 if geom is not None:
-                    doc['geom'] = geom   # raw vertices for EXACT nearest-point in the API
+                    doc['geom'] = geom   # vertices for nearest-point / containment in the API
+                # Unnamed area-character fills (water / woods / landuse / boundary) — keep
+                # them out of named + text search, but counted in the aggregation and used
+                # for "you're in ..." containment.
+                if not findable:
+                    doc['kind'] = 'area'
+                    doc['text'] = ''
                 if parent_name and parent_name != name:
                     doc['parent'] = parent_name
                     doc['parent_id'] = f.get('_named_parent_id')
@@ -2087,7 +2116,11 @@ class TileBuilder:
         # Build the search index from the SAME parse (named things, POIs and
         # addresses; accessibility tags as filterable fields) so it can never
         # drift from the rendered map.
-        self.write_search_index(features)
+        n_search = self.write_search_index(features)
+
+        if getattr(self, 'search_only', False):
+            print("Search-only mode: skipping tile generation.", flush=True)
+            return n_search
 
         size = self.tile_size
         # Snap the tiling ORIGIN down to the GLOBAL grid (aligned to 0,0), matching
@@ -2376,8 +2409,13 @@ class TileBuilder:
         # Step 1: get the region's OSM extract
         region_pbf = self.get_region_pbf()
 
-        # Step 2: Process into tiles
+        # Step 2: Process into tiles (or, in --search-only mode, just the search index)
         tile_count = self.process_osm_data(region_pbf)
+
+        if getattr(self, 'search_only', False):
+            print(f"\n✅ Search-only build complete — search index re-emitted, tiles untouched.")
+            print(f"Output: {self.output_dir / 'search' / 'map-features.ndjson'}")
+            return self.output_dir
 
         # Step 3: Create index
         index = self.create_tile_index()
@@ -2399,6 +2437,9 @@ def main():
     parser.add_argument("--region", help="Region id from regions.json (default: its activeRegion).")
     parser.add_argument("--check", action="store_true",
                         help="Resolve the region and print its config, without building.")
+    parser.add_argument("--search-only", action="store_true",
+                        help="Parse OSM and (re-)write the search NDJSON, but SKIP tile "
+                             "generation — re-emit search data without re-tiling.")
     args = parser.parse_args()
 
     region = resolve_region(args.region)
@@ -2414,6 +2455,7 @@ def main():
         return
 
     builder = TileBuilder(region)
+    builder.search_only = args.search_only
     output_dir = builder.build_tiles()
 
     print(f"\nNext: publish '{output_dir.name}' with Tile Studio (Publish pane).")
