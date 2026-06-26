@@ -84,6 +84,27 @@
       },
       "defaultZoom": 16,
       "tileSize": 0.01
+    },
+    {
+      "id": "calgary",
+      "label": "Calgary",
+      "localDir": "/Volumes/Bob/MapData/calgary-svg-tiles",
+      "remotePath": "/srv/tiles/calgary/",
+      "baseUrl": "https://tiles.a11ybob.com/calgary/",
+      "source": "/Volumes/Bob/MapData/calgary.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/alberta.osm.pbf",
+      "bounds": {
+        "north": 51.21,
+        "south": 50.84,
+        "east": -113.86,
+        "west": -114.32
+      },
+      "center": {
+        "lat": 51.045,
+        "lng": -114.07
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }

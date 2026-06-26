@@ -1,189 +1,193 @@
-# Toronto SVG Tile Generation
+# Tile Generation & Deployment
 
-This directory contains tools to generate pre-rendered SVG tiles for the Greater Toronto Area, optimized for accessible mapping applications.
+How a region (Toronto, Trent Lakes, Peterborough, Calgary, …) is built and
+published. Every region is built independently but lands on one global grid, so
+they share a single served base, a single combined tile index, and a single
+search index.
 
-## Quick Start
+> Connection details (SSH host, user, key) live in `tile-studio/config.json`
+> (gitignored; see `config.example.json`). They are deliberately **not** in this
+> doc — this repo is public.
+
+## Architecture
+
+A single OSM parse per region produces **two** outputs in lockstep, so the map
+and search can never drift apart:
+
+1. **SVG tiles** — pre-rendered, gzip + brotli compressed, on a global
+   **0.01° grid** (`tileSize`). Because the tiling origin is snapped to that
+   grid, every region's tiles use globally-unique filenames (`<lat>_<lng>.svg.gz`)
+   and simply slot together — Toronto, Trent Lakes and Calgary coexist with empty
+   cells between them. Tiles are emitted at the root zoom plus several LOD bands
+   (`lod12 … lod22`). Gaps are filled too (lake/rural cells are generated, not
+   skipped), so panning never hits a missing tile.
+2. **`search/map-features.ndjson`** — one document per findable feature (named
+   things, POIs, addresses) with OSM accessibility tags as filterable fields and
+   a geo_point. This feeds the OpenSearch `map-features` index behind
+   `/api/map-nearby` (the Context Map and "describe surroundings") and
+   `/api/map-search`.
+
+### One shared base, one combined index
+
+The live visual map is served from **one base directory** that holds **every
+region's tiles plus a single combined `tile-index.json`**. For historical
+reasons that base is named `toronto/`:
+
+- Served path: `/srv/tiles/toronto/` on the VPS.
+- URL base: `https://tiles.a11ybob.com/toronto/` (Caddy `root * /srv/tiles`).
+
+Each region in `regions.json` also carries its own `remotePath` / `baseUrl` —
+those describe **standalone** single-region serving. The live combined map does
+not use them; it uses the shared base above. The viewer loads the one combined
+index, requests only tiles that exist, and leaves gaps blank.
+
+## Prerequisites
 
 ```bash
-# 1. Set up the environment
-./setup-tile-builder.sh
+# From the project root — creates venv/ and installs osmium, shapely, pyproj …
+./tile-generation/setup-tile-builder.sh
 
-# 2. Activate virtual environment
-source venv/bin/activate
-
-# 3. Generate tiles (takes 30-60 minutes)
-python build-toronto-tiles.py
+# System tools (Homebrew — no Docker on this machine)
+brew install osmium-tool brotli
 ```
 
-## What Gets Generated
+OpenSearch runs on the VPS (`localhost:9200`, not exposed publicly). The index
+loaders live in the **a11ybob site repo** (`scripts/index-map.ts`,
+`scripts/upsert-map.ts`) and are run on the VPS, where both `tsx` and OpenSearch
+are available.
 
-### Directory Structure
-```
-toronto-svg-tiles/
-├── tiles/                    # Compressed SVG tiles
-│   ├── 43.650_-79.380.svg.gz # Individual geographic tiles
-│   ├── 43.651_-79.380.svg.gz
-│   └── ...
-├── styles/
-│   └── map-styles.css        # CSS for styling tiles
-├── tile-index.json          # Tile metadata and bounds
-└── data/                     # Source OSM data (can be deleted after)
-    ├── ontario-latest.osm.pbf
-    └── toronto-area.osm.pbf
-```
+## `regions.json`
 
-### Tile Coverage
-- **Area**: Greater Toronto Area (43.5°N to 44.0°N, -79.8°W to -78.9°W)
-- **Resolution**: 0.01° tiles (approximately 1km × 1km)
-- **Total tiles**: ~100-200 tiles
-- **Total size**: 150-200MB compressed
+The single source of truth for regions. One entry per region:
 
-### Features Included
-- **Buildings**: With accessibility labels, floor counts
-- **Roads**: All major streets with proper classification
-- **Transit**: Bus stops, subway stations, accessibility info
-- **Accessibility**: Accessible parking, ramps, facilities
-
-## SVG Tile Format
-
-Each tile is a self-contained SVG with:
-
-```xml
-<svg viewBox="0 0 1000 1000">
-  <g id="buildings" class="layer">
-    <!-- Building polygons with ARIA labels -->
-  </g>
-  <g id="roads" class="layer">
-    <!-- Road polylines -->
-  </g>
-  <g id="accessibility" class="layer">
-    <!-- Accessibility features -->
-  </g>
-</svg>
-```
-
-### Accessibility Features
-- **ARIA labels**: Every feature has descriptive labels
-- **Keyboard navigation**: All features are focusable
-- **Screen reader support**: Proper role and label attributes
-- **High contrast**: Optimized colors for visibility
-
-## Integration with Web App
-
-After generating tiles:
-
-1. **Upload to SiteGround**: Upload the `toronto-svg-tiles` directory
-2. **Update client code**: Replace OSM API calls with SVG tile loading
-3. **Configure tile server**: Use `tile-index.json` for tile discovery
-
-### Client Integration Example
-```javascript
-class SVGTileLoader {
-  async loadTile(lat, lng) {
-    const tileId = this.getTileId(lat, lng);
-    const response = await fetch(`/toronto-svg-tiles/tiles/${tileId}.svg.gz`);
-    const svgText = await response.text();
-    return this.insertIntoMap(svgText);
-  }
+```jsonc
+{
+  "id": "calgary",
+  "label": "Calgary",
+  "localDir": "/Volumes/Bob/MapData/calgary-svg-tiles", // where tiles are written
+  "remotePath": "/srv/tiles/calgary/",                  // standalone serving only
+  "baseUrl": "https://tiles.a11ybob.com/calgary/",      // standalone serving only
+  "source":    "/Volumes/Bob/MapData/calgary.osm.pbf",  // this region's extract
+  "osmSource": "/Volumes/Bob/MapData/alberta.osm.pbf",  // larger pbf to carve from
+  "bounds": { "north": 51.21, "south": 50.84, "east": -113.86, "west": -114.32 },
+  "center": { "lat": 51.045, "lng": -114.07 },
+  "defaultZoom": 18,
+  "tileSize": 0.01
 }
 ```
 
-## Performance Benefits
+**Getting the OSM source.** `build-tiles.py` uses `source` if it exists; otherwise
+it carves `bounds` out of `osmSource` with `osmium extract`. So:
 
-| Metric | OSM API | SVG Tiles | Improvement |
-|--------|---------|-----------|-------------|
-| Initial load | 2-3s | 0.5s | 80% faster |
-| Pan to new area | 1-2s | 0.3s | 75% faster |
-| Filter toggle | 500ms | 50ms | 90% faster |
-| Memory usage | 100MB | 30MB | 70% less |
-| Offline capable | No | Yes | ✅ |
+- A region **inside an extract you already have** (Trent Lakes, Peterborough sit
+  inside `toronto.osm.pbf`) just sets `osmSource` to that file — no download.
+- A region **outside it** (Calgary is in Alberta) needs its own download first:
+  ```bash
+  curl -L -o /Volumes/Bob/MapData/alberta.osm.pbf \
+    https://download.geofabrik.de/north-america/canada/alberta-latest.osm.pbf
+  ```
 
-## Customization
+`activeRegion` is only the tile-studio default; the CLI selects a region with
+`--region`, so leave `activeRegion` as-is when adding one.
 
-### Adding Features
-Edit `build-toronto-tiles.py` and add to `feature_types`:
+## Build a region
 
-```python
-'custom_feature': {
-    'tags': {'amenity': 'custom'},
-    'color': '#FF5722',
-    'stroke': '#D84315'
-}
-```
-
-### Adjusting Tile Size
-Change `tile_size` in the script:
-- `0.005` = 0.5km tiles (more tiles, smaller files)
-- `0.02` = 2km tiles (fewer tiles, larger files)
-
-### Area Coverage
-Modify `gta_bounds` to cover different areas:
-```python
-gta_bounds = {
-    'north': 44.5,   # Extend north
-    'south': 43.0,   # Extend south
-    'east': -78.5,   # Extend east
-    'west': -80.0    # Extend west
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**"osmium command not found"**
 ```bash
-# macOS
-brew install osmium-tool
+cd "<project root>"
+# Sanity-check the region resolves and bounds look right:
+./venv/bin/python tile-generation/build-tiles.py --check --region calgary
 
-# Ubuntu/Debian
-sudo apt-get install osmium-tool
+# Build (parses once; writes all LOD bands + search/map-features.ndjson).
+# A city-sized region takes a while — run it and let it finish.
+./venv/bin/python tile-generation/build-tiles.py --region calgary
+
+# Brotli-compress the tiles (Caddy serves precompressed .br; ~35-40% < gzip).
+./tile-generation/brotli-tiles.sh /Volumes/Bob/MapData/calgary-svg-tiles
 ```
 
-**Download fails**
-- Check internet connection
-- Geofabrik servers may be busy - try again later
-- Use VPN if blocked in your region
+## Deploy to the live site
 
-**Empty tiles generated**
-- OSM data may not contain features for that area
-- Check if coordinates are correct (lat/lng not swapped)
-- Verify feature filters in `feature_types`
+Two pushes to the shared base, plus the search index. **Never `--delete`** — that
+base holds every other region. Tiles are stored on an exFAT volume whose
+permissions confuse Caddy (→ 403), so force sane modes with `--chmod`.
 
-**Out of disk space**
-- Ontario OSM file is ~500MB
-- Generated tiles are ~200MB
-- Ensure at least 1GB free space
+```bash
+# 0. (insurance) snapshot the live combined index before overwriting it
+ssh <vps> 'cp /srv/tiles/toronto/tile-index.json /srv/tiles/toronto/tile-index.json.bak'
 
-## Next Steps
+# 1. Push the NEW region's tiles INTO the shared base (no --delete).
+rsync -az --chmod=D755,F644 \
+  --exclude 'data/' --exclude '*.osm.pbf' --exclude '*.osm' \
+  -e "ssh -i <key>" \
+  /Volumes/Bob/MapData/calgary-svg-tiles/ \
+  <user>@<host>:/srv/tiles/toronto/
 
-After successful tile generation:
-
-1. Test locally by serving tiles with a simple HTTP server
-2. Upload to SiteGround hosting
-3. Update your web application to use SVG tiles
-4. Test accessibility with screen readers
-5. Optimize CSS for your specific needs
-
-## Advanced Usage
-
-### Generating Other Cities
-Modify the script for other cities:
-
-1. Change `gta_bounds` to target city coordinates
-2. Update Geofabrik download URL for appropriate region
-3. Adjust `tile_size` based on city density
-
-### Integration with Build Pipeline
-Add to CI/CD:
-```yaml
-# GitHub Actions example
-- name: Generate SVG Tiles
-  run: |
-    ./setup-tile-builder.sh
-    source venv/bin/activate
-    python build-toronto-tiles.py
-    
-- name: Deploy to SiteGround
-  run: rsync -r toronto-svg-tiles/ user@server:/path/
+# 2. Rebuild the COMBINED index from ALL live regions, then push it.
+#    (combine-map.py merges each region's per-band tile-index into one union.)
+./venv/bin/python tile-generation/combine-map.py /tmp/combined \
+  /Volumes/Bob/MapData/toronto-svg-tiles \
+  /Volumes/Bob/MapData/trent-lakes-tiles \
+  /Volumes/Bob/MapData/peterborough-tiles \
+  /Volumes/Bob/MapData/calgary-svg-tiles
+rsync -az --chmod=D755,F644 -e "ssh -i <key>" \
+  /tmp/combined/ <user>@<host>:/srv/tiles/toronto/
 ```
+
+## Search index (OpenSearch)
+
+The `map-features` index already holds every other region, so **append** the new
+region — do **not** rebuild from scratch unless you mean to.
+
+- **`scripts/upsert-map.ts <ndjson>` — append/upsert (SAFE).** Keyed by `osm_id`,
+  no delete; adds one region and leaves the rest untouched. Use this to add a
+  region.
+- **`scripts/index-map.ts <ndjson>` — DROP and recreate (DANGER).** Deletes the
+  whole index first, then rebuilds from the one file given. Only for a
+  from-scratch rebuild of the entire index (and then you must concatenate *every*
+  region's NDJSON). It WILL wipe all other regions if pointed at one file.
+
+Run on the VPS (where OpenSearch + `tsx` live):
+
+```bash
+# copy the region's NDJSON up, then append it
+scp /Volumes/Bob/MapData/calgary-svg-tiles/search/map-features.ndjson \
+    <user>@<host>:/tmp/calgary.ndjson
+ssh <vps> 'cd /home/ubuntu/a11ybob-website && \
+  OPENSEARCH_URL=http://localhost:9200 \
+  node_modules/.bin/tsx scripts/upsert-map.ts /tmp/calgary.ndjson'
+```
+
+## Verify
+
+```bash
+# A tile from the new region serves (200, not 403):
+curl -s -o /dev/null -w "%{http_code}\n" \
+  "https://tiles.a11ybob.com/toronto/<lat>_<lng>.svg.gz"
+
+# The combined index now covers the new region's bounds:
+curl -s "https://tiles.a11ybob.com/toronto/tile-index.json" | grep -o '"north":[0-9.]*'
+
+# Search / Context Map returns the new region:
+curl -s "https://a11ybob.com/api/map-nearby?lat=51.045&lng=-114.063" | head
+```
+
+## Serving (Caddy)
+
+`tiles.a11ybob.com` is `root * /srv/tiles` with `file_server { precompressed br
+gzip }`, CORS limited to `https://a11ybob.com`, and a one-day cache. So a tile at
+`/srv/tiles/toronto/lod14/tiles/<lat>_<lng>.svg.gz` is reachable at
+`https://tiles.a11ybob.com/toronto/lod14/tiles/<lat>_<lng>.svg.gz`, and Caddy
+serves the `.br` automatically when the client accepts brotli.
+
+## Gotchas
+
+- **exFAT → 403.** The local tile store lives on an exFAT volume; rsyncing its
+  raw permissions makes Caddy return 403. Always `--chmod=D755,F644`.
+- **Never `--delete`** against `/srv/tiles/toronto/` — it is the shared base for
+  every region.
+- **`index-map.ts` wipes the index.** Use `upsert-map.ts` to add a region.
+- **A new region needs three things**, not one: its tiles in the shared base, the
+  rebuilt combined index, and its features upserted into OpenSearch. Tiles alone
+  won't show in search; an index alone won't show on the visual map.
+- **A far region needs its own OSM source.** Regions inside `toronto.osm.pbf` are
+  free; anything outside it (other provinces) needs a Geofabrik download first.

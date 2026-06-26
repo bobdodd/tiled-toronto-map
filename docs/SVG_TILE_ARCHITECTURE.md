@@ -14,7 +14,7 @@ Transition from real-time OSM API queries to pre-rendered SVG tiles for better p
 
 ### Architecture
 ```
-OSM Data → Processing Pipeline → SVG Tiles → SiteGround Hosting → Web App
+OSM Data → Processing Pipeline → SVG Tiles → Shared Base on OVH VPS (Caddy) → Web App
 ```
 
 ### Key Benefits
@@ -103,7 +103,7 @@ class SVGTileManager {
 1. Download Toronto OSM data from Geofabrik
 2. Process into geographic grid (0.01° squares ≈ 1km²)
 3. Convert each tile to optimized SVG with accessibility features
-4. Compress and upload to SiteGround
+4. Compress (gzip + brotli) and rsync into the shared tile base on the VPS
 
 ### Phase 2: Client Refactoring
 1. Replace OSMDataFetcher with SVGTileManager
