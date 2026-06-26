@@ -1781,8 +1781,6 @@ class MapApplication {
         // Define preset positions
         const positions = {
             'toronto': { lat: 43.655, lng: -79.375, zoom: 17 },
-            'vancouver': { lat: 49.195, lng: -123.18, zoom: 16 }, // YVR airport
-            'yvr': { lat: 49.195, lng: -123.18, zoom: 16 }, // Alias for Vancouver
             'downtown-toronto': { lat: 43.651, lng: -79.382, zoom: 17 },
             'cn-tower': { lat: 43.6426, lng: -79.3871, zoom: 18 },
             'uoft': { lat: 43.6629, lng: -79.3957, zoom: 17 }, // University of Toronto
