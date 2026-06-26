@@ -88,7 +88,7 @@
     },
     {
       "id": "burlington",
-      "label": "Burlington — western slice (Brampton → Niagara Falls latitude; expand eastward later)",
+      "label": "Burlington + Hamilton — western slice (Brampton → Niagara Falls latitude; expand eastward later)",
       "localDir": "/Volumes/Bob/MapData/burlington-svg-tiles",
       "remotePath": "/srv/tiles/burlington/",
       "baseUrl": "https://tiles.a11ybob.com/burlington/",
@@ -98,11 +98,11 @@
         "north": 44.00,
         "south": 43.03,
         "east": -79.71,
-        "west": -79.95
+        "west": -80.30
       },
       "center": {
         "lat": 43.515,
-        "lng": -79.83
+        "lng": -80.00
       },
       "defaultZoom": 18,
       "tileSize": 0.01
