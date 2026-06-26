@@ -1325,8 +1325,8 @@ class MapApplication {
                 this._loadedBand = band;
             }
 
-            // Show loading indicator
-            this.announceStatus('Loading map tiles...');
+            // No "loading map tiles…" announcement — tile loading happens on every
+            // pan and zoom, and the user doesn't need to hear it.
 
             // Load SVG tiles for the area (band chosen from the zoom)
             const { tiles, stats } = await this.svgTileManager.loadTilesForArea(bounds, this.mapRenderer.zoom);
@@ -1378,10 +1378,11 @@ class MapApplication {
             // band-cache keeps them; Brotli's bandwidth saving funds the prefetch.
             this._schedulePrefetch(bounds);
 
-            // Honest completion — report failures rather than counting survivors.
-            this.announceStatus(stats && stats.failed > 0
-                ? `Map loaded — ${stats.loaded} tile${stats.loaded === 1 ? '' : 's'}, ${stats.failed} failed to load.`
-                : `Map loaded. ${stats ? stats.loaded : tiles.length} tile${(stats ? stats.loaded : tiles.length) === 1 ? '' : 's'}.`);
+            // Stay silent on a normal load — the user doesn't need a tile count on
+            // every pan/zoom. Only speak up if some tiles actually FAILED to load.
+            if (stats && stats.failed > 0) {
+                this.announceStatus(`Map data: ${stats.failed} tile${stats.failed === 1 ? '' : 's'} failed to load.`);
+            }
         } catch (error) {
             if (gen === this._loadGen) {
                 this.announceStatus('Error loading map. Please try again.');
@@ -1539,8 +1540,6 @@ class MapApplication {
                 tilesGroup.removeChild(tilesGroup.firstChild);
             }
         }
-        // Announce to screen readers
-        this.announceStatus('Map updating...');
     }
     
     cleanupDistantTiles() {
