@@ -107,31 +107,44 @@ cd "<project root>"
 
 ## Deploy to the live site
 
-Two pushes to the shared base, plus the search index. **Never `--delete`** — that
-base holds every other region. Tiles are stored on an exFAT volume whose
-permissions confuse Caddy (→ 403), so force sane modes with `--chmod`.
+Tiles first, combined index last (so the index never references a tile that
+isn't there yet), then the search index. **Never `--delete`** — the base holds
+every other region.
+
+> **Permissions.** macOS ships `openrsync`, which has no `--chmod`, and the tile
+> store is on an exFAT volume whose files are mode `700`. Those perms carry
+> across the copy, so Caddy returns **403** until you fix them (step 2). Or
+> `brew install rsync` for GNU rsync 3.x, add `--chmod=D755,F644` to the pushes,
+> and skip the manual chmods.
 
 ```bash
-# 0. (insurance) snapshot the live combined index before overwriting it
-ssh <vps> 'cp /srv/tiles/toronto/tile-index.json /srv/tiles/toronto/tile-index.json.bak'
+# 0. Snapshot the live combined index (root + every band) for rollback.
+ssh <vps> 'cd /srv/tiles/toronto && for f in tile-index.json lod*/tile-index.json; do cp "$f" "$f.bak"; done'
 
-# 1. Push the NEW region's tiles INTO the shared base (no --delete).
-rsync -az --chmod=D755,F644 \
-  --exclude 'data/' --exclude '*.osm.pbf' --exclude '*.osm' \
+# 1. Push the new region's TILE FILES into the shared base (no --delete).
+#    EXCLUDE tile-index.json — the COMBINED index goes in step 3; the per-region
+#    one would clobber it. Exclude search/ (NDJSON is for OpenSearch, not serving),
+#    styles/ (already in the base) and the OSM sources.
+rsync -rlt \
+  --exclude 'data/' --exclude 'search/' --exclude 'styles/' \
+  --exclude '*.osm.pbf' --exclude '*.osm' --exclude 'tile-index.json' \
   -e "ssh -i <key>" \
-  /Volumes/Bob/MapData/calgary-svg-tiles/ \
-  <user>@<host>:/srv/tiles/toronto/
+  <region-localDir>/ <user>@<host>:/srv/tiles/toronto/
 
-# 2. Rebuild the COMBINED index from ALL live regions, then push it.
+# 2. Fix the exFAT 700 perms on just-pushed tiles (scoped to -perm 700, so the
+#    existing 644 tiles are untouched).
+ssh <vps> 'find /srv/tiles/toronto \( -name "*.svg.gz" -o -name "*.svg.br" \) -perm 700 -exec chmod 644 {} +'
+
+# 3. Rebuild the COMBINED index from ALL live regions, push it, fix its perms.
 #    (combine-map.py merges each region's per-band tile-index into one union.)
 ./venv/bin/python tile-generation/combine-map.py /tmp/combined \
-  /Volumes/Bob/MapData/toronto-svg-tiles \
-  /Volumes/Bob/MapData/trent-lakes-tiles \
-  /Volumes/Bob/MapData/peterborough-tiles \
-  /Volumes/Bob/MapData/calgary-svg-tiles
-rsync -az --chmod=D755,F644 -e "ssh -i <key>" \
-  /tmp/combined/ <user>@<host>:/srv/tiles/toronto/
+  <toronto-localDir> <trent-lakes-localDir> <peterborough-localDir> <region-localDir>
+rsync -rlt -e "ssh -i <key>" /tmp/combined/ <user>@<host>:/srv/tiles/toronto/
+ssh <vps> 'cd /srv/tiles/toronto && chmod 644 tile-index.json lod*/tile-index.json'
 ```
+
+Sanity check: the combined root `total_tiles` should equal the sum of every
+region's own root tile count (e.g. 6344 + 2977 + 100 + 1702 = 11123).
 
 ## Search index (OpenSearch)
 
@@ -181,8 +194,10 @@ serves the `.br` automatically when the client accepts brotli.
 
 ## Gotchas
 
-- **exFAT → 403.** The local tile store lives on an exFAT volume; rsyncing its
-  raw permissions makes Caddy return 403. Always `--chmod=D755,F644`.
+- **exFAT → 403.** The local tile store is on an exFAT volume (files mode 700),
+  and macOS `openrsync` has no `--chmod`, so the 700 perms carry across and Caddy
+  returns 403. chmod the pushed tiles on the server (`-perm 700 → 644`), or use
+  GNU rsync (`brew install rsync`) with `--chmod=D755,F644`.
 - **Never `--delete`** against `/srv/tiles/toronto/` — it is the shared base for
   every region.
 - **`index-map.ts` wipes the index.** Use `upsert-map.ts` to add a region.
