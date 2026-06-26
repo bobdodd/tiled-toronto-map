@@ -1019,7 +1019,7 @@ Based on typical map usage, the next features to implement should be:
    - ❌ Banks (amenity=bank)
    - ❌ ATMs (amenity=atm)
 10. ~~**Places of worship** - Important landmarks~~ ✅ COMPLETED
-11. **Airport features** - For YVR and other airports
+11. **Airport features** - For airports (e.g. Toronto Pearson)
     - ❌ Basic aeroway features (runways, taxiways, terminals)
     - ❌ Terminal building details and indoor mapping
     - ❌ Gate information and services
