@@ -45,6 +45,7 @@ class MapApplication {
         // (handleLocationUpdate) and HEADING: a turn is movement too, so being spun
         // round in a crowd re-orients you. Off by default — opt-in, never unsolicited.
         this.autoDescribe = false;
+        this._inCoverage = null;  // last known in/out of the mapped area (null = no fix yet)
         this._autoTO = null;            // settle-poll timer handle
         this._lastFacing = null;        // last ANNOUNCED facing (deg) — turn detection
         this._settleH = null;           // heading the settle window is centred on
@@ -784,8 +785,35 @@ class MapApplication {
             this.mapRenderer.setCenter(position.lat, position.lng);
         }
 
-        // Throttled, semantic spoken feedback (NOT the raw coordinates above).
+        // Crossing the edge of the mapped area (once per transition), then the
+        // throttled, semantic spoken feedback (NOT the raw coordinates above).
+        this.maybeAnnounceCoverage(position);
         this.maybeAnnounceProximity(position);
+    }
+
+    // Announce crossing INTO or OUT OF the mapped area, once per transition. Like the
+    // rest of the running commentary it only SPEAKS while Auto-describe is on — but it
+    // tracks the in/out state on every fix so the next crossing is detected correctly
+    // regardless. Tested against the regions list in the combined index, so it follows
+    // coverage exactly (and says nothing when we have no coverage info — never cry wolf).
+    maybeAnnounceCoverage(position) {
+        const inside = this.svgTileManager
+            ? this.svgTileManager.isInCoverage(position.lat, position.lng)
+            : true;
+        if (this._inCoverage === null) { this._inCoverage = inside; return; } // first fix: just record
+        if (inside === this._inCoverage) return;                              // no change
+        this._inCoverage = inside;
+        if (!this.autoDescribe) return;                                       // only the running commentary speaks
+        this.announceStatus(inside ? 'Back in the mapped area.' : 'You have left the mapped area.');
+    }
+
+    // On-demand "nothing here" message: distinguish "no map data for this location"
+    // from "there's data, but nothing worth mentioning" — an ambiguity a blind user
+    // can't otherwise resolve. Used by Quick / Detailed describe.
+    _nothingNearbyMsg(pos) {
+        return (this.svgTileManager && !this.svgTileManager.isInCoverage(pos.lat, pos.lng))
+            ? 'You are outside the mapped area.'
+            : 'Nothing notable nearby.';
     }
 
     // ── QUICK describe ───────────────────────────────────────────────────────
@@ -800,7 +828,7 @@ class MapApplication {
         const near = await this.fetchNearby(pos.lat, pos.lng, 4);
         this._lastNearby = near;
         this._lastNearbyPos = { lat: pos.lat, lng: pos.lng };
-        if (!near.length) { this.announceStatus('Nothing notable nearby.'); return; }
+        if (!near.length) { this.announceStatus(this._nothingNearbyMsg(pos)); return; }
         const onRoad = near.find((f) => f.category === 'road' && f.distance_m <= 30);
         const heading = this.heading ? this.heading.getHeading() : null;
         const parts = [];
@@ -826,8 +854,9 @@ class MapApplication {
         this._lastNearby = near;
         this._lastNearbyPos = { lat: pos.lat, lng: pos.lng };
         if (!near.length) {
-            this.announceStatus('Nothing notable nearby.');
-            this.openDetailModal('<p>Nothing notable nearby.</p>');
+            const msg = this._nothingNearbyMsg(pos);
+            this.announceStatus(msg);
+            this.openDetailModal(`<p>${msg}</p>`);
             return;
         }
         const { speech, html } = this._describeSurround(pos, near);

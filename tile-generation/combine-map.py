@@ -58,14 +58,37 @@ def merge_band(rel, locations):
     return ordered, bounds, version
 
 
+def collect_regions(locations):
+    """Per-region coverage rectangles for the viewer's 'outside the mapped area' test.
+
+    The merged `bounds` is one UNION rectangle spanning every region (Calgary to
+    Niagara) — useless as a coverage test. Each region's own tile-index `bounds` is
+    its real bbox, and because a build fills its whole bbox (no holes), point-in-this-
+    rectangle is exactly 'a tile exists there'. Publishing the list lets the viewer
+    test a location against the regions without any per-tile lookup or extra fetch.
+    """
+    regions = []
+    for loc in locations:
+        path = os.path.join(loc, "tile-index.json")  # root band carries the region bbox
+        if not os.path.exists(path):
+            continue
+        b = (json.load(open(path)) or {}).get("bounds")
+        if not b:
+            continue
+        regions.append({"bounds": {k: b[k] for k in ("north", "south", "east", "west")}})
+    return regions
+
+
 def main():
     if len(sys.argv) < 3:
         sys.exit("usage: combine-map.py <out-dir> <location-dir> [<location-dir> ...]")
     out = sys.argv[1]
     locations = sys.argv[2:]
     primary = locations[0]
+    regions = collect_regions(locations)
     print(f"primary: {primary}")
     print(f"locations: {len(locations)} -> {[os.path.basename(l) for l in locations]}")
+    print(f"regions:   {len(regions)} coverage rectangles")
     for rel in band_rel_paths(primary):
         tiles, bounds, version = merge_band(rel, locations)
         meta = json.load(open(os.path.join(primary, rel)))  # template
@@ -73,6 +96,7 @@ def main():
         meta["total_tiles"] = len(tiles)
         meta["bounds"] = bounds
         meta["version"] = version
+        meta["regions"] = regions  # per-region coverage rectangles (same for every band)
         dest = os.path.join(out, rel)
         os.makedirs(os.path.dirname(dest) or out, exist_ok=True)
         json.dump(meta, open(dest, "w"))

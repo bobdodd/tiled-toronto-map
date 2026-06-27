@@ -50,6 +50,7 @@ export class SVGTileManager {
         this.tileIndex = null;
         this.tileVersion = null;
         this.existingTileIds = null; // ids that actually exist (from the index)
+        this.regions = null;   // per-region coverage rectangles (from the combined index)
         // Tile cache is keyed by BAND:tileId and PERSISTS across band switches, so
         // zooming out then back reuses tiles instead of re-fetching (smoother zoom,
         // less traffic). Sized well above one viewport (a z15 view is ~64 tiles) so
@@ -91,6 +92,27 @@ export class SVGTileManager {
         this.tileIndex = bi ? bi.tileIndex : null;
         this.existingTileIds = bi ? bi.existingTileIds : null;
         this.tileVersion = bi ? bi.tileVersion : null;
+        if (bi && bi.regions) this.regions = bi.regions; // band-independent; keep last known
+    }
+
+    // Is this point inside ANY mapped region? Drives the "outside the mapped area"
+    // feedback. Prefers the per-region rectangles published in the combined index
+    // (`regions`) — band-independent and exact, since each region fills its whole
+    // bbox so in-rectangle == a tile exists there. Falls back to the actual tile set
+    // if an older index has no `regions` field, and to "assume covered" if we have no
+    // coverage info at all (never cry wolf on missing data).
+    isInCoverage(lat, lng) {
+        const regions = this.regions;
+        if (regions && regions.length) {
+            return regions.some((r) => {
+                const b = r.bounds || r;
+                return lat >= b.south && lat <= b.north && lng >= b.west && lng <= b.east;
+            });
+        }
+        if (this.existingTileIds && this.existingTileIds.size) {
+            return this.existingTileIds.has(this.coordsToTileId(lat, lng));
+        }
+        return true;
     }
 
     async loadTileIndex() {
@@ -110,11 +132,14 @@ export class SVGTileManager {
             this.existingTileIds = new Set((this.tileIndex.tiles || [])
                 .map(t => String(t.file || t.id || '').replace(/\.svg(\.gz)?$/, ''))
                 .filter(Boolean));
+            // Per-region coverage rectangles, for the "outside the mapped area" test.
+            this.regions = this.tileIndex.regions || null;
             // Remember this band's index so a later switch back doesn't re-fetch it.
             this.bandIndex[this.currentBand] = {
                 tileIndex: this.tileIndex,
                 existingTileIds: this.existingTileIds,
                 tileVersion: this.tileVersion,
+                regions: this.regions,
             };
             console.log(`Loaded tile index: ${this.tileIndex.tiles?.length || 0} tiles available (v${this.tileVersion || 'none'})`);
             return this.tileIndex;
@@ -346,6 +371,7 @@ export class SVGTileManager {
                     existingTileIds: new Set((idx.tiles || [])
                         .map(t => String(t.file || t.id || '').replace(/\.svg(\.gz)?$/, '')).filter(Boolean)),
                     tileVersion: idx.version || null,
+                    regions: idx.regions || null,
                 };
             } catch (_) { return; }
         }
