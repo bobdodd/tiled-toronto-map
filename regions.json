@@ -148,6 +148,27 @@
       },
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "barrie",
+      "label": "Barrie, ON — the whole city on Lake Simcoe (Kempenfelt Bay)",
+      "localDir": "/Volumes/Bob/MapData/barrie-svg-tiles",
+      "remotePath": "/srv/tiles/barrie/",
+      "baseUrl": "https://tiles.a11ybob.com/barrie/",
+      "source": "/Volumes/Bob/MapData/barrie.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
+      "bounds": {
+        "north": 44.43,
+        "south": 44.29,
+        "east": -79.58,
+        "west": -79.75
+      },
+      "center": {
+        "lat": 44.36,
+        "lng": -79.665
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
