@@ -825,7 +825,7 @@ class MapApplication {
             this.announceStatus('Location not available yet. Turn on Track Location first.');
             return;
         }
-        const near = await this.fetchNearby(pos.lat, pos.lng, 4);
+        const { results: near, intersections } = await this.fetchNearbyFull(pos.lat, pos.lng, 4);
         this._lastNearby = near;
         this._lastNearbyPos = { lat: pos.lat, lng: pos.lng };
         if (!near.length) { this.announceStatus(this._nothingNearbyMsg(pos)); return; }
@@ -833,8 +833,13 @@ class MapApplication {
         const heading = this.heading ? this.heading.getHeading() : null;
         const parts = [];
         if (heading !== null) parts.push(`Facing ${this.cardinal(heading)}`);
-        if (onRoad) parts.push(`on ${onRoad.display}`);
-        const f = near.find((x) => x !== onRoad);
+        // The road you're on + the intersection: "on Church Street at Wellesley Street East".
+        const roadLead = this._roadLeadPhrase(onRoad, intersections);
+        if (roadLead) parts.push(roadLead);
+        // Then one nearby landmark — skipping any road already named as a cross street above.
+        const named = new Set((intersections || []).map((x) => x.display));
+        if (onRoad) named.add(onRoad.display);
+        const f = near.find((x) => x !== onRoad && !(x.category === 'road' && named.has(x.display)));
         if (f) parts.push(`${f.display} ${this._where(pos, f)}, ${this.phraseDistance(f.distance_m)}`);
         this.announceStatus((parts.join(', ') || 'Location found') + '.');
     }
@@ -849,8 +854,8 @@ class MapApplication {
             this.announceStatus('Location not available yet. Turn on Track Location first.');
             return;
         }
-        const near = (await this.fetchNearby(pos.lat, pos.lng, 10))
-            .filter((f) => f.distance_m <= 3000);
+        const { results, intersections } = await this.fetchNearbyFull(pos.lat, pos.lng, 10);
+        const near = results.filter((f) => f.distance_m <= 3000);
         this._lastNearby = near;
         this._lastNearbyPos = { lat: pos.lat, lng: pos.lng };
         if (!near.length) {
@@ -859,7 +864,7 @@ class MapApplication {
             this.openDetailModal(`<p>${msg}</p>`);
             return;
         }
-        const { speech, html } = this._describeSurround(pos, near);
+        const { speech, html } = this._describeSurround(pos, near, intersections);
         this.announceStatus(speech);
         this.openDetailModal(html);
     }
@@ -992,14 +997,31 @@ class MapApplication {
         return { hour: null, cardinal: card, bucket: card };
     }
 
-    // Build the Detailed read-out: a lead line (facing + road you're on) then every
+    // The road you're on, NAMING the intersection from the API's `intersections` list
+    // (the cross streets at each end of your block): "on Church Street at Wellesley
+    // Street East" when you're AT the corner (nearest cross street within CORNER_M),
+    // "on Church Street between Wellesley Street East and Maitland Street" mid-block,
+    // "on Church Street near <street>" with only one known, else just "on Church
+    // Street". Null when you're not on a road. The standard O&M crossing call.
+    _roadLeadPhrase(onRoad, intersections) {
+        if (!onRoad) return null;
+        const xs = (intersections || []).slice().sort((a, b) => a.distance_m - b.distance_m);
+        const CORNER_M = 25;  // within this of the crossing point => "at" that corner
+        if (!xs.length) return `on ${onRoad.display}`;
+        if (xs[0].distance_m <= CORNER_M) return `on ${onRoad.display} at ${xs[0].display}`;
+        if (xs.length >= 2) return `on ${onRoad.display} between ${xs[0].display} and ${xs[1].display}`;
+        return `on ${onRoad.display} near ${xs[0].display}`;
+    }
+
+    // Build the Detailed read-out: a lead line (facing + road/intersection) then every
     // notable feature grouped by direction. Returns plain {speech} and escaped {html}.
-    _describeSurround(pos, near) {
+    _describeSurround(pos, near, intersections) {
         const onRoad = near.find((f) => f.category === 'road' && f.distance_m <= 30);
         const heading = this.heading ? this.heading.getHeading() : null;
         const lead = [];
         if (heading !== null) lead.push(`Facing ${this.cardinal(heading)}`);
-        if (onRoad) lead.push(`on ${onRoad.display}`);
+        const roadLead = this._roadLeadPhrase(onRoad, intersections);
+        if (roadLead) lead.push(roadLead);
         const leadLine = lead.length ? lead.join(', ') + '.' : 'Location found.';
 
         const order = heading !== null
@@ -1007,9 +1029,14 @@ class MapApplication {
             : ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
         const labels = { ahead: 'Ahead', right: 'To your right', behind: 'Behind you', left: 'To your left' };
 
+        // Roads already named in the lead (the one you're on + its cross streets)
+        // shouldn't repeat among the grouped features.
+        const namedRoads = new Set((intersections || []).map((x) => x.display));
+        if (onRoad) namedRoads.add(onRoad.display);
         const groups = {};
         for (const f of near) {
             if (f === onRoad) continue;
+            if (f.category === 'road' && namedRoads.has(f.display)) continue;
             const d = this._relClock(pos, f);
             (groups[d.bucket] ||= []).push({ f, d });
         }
@@ -1101,6 +1128,26 @@ class MapApplication {
             return data.results || [];
         } catch (_) {
             return [];
+        }
+    }
+
+    // Like fetchNearby, but ALSO asks the API for INTERSECTIONS (xings=1) and returns
+    // the whole payload {results, intersections}. Used by the on-demand describes so
+    // they can name the cross street / corner; the throttled running commentary keeps
+    // using the lighter fetchNearby (no xings).
+    async fetchNearbyFull(lat, lng, limit) {
+        try {
+            const { off, on } = this.filterTokens();
+            const qs = new URLSearchParams({ lat: String(lat), lng: String(lng), limit: String(limit), xings: '1' });
+            if (off) qs.set('off', off);
+            if (on) qs.set('on', on);
+            if (this.heading && this.heading.isMoving()) qs.set('moving', '1');
+            const res = await fetch(`/api/map-nearby?${qs.toString()}`);
+            if (!res.ok) return { results: [], intersections: [] };
+            const data = await res.json();
+            return { results: data.results || [], intersections: data.intersections || [] };
+        } catch (_) {
+            return { results: [], intersections: [] };
         }
     }
 
