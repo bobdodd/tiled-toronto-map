@@ -127,6 +127,27 @@
       },
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "niagara",
+      "label": "Niagara — St. Catharines + Niagara-on-the-Lake + Niagara Falls (Canada); abuts the Burlington slice at −79.71°, east to the Niagara River",
+      "localDir": "/Volumes/Bob/MapData/niagara-svg-tiles",
+      "remotePath": "/srv/tiles/niagara/",
+      "baseUrl": "https://tiles.a11ybob.com/niagara/",
+      "source": "/Volumes/Bob/MapData/niagara.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
+      "bounds": {
+        "north": 43.27,
+        "south": 42.95,
+        "east": -78.99,
+        "west": -79.71
+      },
+      "center": {
+        "lat": 43.11,
+        "lng": -79.35
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
