@@ -88,7 +88,7 @@
     },
     {
       "id": "burlington",
-      "label": "Burlington + Hamilton — western slice (Brampton → Niagara Falls latitude; expand eastward later)",
+      "label": "Burlington + Hamilton + Cambridge — western slice (extending toward Kitchener–Waterloo)",
       "localDir": "/Volumes/Bob/MapData/burlington-svg-tiles",
       "remotePath": "/srv/tiles/burlington/",
       "baseUrl": "https://tiles.a11ybob.com/burlington/",
@@ -98,11 +98,32 @@
         "north": 44.00,
         "south": 43.03,
         "east": -79.71,
-        "west": -80.30
+        "west": -80.40
       },
       "center": {
         "lat": 43.515,
-        "lng": -80.00
+        "lng": -80.055
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "kitchener-waterloo",
+      "label": "Kitchener–Waterloo — abuts the Burlington slice at −80.40° (Cambridge), extending west across KW",
+      "localDir": "/Volumes/Bob/MapData/kitchener-waterloo-svg-tiles",
+      "remotePath": "/srv/tiles/kitchener-waterloo/",
+      "baseUrl": "https://tiles.a11ybob.com/kitchener-waterloo/",
+      "source": "/Volumes/Bob/MapData/kitchener-waterloo.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
+      "bounds": {
+        "north": 44.00,
+        "south": 43.03,
+        "east": -80.40,
+        "west": -80.62
+      },
+      "center": {
+        "lat": 43.515,
+        "lng": -80.51
       },
       "defaultZoom": 18,
       "tileSize": 0.01
