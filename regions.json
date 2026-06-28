@@ -190,6 +190,26 @@
       },
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "pei",
+      "label": "Prince Edward Island — SEARCH / Context-Map only (no tiles). Build: search-region.py --region pei.",
+      "localDir": "/Volumes/Bob/MapData/pei-search",
+      "source": "/Volumes/Bob/MapData/prince-edward-island.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/prince-edward-island.osm.pbf",
+      "bounds": {
+        "north": 48.23,
+        "south": 45.72,
+        "east": -60.40,
+        "west": -64.80
+      },
+      "center": {
+        "lat": 46.40,
+        "lng": -63.20
+      },
+      "searchSlices": 4,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
