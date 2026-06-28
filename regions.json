@@ -169,6 +169,27 @@
       },
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "quebec",
+      "label": "Quebec — SEARCH / Context-Map ONLY (no tiles): whole-province feature index. Build with --search-only; do NOT add to combine-map.",
+      "localDir": "/Volumes/Bob/MapData/quebec-search",
+      "remotePath": "/srv/tiles/quebec/",
+      "baseUrl": "https://tiles.a11ybob.com/quebec/",
+      "source": "/Volumes/Bob/MapData/quebec.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/quebec.osm.pbf",
+      "bounds": {
+        "north": 63.00,
+        "south": 44.90,
+        "east": -56.00,
+        "west": -79.90
+      },
+      "center": {
+        "lat": 45.50,
+        "lng": -73.57
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }

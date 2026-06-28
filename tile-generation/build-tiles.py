@@ -2440,9 +2440,25 @@ def main():
     parser.add_argument("--search-only", action="store_true",
                         help="Parse OSM and (re-)write the search NDJSON, but SKIP tile "
                              "generation — re-emit search data without re-tiling.")
+    parser.add_argument("--source", help="Ad-hoc OSM .pbf to build from, bypassing regions.json "
+                        "(use with --bbox and --out; e.g. one slice of a chunked search build).")
+    parser.add_argument("--bbox", help="Ad-hoc bounds as 'W,S,E,N' (used with --source).")
+    parser.add_argument("--out", help="Ad-hoc output directory (used with --source).")
     args = parser.parse_args()
 
-    region = resolve_region(args.region)
+    if args.source:
+        if not (args.bbox and args.out):
+            sys.exit("--source requires --bbox 'W,S,E,N' and --out <dir>.")
+        w, s, e, n = (float(x) for x in args.bbox.split(","))
+        region = {
+            "id": Path(args.out).name, "label": f"ad-hoc {Path(args.source).name}",
+            "localDir": args.out, "source": args.source, "osmSource": args.source,
+            "bounds": {"north": n, "south": s, "east": e, "west": w},
+            "center": {"lat": (s + n) / 2, "lng": (w + e) / 2},
+            "defaultZoom": 18, "tileSize": 0.01,
+        }
+    else:
+        region = resolve_region(args.region)
 
     if args.check:
         b = region["bounds"]
