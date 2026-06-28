@@ -210,6 +210,26 @@
       "searchSlices": 4,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "new-brunswick",
+      "label": "New Brunswick — SEARCH / Context-Map only (no tiles). Build: search-region.py --region new-brunswick.",
+      "localDir": "/Volumes/Bob/MapData/new-brunswick-search",
+      "source": "/Volumes/Bob/MapData/new-brunswick.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/new-brunswick.osm.pbf",
+      "bounds": {
+        "north": 48.52,
+        "south": 43.77,
+        "east": -61.39,
+        "west": -69.23
+      },
+      "center": {
+        "lat": 46.50,
+        "lng": -66.00
+      },
+      "searchSlices": 8,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
