@@ -250,6 +250,26 @@
       "searchSlices": 10,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "yukon",
+      "label": "Yukon — SEARCH / Context-Map only (no tiles). Build: search-region.py --region yukon.",
+      "localDir": "/Volumes/Bob/MapData/yukon-search",
+      "source": "/Volumes/Bob/MapData/yukon.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/yukon.osm.pbf",
+      "bounds": {
+        "north": 69.75,
+        "south": 59.95,
+        "east": -123.50,
+        "west": -141.05
+      },
+      "center": {
+        "lat": 64.00,
+        "lng": -135.00
+      },
+      "searchSlices": 8,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
