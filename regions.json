@@ -270,6 +270,66 @@
       "searchSlices": 8,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "newfoundland-and-labrador",
+      "label": "Newfoundland and Labrador — SEARCH / Context-Map only (no tiles). Build: search-region.py --region newfoundland-and-labrador.",
+      "localDir": "/Volumes/Bob/MapData/newfoundland-and-labrador-search",
+      "source": "/Volumes/Bob/MapData/newfoundland-and-labrador.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/newfoundland-and-labrador.osm.pbf",
+      "bounds": {
+        "north": 60.80,
+        "south": 46.40,
+        "east": -52.30,
+        "west": -67.85
+      },
+      "center": {
+        "lat": 53.00,
+        "lng": -60.00
+      },
+      "searchSlices": 16,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "northwest-territories",
+      "label": "Northwest Territories — SEARCH / Context-Map only (no tiles). Build: search-region.py --region northwest-territories.",
+      "localDir": "/Volumes/Bob/MapData/northwest-territories-search",
+      "source": "/Volumes/Bob/MapData/northwest-territories.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/northwest-territories.osm.pbf",
+      "bounds": {
+        "north": 76.00,
+        "south": 59.95,
+        "east": -100.50,
+        "west": -138.05
+      },
+      "center": {
+        "lat": 65.00,
+        "lng": -120.00
+      },
+      "searchSlices": 16,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "nunavut",
+      "label": "Nunavut — SEARCH / Context-Map only (no tiles). Build: search-region.py --region nunavut.",
+      "localDir": "/Volumes/Bob/MapData/nunavut-search",
+      "source": "/Volumes/Bob/MapData/nunavut.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/nunavut.osm.pbf",
+      "bounds": {
+        "north": 83.50,
+        "south": 51.00,
+        "east": -60.00,
+        "west": -122.00
+      },
+      "center": {
+        "lat": 67.00,
+        "lng": -90.00
+      },
+      "searchSlices": 32,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
