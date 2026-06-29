@@ -88,6 +88,9 @@ def main():
     ap.add_argument("--parallel", type=int, help="Concurrent slice parses (default: cores-3, min 2).")
     ap.add_argument("--keep-slices", action="store_true", help="Keep slice pbfs/outputs (default: clean up on success).")
     ap.add_argument("--skip-extract", action="store_true", help="Reuse existing slice pbfs (retry after a failure).")
+    ap.add_argument("--extract-batch", type=int, help="Slices to cut per osmium pass (default: all at once). "
+                    "Lower it (e.g. 8) if `osmium extract` OOMs on a dense province — fewer simultaneous "
+                    "output buffers + relation-completion sets per pass, at the cost of re-reading the .pbf.")
     args = ap.parse_args()
 
     region = resolve_region(args.region)
@@ -105,16 +108,24 @@ def main():
     step = (E - W) / NS
     spath = lambda i: work / f"slice-{i:02d}.osm.pbf"
 
-    # 1) cut N vertical slices in one osmium pass (smart = keep whole natural features).
+    # 1) cut N vertical slices with osmium (smart = keep whole natural features). All in
+    #    one pass by default; in batches if --extract-batch is set (dense provinces OOM
+    #    osmium when cutting too many smart extracts at once — Ontario's 132M nodes did).
     if args.skip_extract and all(spath(i).exists() for i in range(NS)):
         print(f"[extract] reusing {NS} existing slices.", flush=True)
     else:
-        extracts = [{"output": f"slice-{i:02d}.osm.pbf",
-                     "bbox": [round(W + i * step, 5), S, round(W + (i + 1) * step, 5), N]} for i in range(NS)]
-        cfg = work / "extract.json"
-        cfg.write_text(json.dumps({"directory": str(work), "extracts": extracts}))
-        print(f"[extract] {NS} vertical slices (smart), one pass over {Path(src).name}...", flush=True)
-        subprocess.run(["osmium", "extract", "--overwrite", "-s", "smart", "-c", str(cfg), src], check=True)
+        EB = args.extract_batch or NS
+        groups = [list(range(k, min(k + EB, NS))) for k in range(0, NS, EB)]
+        print(f"[extract] {NS} vertical slices (smart) in {len(groups)} pass(es) of <={EB} "
+              f"over {Path(src).name}...", flush=True)
+        for gi, grp in enumerate(groups):
+            extracts = [{"output": f"slice-{i:02d}.osm.pbf",
+                         "bbox": [round(W + i * step, 5), S, round(W + (i + 1) * step, 5), N]} for i in grp]
+            cfg = work / f"extract-{gi:02d}.json"
+            cfg.write_text(json.dumps({"directory": str(work), "extracts": extracts}))
+            if len(groups) > 1:
+                print(f"  pass {gi + 1}/{len(groups)}: slices {grp[0]:02d}..{grp[-1]:02d}", flush=True)
+            subprocess.run(["osmium", "extract", "--overwrite", "-s", "smart", "-c", str(cfg), src], check=True)
 
     # 2) parse each slice in its own process, PAR at a time. Big/small interleaved so
     #    concurrent memory stays bounded.
