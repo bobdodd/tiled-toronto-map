@@ -390,6 +390,86 @@
       "searchSlices": 32,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "alberta",
+      "label": "Alberta \u2014 SEARCH / Context-Map only (no tiles), WHOLE province. Calgary is already indexed via the tiled cities; this overwrites it by osm_id and adds Edmonton/rest. Build: search-region.py --region alberta.",
+      "localDir": "/Volumes/Bob/MapData/alberta-search",
+      "source": "/Volumes/Bob/MapData/alberta.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/alberta.osm.pbf",
+      "bounds": {
+        "north": 60.05,
+        "south": 48.99,
+        "east": -109.95,
+        "west": -120.05
+      },
+      "center": {
+        "lat": 54.5,
+        "lng": -115.0
+      },
+      "searchSlices": 16,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "british-columbia",
+      "label": "British Columbia \u2014 SEARCH / Context-Map only (no tiles), WHOLE province. VERTICAL 24 slices (Bob: BC density is a wide E-W southern city-belt, so longitude strips spread it; horizontal bands would pile it into one). Build: search-region.py --region british-columbia.",
+      "localDir": "/Volumes/Bob/MapData/british-columbia-search",
+      "source": "/Volumes/Bob/MapData/british-columbia.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/british-columbia.osm.pbf",
+      "bounds": {
+        "north": 60.05,
+        "south": 48.2,
+        "east": -113.95,
+        "west": -139.1
+      },
+      "center": {
+        "lat": 54.0,
+        "lng": -125.0
+      },
+      "searchSlices": 24,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "silicon-valley",
+      "label": "Silicon Valley (San Jose + Mountain View), CA, USA \u2014 SEARCH / Context-Map only, trial location for the Google a11y talk (Jul 22). Covers both Google sites + the South Bay. Build: search-region.py --region silicon-valley.",
+      "localDir": "/Volumes/Bob/MapData/silicon-valley-search",
+      "source": "/Volumes/Bob/MapData/california.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/california.osm.pbf",
+      "bounds": {
+        "north": 37.48,
+        "south": 37.2,
+        "east": -121.75,
+        "west": -122.18
+      },
+      "center": {
+        "lat": 37.36,
+        "lng": -121.95
+      },
+      "searchSlices": 6,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "zurich",
+      "label": "Zurich, Switzerland \u2014 SEARCH / Context-Map only, trial location for the Google a11y talk (Jul 22). Zurich metro. Build: search-region.py --region zurich.",
+      "localDir": "/Volumes/Bob/MapData/zurich-search",
+      "source": "/Volumes/Bob/MapData/switzerland.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/switzerland.osm.pbf",
+      "bounds": {
+        "north": 47.45,
+        "south": 47.31,
+        "east": 8.62,
+        "west": 8.45
+      },
+      "center": {
+        "lat": 47.38,
+        "lng": 8.54
+      },
+      "searchSlices": 4,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
