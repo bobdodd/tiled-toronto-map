@@ -49,13 +49,21 @@ curl -L -o /Volumes/Bob/MapData/<prov>.osm.pbf \
 ./venv/bin/python tile-generation/search-region.py --region <prov>
 #   -> <localDir>/search/map-features.ndjson   (no tiles)
 
-# 3. Deploy: compress -> rsync -> decompress on the VPS -> upsert (append by osm_id).
+# 3. Deploy: compress -> rsync -> decompress on the VPS -> upsert (append by osm_id)
+#    -> DELETE the NDJSON from the server (it's an intermediate build file).
 tile-generation/deploy-search-region.sh <prov>
 ```
 
 That's it — the province is then live in the Context Map (`/api/map-nearby`) and
-search (`/api/map-search`). The durable NDJSON stays in `/home/ubuntu/map-data/<prov>.ndjson`
-so it survives a from-scratch reindex.
+search (`/api/map-search`).
+
+**The NDJSON is not kept on the server.** Once a region is upserted, the deploy script
+removes `/home/ubuntu/map-data/<prov>.ndjson` — it's an intermediate build file and the
+VPS disk is scarce. The **live copy** is the OpenSearch index; the **source-of-truth** is
+the `.pbf` extract on the build box (re-runnable via `search-region.py`). One consequence:
+`index-map.ts`'s from-scratch reindex (which cats `map-data/*.ndjson`) no longer has a
+corpus to read. To rebuild from scratch, re-parse the `.pbf`s, or use OpenSearch
+`_reindex` / snapshots instead.
 
 ## OpenSearch capacity (read before scaling up)
 

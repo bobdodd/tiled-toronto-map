@@ -330,6 +330,46 @@
       "searchSlices": 32,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "manitoba",
+      "label": "Manitoba — SEARCH / Context-Map only (no tiles). Build: search-region.py --region manitoba.",
+      "localDir": "/Volumes/Bob/MapData/manitoba-search",
+      "source": "/Volumes/Bob/MapData/manitoba.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/manitoba.osm.pbf",
+      "bounds": {
+        "north": 60.10,
+        "south": 48.95,
+        "east": -88.00,
+        "west": -102.10
+      },
+      "center": {
+        "lat": 54.00,
+        "lng": -97.00
+      },
+      "searchSlices": 12,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "saskatchewan",
+      "label": "Saskatchewan — SEARCH / Context-Map only (no tiles). Build: search-region.py --region saskatchewan.",
+      "localDir": "/Volumes/Bob/MapData/saskatchewan-search",
+      "source": "/Volumes/Bob/MapData/saskatchewan.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/saskatchewan.osm.pbf",
+      "bounds": {
+        "north": 60.05,
+        "south": 48.95,
+        "east": -101.00,
+        "west": -110.05
+      },
+      "center": {
+        "lat": 54.00,
+        "lng": -106.00
+      },
+      "searchSlices": 10,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
