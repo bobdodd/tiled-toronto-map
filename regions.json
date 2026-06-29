@@ -11,7 +11,7 @@
       "source": "/Volumes/Bob/MapData/toronto-city.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
-        "north": 44.00,
+        "north": 44.0,
         "south": 43.39,
         "east": -78.79,
         "west": -79.83
@@ -32,10 +32,10 @@
       "source": "/Volumes/Bob/MapData/trent-lakes.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
-        "north": 44.920,
-        "south": 44.410,
-        "east": -78.070,
-        "west": -78.660
+        "north": 44.92,
+        "south": 44.41,
+        "east": -78.07,
+        "west": -78.66
       },
       "center": {
         "lat": 44.665,
@@ -54,9 +54,9 @@
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
         "north": 44.355,
-        "south": 44.260,
-        "east": -78.270,
-        "west": -78.370
+        "south": 44.26,
+        "east": -78.27,
+        "west": -78.37
       },
       "center": {
         "lat": 44.3091,
@@ -88,17 +88,17 @@
     },
     {
       "id": "burlington",
-      "label": "Burlington + Hamilton + Cambridge — western slice (extending toward Kitchener–Waterloo)",
+      "label": "Burlington + Hamilton + Cambridge \u2014 western slice (extending toward Kitchener\u2013Waterloo)",
       "localDir": "/Volumes/Bob/MapData/burlington-svg-tiles",
       "remotePath": "/srv/tiles/burlington/",
       "baseUrl": "https://tiles.a11ybob.com/burlington/",
       "source": "/Volumes/Bob/MapData/burlington.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
-        "north": 44.00,
+        "north": 44.0,
         "south": 43.03,
         "east": -79.71,
-        "west": -80.40
+        "west": -80.4
       },
       "center": {
         "lat": 43.515,
@@ -109,16 +109,16 @@
     },
     {
       "id": "kitchener-waterloo",
-      "label": "Kitchener–Waterloo — abuts the Burlington slice at −80.40° (Cambridge), extending west across KW",
+      "label": "Kitchener\u2013Waterloo \u2014 abuts the Burlington slice at \u221280.40\u00b0 (Cambridge), extending west across KW",
       "localDir": "/Volumes/Bob/MapData/kitchener-waterloo-svg-tiles",
       "remotePath": "/srv/tiles/kitchener-waterloo/",
       "baseUrl": "https://tiles.a11ybob.com/kitchener-waterloo/",
       "source": "/Volumes/Bob/MapData/kitchener-waterloo.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/toronto.osm.pbf",
       "bounds": {
-        "north": 44.00,
+        "north": 44.0,
         "south": 43.03,
-        "east": -80.40,
+        "east": -80.4,
         "west": -80.62
       },
       "center": {
@@ -130,7 +130,7 @@
     },
     {
       "id": "niagara",
-      "label": "Niagara — St. Catharines + Niagara-on-the-Lake + Niagara Falls (Canada); abuts the Burlington slice at −79.71°, east to the Niagara River",
+      "label": "Niagara \u2014 St. Catharines + Niagara-on-the-Lake + Niagara Falls (Canada); abuts the Burlington slice at \u221279.71\u00b0, east to the Niagara River",
       "localDir": "/Volumes/Bob/MapData/niagara-svg-tiles",
       "remotePath": "/srv/tiles/niagara/",
       "baseUrl": "https://tiles.a11ybob.com/niagara/",
@@ -151,7 +151,7 @@
     },
     {
       "id": "barrie",
-      "label": "Barrie, ON — the whole city on Lake Simcoe (Kempenfelt Bay)",
+      "label": "Barrie, ON \u2014 the whole city on Lake Simcoe (Kempenfelt Bay)",
       "localDir": "/Volumes/Bob/MapData/barrie-svg-tiles",
       "remotePath": "/srv/tiles/barrie/",
       "baseUrl": "https://tiles.a11ybob.com/barrie/",
@@ -172,20 +172,20 @@
     },
     {
       "id": "quebec",
-      "label": "Quebec — SEARCH / Context-Map ONLY (no tiles): whole-province feature index. Build with --search-only; do NOT add to combine-map.",
+      "label": "Quebec \u2014 SEARCH / Context-Map ONLY (no tiles): whole-province feature index. Build with --search-only; do NOT add to combine-map.",
       "localDir": "/Volumes/Bob/MapData/quebec-search",
       "remotePath": "/srv/tiles/quebec/",
       "baseUrl": "https://tiles.a11ybob.com/quebec/",
       "source": "/Volumes/Bob/MapData/quebec.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/quebec.osm.pbf",
       "bounds": {
-        "north": 63.00,
-        "south": 44.90,
-        "east": -56.00,
-        "west": -79.90
+        "north": 63.0,
+        "south": 44.9,
+        "east": -56.0,
+        "west": -79.9
       },
       "center": {
-        "lat": 45.50,
+        "lat": 45.5,
         "lng": -73.57
       },
       "defaultZoom": 18,
@@ -193,19 +193,19 @@
     },
     {
       "id": "pei",
-      "label": "Prince Edward Island — SEARCH / Context-Map only (no tiles). Build: search-region.py --region pei.",
+      "label": "Prince Edward Island \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region pei.",
       "localDir": "/Volumes/Bob/MapData/pei-search",
       "source": "/Volumes/Bob/MapData/prince-edward-island.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/prince-edward-island.osm.pbf",
       "bounds": {
         "north": 48.23,
         "south": 45.72,
-        "east": -60.40,
-        "west": -64.80
+        "east": -60.4,
+        "west": -64.8
       },
       "center": {
-        "lat": 46.40,
-        "lng": -63.20
+        "lat": 46.4,
+        "lng": -63.2
       },
       "searchSlices": 4,
       "defaultZoom": 18,
@@ -213,7 +213,7 @@
     },
     {
       "id": "new-brunswick",
-      "label": "New Brunswick — SEARCH / Context-Map only (no tiles). Build: search-region.py --region new-brunswick.",
+      "label": "New Brunswick \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region new-brunswick.",
       "localDir": "/Volumes/Bob/MapData/new-brunswick-search",
       "source": "/Volumes/Bob/MapData/new-brunswick.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/new-brunswick.osm.pbf",
@@ -224,8 +224,8 @@
         "west": -69.23
       },
       "center": {
-        "lat": 46.50,
-        "lng": -66.00
+        "lat": 46.5,
+        "lng": -66.0
       },
       "searchSlices": 8,
       "defaultZoom": 18,
@@ -233,19 +233,19 @@
     },
     {
       "id": "nova-scotia",
-      "label": "Nova Scotia — SEARCH / Context-Map only (no tiles). Build: search-region.py --region nova-scotia.",
+      "label": "Nova Scotia \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region nova-scotia.",
       "localDir": "/Volumes/Bob/MapData/nova-scotia-search",
       "source": "/Volumes/Bob/MapData/nova-scotia.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/nova-scotia.osm.pbf",
       "bounds": {
-        "north": 47.10,
-        "south": 43.30,
-        "east": -59.70,
-        "west": -66.50
+        "north": 47.1,
+        "south": 43.3,
+        "east": -59.7,
+        "west": -66.5
       },
       "center": {
-        "lat": 45.00,
-        "lng": -63.00
+        "lat": 45.0,
+        "lng": -63.0
       },
       "searchSlices": 10,
       "defaultZoom": 18,
@@ -253,19 +253,19 @@
     },
     {
       "id": "yukon",
-      "label": "Yukon — SEARCH / Context-Map only (no tiles). Build: search-region.py --region yukon.",
+      "label": "Yukon \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region yukon.",
       "localDir": "/Volumes/Bob/MapData/yukon-search",
       "source": "/Volumes/Bob/MapData/yukon.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/yukon.osm.pbf",
       "bounds": {
         "north": 69.75,
         "south": 59.95,
-        "east": -123.50,
+        "east": -123.5,
         "west": -141.05
       },
       "center": {
-        "lat": 64.00,
-        "lng": -135.00
+        "lat": 64.0,
+        "lng": -135.0
       },
       "searchSlices": 8,
       "defaultZoom": 18,
@@ -273,19 +273,19 @@
     },
     {
       "id": "newfoundland-and-labrador",
-      "label": "Newfoundland and Labrador — SEARCH / Context-Map only (no tiles). Build: search-region.py --region newfoundland-and-labrador.",
+      "label": "Newfoundland and Labrador \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region newfoundland-and-labrador.",
       "localDir": "/Volumes/Bob/MapData/newfoundland-and-labrador-search",
       "source": "/Volumes/Bob/MapData/newfoundland-and-labrador.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/newfoundland-and-labrador.osm.pbf",
       "bounds": {
-        "north": 60.80,
-        "south": 46.40,
-        "east": -52.30,
+        "north": 60.8,
+        "south": 46.4,
+        "east": -52.3,
         "west": -67.85
       },
       "center": {
-        "lat": 53.00,
-        "lng": -60.00
+        "lat": 53.0,
+        "lng": -60.0
       },
       "searchSlices": 16,
       "defaultZoom": 18,
@@ -293,19 +293,19 @@
     },
     {
       "id": "northwest-territories",
-      "label": "Northwest Territories — SEARCH / Context-Map only (no tiles). Build: search-region.py --region northwest-territories.",
+      "label": "Northwest Territories \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region northwest-territories.",
       "localDir": "/Volumes/Bob/MapData/northwest-territories-search",
       "source": "/Volumes/Bob/MapData/northwest-territories.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/northwest-territories.osm.pbf",
       "bounds": {
-        "north": 76.00,
+        "north": 76.0,
         "south": 59.95,
-        "east": -100.50,
+        "east": -100.5,
         "west": -138.05
       },
       "center": {
-        "lat": 65.00,
-        "lng": -120.00
+        "lat": 65.0,
+        "lng": -120.0
       },
       "searchSlices": 16,
       "defaultZoom": 18,
@@ -313,19 +313,19 @@
     },
     {
       "id": "nunavut",
-      "label": "Nunavut — SEARCH / Context-Map only (no tiles). Build: search-region.py --region nunavut.",
+      "label": "Nunavut \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region nunavut.",
       "localDir": "/Volumes/Bob/MapData/nunavut-search",
       "source": "/Volumes/Bob/MapData/nunavut.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/nunavut.osm.pbf",
       "bounds": {
-        "north": 83.50,
-        "south": 51.00,
-        "east": -60.00,
-        "west": -122.00
+        "north": 83.5,
+        "south": 51.0,
+        "east": -60.0,
+        "west": -122.0
       },
       "center": {
-        "lat": 67.00,
-        "lng": -90.00
+        "lat": 67.0,
+        "lng": -90.0
       },
       "searchSlices": 32,
       "defaultZoom": 18,
@@ -333,19 +333,19 @@
     },
     {
       "id": "manitoba",
-      "label": "Manitoba — SEARCH / Context-Map only (no tiles). Build: search-region.py --region manitoba.",
+      "label": "Manitoba \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region manitoba.",
       "localDir": "/Volumes/Bob/MapData/manitoba-search",
       "source": "/Volumes/Bob/MapData/manitoba.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/manitoba.osm.pbf",
       "bounds": {
-        "north": 60.10,
+        "north": 60.1,
         "south": 48.95,
-        "east": -88.00,
-        "west": -102.10
+        "east": -88.0,
+        "west": -102.1
       },
       "center": {
-        "lat": 54.00,
-        "lng": -97.00
+        "lat": 54.0,
+        "lng": -97.0
       },
       "searchSlices": 12,
       "defaultZoom": 18,
@@ -353,21 +353,41 @@
     },
     {
       "id": "saskatchewan",
-      "label": "Saskatchewan — SEARCH / Context-Map only (no tiles). Build: search-region.py --region saskatchewan.",
+      "label": "Saskatchewan \u2014 SEARCH / Context-Map only (no tiles). Build: search-region.py --region saskatchewan.",
       "localDir": "/Volumes/Bob/MapData/saskatchewan-search",
       "source": "/Volumes/Bob/MapData/saskatchewan.osm.pbf",
       "osmSource": "/Volumes/Bob/MapData/saskatchewan.osm.pbf",
       "bounds": {
         "north": 60.05,
         "south": 48.95,
-        "east": -101.00,
+        "east": -101.0,
         "west": -110.05
       },
       "center": {
-        "lat": 54.00,
-        "lng": -106.00
+        "lat": 54.0,
+        "lng": -106.0
       },
       "searchSlices": 10,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "ontario",
+      "label": "Ontario \u2014 SEARCH / Context-Map only (no tiles), WHOLE province. The dense GTA/Golden Horseshoe is already indexed via the tiled cities; this overwrites those by osm_id and adds Ottawa/north/lakes. Build: search-region.py --region ontario.",
+      "localDir": "/Volumes/Bob/MapData/ontario-search",
+      "source": "/Volumes/Bob/MapData/ontario.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/ontario.osm.pbf",
+      "bounds": {
+        "north": 56.95,
+        "south": 41.6,
+        "east": -74.3,
+        "west": -95.2
+      },
+      "center": {
+        "lat": 49.3,
+        "lng": -84.75
+      },
+      "searchSlices": 32,
       "defaultZoom": 18,
       "tileSize": 0.01
     }
