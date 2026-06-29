@@ -630,6 +630,66 @@
       "osmSource": "/Volumes/Bob/MapData/new-york.osm.pbf",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "new-haven",
+      "label": "New Haven / Yale University, CT, USA \u2014 SEARCH / Context-Map only, trial location (Ivy). Build: search-region.py --region new-haven.",
+      "source": "/Volumes/Bob/MapData/connecticut.osm.pbf",
+      "bounds": {
+        "north": 41.34,
+        "south": 41.28,
+        "east": -72.88,
+        "west": -72.97
+      },
+      "center": {
+        "lat": 41.31,
+        "lng": -72.92
+      },
+      "searchSlices": 3,
+      "localDir": "/Volumes/Bob/MapData/new-haven-search",
+      "osmSource": "/Volumes/Bob/MapData/connecticut.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "princeton",
+      "label": "Princeton / Princeton University, NJ, USA \u2014 SEARCH / Context-Map only, trial location (Ivy). Build: search-region.py --region princeton.",
+      "source": "/Volumes/Bob/MapData/new-jersey.osm.pbf",
+      "bounds": {
+        "north": 40.38,
+        "south": 40.32,
+        "east": -74.62,
+        "west": -74.7
+      },
+      "center": {
+        "lat": 40.35,
+        "lng": -74.66
+      },
+      "searchSlices": 3,
+      "localDir": "/Volumes/Bob/MapData/princeton-search",
+      "osmSource": "/Volumes/Bob/MapData/new-jersey.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "redmond",
+      "label": "Redmond / Microsoft, WA, USA \u2014 SEARCH / Context-Map only, trial location. Build: search-region.py --region redmond.",
+      "source": "/Volumes/Bob/MapData/washington.osm.pbf",
+      "bounds": {
+        "north": 47.73,
+        "south": 47.58,
+        "east": -122.05,
+        "west": -122.22
+      },
+      "center": {
+        "lat": 47.66,
+        "lng": -122.13
+      },
+      "searchSlices": 4,
+      "localDir": "/Volumes/Bob/MapData/redmond-search",
+      "osmSource": "/Volumes/Bob/MapData/washington.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
