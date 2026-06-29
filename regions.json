@@ -570,6 +570,66 @@
       "searchSlices": 8,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "ithaca",
+      "label": "Ithaca / Cornell University, NY, USA \u2014 SEARCH / Context-Map only, trial location (from the NY state extract). Build: search-region.py --region ithaca.",
+      "bounds": {
+        "north": 42.49,
+        "south": 42.4,
+        "east": -76.44,
+        "west": -76.56
+      },
+      "center": {
+        "lat": 42.45,
+        "lng": -76.48
+      },
+      "searchSlices": 3,
+      "localDir": "/Volumes/Bob/MapData/ithaca-search",
+      "source": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "buffalo",
+      "label": "Buffalo + University at Buffalo, NY, USA \u2014 SEARCH / Context-Map only, trial location (notable a11y people). Build: search-region.py --region buffalo.",
+      "bounds": {
+        "north": 43.02,
+        "south": 42.82,
+        "east": -78.75,
+        "west": -78.95
+      },
+      "center": {
+        "lat": 42.89,
+        "lng": -78.85
+      },
+      "searchSlices": 4,
+      "localDir": "/Volumes/Bob/MapData/buffalo-search",
+      "source": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "rochester",
+      "label": "Rochester + U of Rochester + RIT/NTID, NY, USA \u2014 SEARCH / Context-Map only, trial location (notable a11y people; NTID = National Technical Institute for the Deaf). Build: search-region.py --region rochester.",
+      "bounds": {
+        "north": 43.22,
+        "south": 43.05,
+        "east": -77.55,
+        "west": -77.72
+      },
+      "center": {
+        "lat": 43.15,
+        "lng": -77.62
+      },
+      "searchSlices": 4,
+      "localDir": "/Volumes/Bob/MapData/rochester-search",
+      "source": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
