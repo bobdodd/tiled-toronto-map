@@ -470,6 +470,86 @@
       "searchSlices": 4,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "south-shields",
+      "label": "South Shields, UK \u2014 SEARCH / Context-Map only, trial location. Build: search-region.py --region south-shields.",
+      "localDir": "/Volumes/Bob/MapData/south-shields-search",
+      "source": "/Volumes/Bob/MapData/tyne-and-wear.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/tyne-and-wear.osm.pbf",
+      "bounds": {
+        "north": 55.02,
+        "south": 54.95,
+        "east": -1.4,
+        "west": -1.49
+      },
+      "center": {
+        "lat": 54.99,
+        "lng": -1.43
+      },
+      "searchSlices": 4,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "london",
+      "label": "London, UK (Greater London) \u2014 SEARCH / Context-Map only, trial location. Build: search-region.py --region london.",
+      "localDir": "/Volumes/Bob/MapData/london-search",
+      "source": "/Volumes/Bob/MapData/greater-london.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/greater-london.osm.pbf",
+      "bounds": {
+        "north": 51.7,
+        "south": 51.28,
+        "east": 0.34,
+        "west": -0.52
+      },
+      "center": {
+        "lat": 51.5,
+        "lng": -0.12
+      },
+      "searchSlices": 10,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "new-york",
+      "label": "New York City (5 boroughs), USA \u2014 SEARCH / Context-Map only, trial location. Build: search-region.py --region new-york.",
+      "localDir": "/Volumes/Bob/MapData/new-york-search",
+      "source": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/new-york.osm.pbf",
+      "bounds": {
+        "north": 40.92,
+        "south": 40.48,
+        "east": -73.68,
+        "west": -74.28
+      },
+      "center": {
+        "lat": 40.71,
+        "lng": -73.99
+      },
+      "searchSlices": 10,
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "boston",
+      "label": "Boston metro, USA \u2014 SEARCH / Context-Map only, trial location. Build: search-region.py --region boston.",
+      "localDir": "/Volumes/Bob/MapData/boston-search",
+      "source": "/Volumes/Bob/MapData/massachusetts.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/massachusetts.osm.pbf",
+      "bounds": {
+        "north": 42.45,
+        "south": 42.22,
+        "east": -70.95,
+        "west": -71.25
+      },
+      "center": {
+        "lat": 42.36,
+        "lng": -71.06
+      },
+      "searchSlices": 6,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
