@@ -710,6 +710,46 @@
       "searchSlices": 4,
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "providence",
+      "label": "Providence / Brown University + RISD, RI, USA \u2014 SEARCH / Context-Map only, trial location (Ivy). Build: search-region.py --region providence.",
+      "source": "/Volumes/Bob/MapData/rhode-island.osm.pbf",
+      "bounds": {
+        "north": 41.86,
+        "south": 41.79,
+        "east": -71.38,
+        "west": -71.45
+      },
+      "center": {
+        "lat": 41.82,
+        "lng": -71.41
+      },
+      "searchSlices": 3,
+      "localDir": "/Volumes/Bob/MapData/providence-search",
+      "osmSource": "/Volumes/Bob/MapData/rhode-island.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
+      "id": "hanover",
+      "label": "Hanover / Dartmouth College, NH, USA \u2014 SEARCH / Context-Map only, trial location (Ivy). Build: search-region.py --region hanover.",
+      "source": "/Volumes/Bob/MapData/new-hampshire.osm.pbf",
+      "bounds": {
+        "north": 43.73,
+        "south": 43.68,
+        "east": -72.26,
+        "west": -72.32
+      },
+      "center": {
+        "lat": 43.7,
+        "lng": -72.29
+      },
+      "searchSlices": 2,
+      "localDir": "/Volumes/Bob/MapData/hanover-search",
+      "osmSource": "/Volumes/Bob/MapData/new-hampshire.osm.pbf",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
