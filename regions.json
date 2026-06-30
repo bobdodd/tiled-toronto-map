@@ -690,6 +690,26 @@
       "osmSource": "/Volumes/Bob/MapData/washington.osm.pbf",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "philadelphia",
+      "label": "Philadelphia / University of Pennsylvania (Penn) + Drexel, PA, USA \u2014 SEARCH / Context-Map only, trial location (Ivy). Covers University City + Center City. Build: search-region.py --region philadelphia.",
+      "localDir": "/Volumes/Bob/MapData/philadelphia-search",
+      "source": "/Volumes/Bob/MapData/pennsylvania.osm.pbf",
+      "osmSource": "/Volumes/Bob/MapData/pennsylvania.osm.pbf",
+      "bounds": {
+        "north": 40.0,
+        "south": 39.9,
+        "east": -75.1,
+        "west": -75.26
+      },
+      "center": {
+        "lat": 39.95,
+        "lng": -75.18
+      },
+      "searchSlices": 4,
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
