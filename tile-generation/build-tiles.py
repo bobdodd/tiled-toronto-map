@@ -1914,6 +1914,35 @@ class TileBuilder:
         'transit', 'historic', 'tourism', 'religious', 'man_made', 'park',
     })
 
+    # Unnamed ways worth keeping for description even though they're not searchable
+    # by name — the laneways, footpaths and steps a person actually walks. Their
+    # surface / width / incline still matter, so they keep geometry + accessibility.
+    _PATH_HIGHWAYS = frozenset({
+        'footway', 'path', 'pedestrian', 'steps', 'cycleway', 'bridleway',
+        'corridor', 'track', 'service', 'living_street', 'alley',
+    })
+
+    def _anon_kind(self, props):
+        """An unnamed, non-POI feature that still ENRICHES a description: a
+        path/laneway ('path' — keep geometry + a11y) or a building ('building' —
+        lightweight, centroid only). None for truly generic geometry (fences,
+        walls, power lines) which stays dropped."""
+        if props.get('highway') in self._PATH_HIGHWAYS:
+            return 'path'
+        if props.get('building') or props.get('building:part'):
+            return 'building'
+        return None
+
+    def _building_size(self, geom, lat):
+        """Coarse footprint size class from polygon area in m^2, so a description can
+        say 'a large building' / 'small outbuildings' without storing any geometry."""
+        import math
+        try:
+            a = geom.area * (111320.0 ** 2) * max(0.1, math.cos(math.radians(lat)))
+        except Exception:
+            return 'small'
+        return 'large' if a > 1000 else 'medium' if a > 150 else 'small'
+
     def _sample_geo_points(self, geom, max_pts=80, step_deg=0.0005):
         """Geo points for the `location` field — sampled ALONG the geometry, not just
         its centroid. OpenSearch geo_distance over a multi-point field takes the
@@ -2015,7 +2044,12 @@ class TileBuilder:
                 AREA_CATS = {'water', 'vegetation', 'natural', 'landuse', 'boundary'}
                 findable = bool(name or addr.get('housenumber') or addr.get('street')
                                 or is_poi or primary_cat == 'place')
-                if not findable and primary_cat not in AREA_CATS:
+                # Unnamed-but-descriptive features (laneways, footpaths, anonymous
+                # buildings) are kept so the read-out can say "a service lane ~8 m to
+                # your left" or "you're hemmed in by buildings"; they carry kind='path'
+                # /'building' and empty text so they never clutter named search.
+                anon = None if findable else self._anon_kind(props)
+                if not findable and primary_cat not in AREA_CATS and anon is None:
                     continue  # truly generic geometry — nothing to say about it
                 c = f['geometry'].centroid
                 if c.is_empty:
@@ -2051,30 +2085,48 @@ class TileBuilder:
                     'text': ' '.join(filter(None, [name, addr_str] + labels + ancestors)),
                     'lat': round(c.y, 6),
                     'lng': round(c.x, 6),
-                    # Multi-point along the geometry so geo_distance finds the NEAREST
-                    # point (lat/lng above stay the centroid, for display/jump-to).
-                    'location': self._sample_geo_points(f['geometry']),
                 }
-                # Big area / boundary polygons: simplify the stored ring (used only for
-                # nearest-point + point-in-polygon containment, never display) so a park
-                # or township boundary doesn't bloat the index.
-                geom_src = f['geometry']
-                if primary_cat in AREA_CATS and geom_src.geom_type in ('Polygon', 'MultiPolygon'):
-                    try:
-                        s = geom_src.simplify(0.0003, preserve_topology=False)
-                        if not s.is_empty:
-                            geom_src = s
-                    except Exception:
-                        pass
-                geom = self._geom_for_search(geom_src)
-                if geom is not None:
-                    doc['geom'] = geom   # vertices for nearest-point / containment in the API
-                # Unnamed area-character fills (water / woods / landuse / boundary) — keep
-                # them out of named + text search, but counted in the aggregation and used
-                # for "you're in ..." containment.
-                if not findable:
-                    doc['kind'] = 'area'
+                if anon == 'building':
+                    # Lightweight: centroid + size class only — NO geometry, NO outline
+                    # sampling. There are millions of buildings; this keeps the index lean
+                    # while still letting a description say "you're hemmed in by buildings,
+                    # a large one just to the north". (A building worth naming is already a
+                    # findable POI above; this branch is the anonymous remainder.)
+                    bval = props.get('building')
+                    doc['kind'] = 'building'
+                    doc['category'] = 'building'
+                    doc['subtype'] = bval if isinstance(bval, str) and bval not in ('yes', 'true', '1') else None
+                    doc['size_class'] = self._building_size(f['geometry'], c.y)
+                    doc['types'] = []
                     doc['text'] = ''
+                    doc['location'] = [{'lat': round(c.y, 6), 'lon': round(c.x, 6)}]
+                else:
+                    # Multi-point along the geometry so geo_distance finds the NEAREST point
+                    # (lat/lng above stay the centroid, for display/jump-to).
+                    doc['location'] = self._sample_geo_points(f['geometry'])
+                    # Big area / boundary polygons: simplify the stored ring (used only for
+                    # nearest-point + point-in-polygon containment, never display) so a park
+                    # or township boundary doesn't bloat the index.
+                    geom_src = f['geometry']
+                    if primary_cat in AREA_CATS and geom_src.geom_type in ('Polygon', 'MultiPolygon'):
+                        try:
+                            s = geom_src.simplify(0.0003, preserve_topology=False)
+                            if not s.is_empty:
+                                geom_src = s
+                        except Exception:
+                            pass
+                    geom = self._geom_for_search(geom_src)
+                    if geom is not None:
+                        doc['geom'] = geom   # vertices for nearest-point / containment in the API
+                    # Unnamed area fills (water/woods/landuse/boundary) and unnamed ways
+                    # (laneways/footpaths) — kept out of named + text search, but used for
+                    # description: counts, "you're in ..." containment, "a laneway nearby".
+                    if not findable:
+                        doc['kind'] = anon or 'area'   # 'path' for unnamed ways, else 'area'
+                        if anon == 'path':
+                            doc['category'] = 'path'
+                            doc['subtype'] = props.get('highway')
+                        doc['text'] = ''
                 if parent_name and parent_name != name:
                     doc['parent'] = parent_name
                     doc['parent_id'] = f.get('_named_parent_id')
