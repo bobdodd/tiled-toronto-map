@@ -183,17 +183,6 @@ body {
     white-space: nowrap;
 }
 
-/* TEMPORARY — CNIB @ Pride highlight (remove ~2026-07-04 with the booth POI). The
-   background is a fixed CNIB yellow in BOTH colour schemes, so pin dark text (dark
-   mode otherwise sets the label light -> fails on yellow) and a dark-gold border for
-   an invert-safe luminance edge. id selector outranks .control-button in either mode. */
-#describe-cnib-pride {
-    background: #fff100;
-    color: #1a1a1a;
-    border-color: #8a7400;
-}
-#describe-cnib-pride:hover { background: #f2e400; border-color: #8a7400; }
-
 /* Accordion Styles */
 .accordion-item {
     border: 1px solid #ddd;

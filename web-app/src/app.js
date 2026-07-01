@@ -268,8 +268,6 @@ class MapApplication {
         if (autoBtn) autoBtn.addEventListener('click', (e) => this.toggleAutoDescribe(e.currentTarget));
         const detailBtn = document.getElementById('describe-detailed');
         if (detailBtn) detailBtn.addEventListener('click', () => this.detailedDescribe());
-        const cnibBtn = document.getElementById('describe-cnib-pride');  // TEMPORARY (CNIB @ Pride)
-        if (cnibBtn) cnibBtn.addEventListener('click', () => this.cnibAtPride());
 
         // Detailed-surroundings modal: close button + click-outside.
         const detailClose = document.getElementById('detail-modal-close');
@@ -844,39 +842,6 @@ class MapApplication {
         const f = near.find((x) => x !== onRoad && !(x.category === 'road' && named.has(x.display)));
         if (f) parts.push(`${f.display} ${this._where(pos, f)}, ${this.phraseDistance(f.distance_m)}`);
         this.announceStatus((parts.join(', ') || 'Location found') + '.');
-    }
-
-    // ── TEMPORARY: CNIB @ Pride (remove ~2026-07-04 with the booth POI) ──────────
-    // Like Quick describe, but ALWAYS finishes with the CNIB booth's direction +
-    // distance from where you are — so an attendee can home in on it from anywhere,
-    // even beyond the map-nearby reach. Skips the extra mention only if the booth is
-    // already the landmark Quick describe picked (you're standing right at it).
-    async cnibAtPride() {
-        const pos = this.locationTracker.getCurrentPosition();
-        if (!pos) {
-            this.announceStatus('Location not available yet. Turn on Track Location first.');
-            return;
-        }
-        const BOOTH = { display: 'CNIB @ Pride', lat: 43.66578, lng: -79.38106 };
-        const { results: near, intersections } = await this.fetchNearbyFull(pos.lat, pos.lng, 4);
-        this._lastNearby = near;
-        this._lastNearbyPos = { lat: pos.lat, lng: pos.lng };
-        const onRoad = near.find((x) => x.category === 'road' && x.distance_m <= 30);
-        const heading = this.heading ? this.heading.getHeading() : null;
-        const parts = [];
-        if (heading !== null) parts.push(`Facing ${this.cardinal(heading)}`);
-        const roadLead = this._roadLeadPhrase(onRoad, intersections);
-        if (roadLead) parts.push(roadLead);
-        const named = new Set((intersections || []).map((x) => x.display));
-        if (onRoad) named.add(onRoad.display);
-        const f = near.find((x) => x !== onRoad && !(x.category === 'road' && named.has(x.display)));
-        if (f) parts.push(`${f.display} ${this._where(pos, f)}, ${this.phraseDistance(f.distance_m)}`);
-        // Always end with the booth — unless Quick describe already named it.
-        if (!(f && f.display === BOOTH.display)) {
-            const dist = this.locationTracker.calculateDistance(pos.lat, pos.lng, BOOTH.lat, BOOTH.lng);
-            parts.push(`${BOOTH.display} ${this._where(pos, BOOTH)}, ${this.phraseDistance(dist)}`);
-        }
-        this.announceStatus((parts.join(', ') || BOOTH.display) + '.');
     }
 
     // ── DETAILED surroundings ────────────────────────────────────────────────
