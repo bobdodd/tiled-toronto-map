@@ -19,7 +19,15 @@ Usage:
   gtfs-ingest.py --list                                # list matched feeds; don't download
 Stdlib only (urllib/csv/zipfile) — no pip installs.
 """
-import argparse, csv, io, json, os, sys, time, zipfile, urllib.request
+import argparse, csv, io, json, os, ssl, sys, time, zipfile, urllib.request
+
+# macOS Python ships without a system CA bundle, so verification of many feeds' HTTPS
+# certs fails and silently drops the feed. Verify against certifi's bundle when present.
+try:
+    import certifi
+    SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    SSL_CTX = ssl.create_default_context()
 
 CATALOG_URL = "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media"  # Mobility Database catalog
 REGIONS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "regions.json")
@@ -31,7 +39,7 @@ def log(*a): print(*a, file=sys.stderr, flush=True)
 
 def fetch(url, timeout=120):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    return urllib.request.urlopen(req, timeout=timeout).read()
+    return urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX).read()
 
 def read_catalog(cache="/tmp/mdb-sources.csv"):
     fresh = (os.path.exists(cache) and os.path.getsize(cache) > 100000
@@ -105,6 +113,86 @@ def mode_of(rt):
     if 1400 <= rt < 1500: return "funicular"
     return "transit"
 
+def hms_to_sec(s):
+    """GTFS 'HH:MM:SS' -> seconds since service-day midnight. May exceed 24h for
+    after-midnight trips ('25:10:00' = 1:10am next day). None if unparseable."""
+    p = (s or "").strip().split(":")
+    try:
+        if len(p) >= 2:
+            return int(p[0]) * 3600 + int(p[1]) * 60 + (int(p[2]) if len(p) > 2 else 0)
+    except ValueError:
+        pass
+    return None
+
+def sec_to_hhmm(sec):
+    m = (sec // 60) % (24 * 60)   # wrap the service-day clock so 25:10 shows as 01:10
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+# Headway windows (seconds from service-day midnight). Evening runs past 24h so
+# after-midnight departures fold into the late window rather than being lost.
+HW_WINDOWS = [("am_peak", 6 * 3600, 9 * 3600), ("midday", 9 * 3600, 15 * 3600),
+              ("pm_peak", 15 * 3600, 18 * 3600 + 1800), ("evening", 18 * 3600 + 1800, 28 * 3600)]
+DAYTYPES = [("weekday", {0, 1, 2, 3, 4}), ("saturday", {5}), ("sunday", {6})]
+
+def _median(xs):
+    xs = sorted(xs); n = len(xs)
+    if not n: return None
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+def headway_profile(secs):
+    """secs: departure seconds on the representative day -> {window: typical minutes between
+    departures}. Median of consecutive gaps; a window with <2 departures is left out."""
+    ss = sorted(set(secs))
+    prof = {}
+    for name, lo, hi in HW_WINDOWS:
+        win = [x for x in ss if lo <= x < hi]
+        if len(win) >= 2:
+            gaps = [win[i + 1] - win[i] for i in range(len(win) - 1)]
+            prof[name] = round(_median(gaps) / 60)
+    return prof
+
+def build_sched(times_by_svc, freq_by_svc, service_days):
+    """Per-route schedule KNOWLEDGE for one stop: first/last departure + a coarse headway
+    profile, split weekday / Saturday / Sunday. Never live times.
+
+    times_by_svc: {service_id: [dep_sec,...]} from stop_times.
+    freq_by_svc:  {service_id: [(start_sec, end_sec, headway_sec),...]} from frequencies.txt.
+    Uses the DOMINANT service pattern per day-type (most departures) so overlapping calendars
+    don't double-count a typical day."""
+    all_svcs = set(times_by_svc) | set(freq_by_svc)
+    if not all_svcs: return None
+    sched = {}
+    for name, days in DAYTYPES:
+        cands = [sv for sv in all_svcs if service_days.get(sv, set()) & days]
+        if not cands: continue
+        def weight(sv):
+            n = len(times_by_svc.get(sv, []))
+            for st, en, hw in freq_by_svc.get(sv, []):
+                n += max(1, (en - st) // max(hw, 60))
+            return n
+        rep = max(cands, key=weight)
+        secs = list(times_by_svc.get(rep, []))       # dominant pattern -> frequency & trip count
+        freqs = freq_by_svc.get(rep, [])
+        # first/last span the UNION of every service on this day-type, so an intra-day split
+        # (e.g. a separate late-night service_id) doesn't truncate the last departure.
+        span = []
+        for sv in cands:
+            span += times_by_svc.get(sv, [])
+            for st, en, hw in freq_by_svc.get(sv, []):
+                span += (st, en)
+        if not span: continue
+        prof = headway_profile(secs)
+        for st, en, hw in freqs:   # headway-based service: declared headway wins per overlapped window
+            hwm = max(1, round(hw / 60))
+            for wn, lo, hi in HW_WINDOWS:
+                if st < hi and en > lo:
+                    prof[wn] = min(prof.get(wn, hwm), hwm)
+        entry = {"first": sec_to_hhmm(min(span)), "last": sec_to_hhmm(max(span))}
+        if secs: entry["trips"] = len(secs)
+        if prof: entry["headway"] = prof
+        sched[name] = entry
+    return sched or None
+
 def parse_feed(zbytes):
     """One GTFS zip -> list of stop dicts (only stops served by >=1 route)."""
     z = zipfile.ZipFile(io.BytesIO(zbytes))
@@ -138,6 +226,16 @@ def parse_feed(zbytes):
         trip_service[t] = (r.get("service_id") or "").strip()
         trip_head[t] = (r.get("trip_headsign") or "").strip()   # destination / direction
 
+    freq_rid = {}   # route_id -> {service_id: [(start_sec, end_sec, headway_sec),...]} (frequencies.txt)
+    for r in rows("frequencies.txt"):
+        t = (r.get("trip_id") or "").strip()
+        rid = trip_route.get(t)
+        st, en = hms_to_sec(r.get("start_time")), hms_to_sec(r.get("end_time"))
+        try: hw = int((r.get("headway_secs") or "0").strip())
+        except ValueError: hw = 0
+        if rid and st is not None and en is not None and hw > 0:
+            freq_rid.setdefault(rid, {}).setdefault(trip_service.get(t, ""), []).append((st, en, hw))
+
     service_days = {}
     for r in rows("calendar.txt"):
         sid = (r.get("service_id") or "").strip()
@@ -158,7 +256,7 @@ def parse_feed(zbytes):
         except Exception:
             continue
         stops[sid] = {"name": (r.get("stop_name") or "").strip(), "lat": lat, "lon": lon,
-                      "rids": set(), "svcs": set(), "rheads": {}}
+                      "rids": set(), "svcs": set(), "rheads": {}, "rtimes": {}}
 
     for r in rows("stop_times.txt"):  # the big join
         s = stops.get((r.get("stop_id") or "").strip())
@@ -169,6 +267,9 @@ def parse_feed(zbytes):
             s["rids"].add(rid)
             h = trip_head.get(t)
             if h: s["rheads"].setdefault(rid, set()).add(h)   # destinations for this route AT this stop
+            dep = hms_to_sec(r.get("departure_time") or r.get("arrival_time"))
+            if dep is not None:                                # scheduled departure -> first/last + headway
+                s["rtimes"].setdefault(rid, {}).setdefault(trip_service.get(t, ""), []).append(dep)
         if t in trip_service: s["svcs"].add(trip_service[t])
 
     out = []
@@ -179,14 +280,20 @@ def parse_feed(zbytes):
             rt = routes.get(rid)
             if not rt: continue
             key = (rt["short"], rt["long"], rt["mode"])
-            entry = bykey.setdefault(key, {"short": rt["short"], "long": rt["long"], "mode": rt["mode"], "dest": set()})
+            entry = bykey.setdefault(key, {"short": rt["short"], "long": rt["long"], "mode": rt["mode"],
+                                           "dest": set(), "_times": {}, "_freq": {}})
             entry["dest"] |= s["rheads"].get(rid, set())   # merge destinations across branch route-ids
+            for svc, lst in s["rtimes"].get(rid, {}).items():   # merge departure times across branches
+                entry["_times"].setdefault(svc, []).extend(lst)
+            for svc, flist in freq_rid.get(rid, {}).items():    # and any headway-based (frequencies.txt) windows
+                entry["_freq"].setdefault(svc, []).extend(flist)
             modes.add(rt["mode"])
             if rt.get("agency"): agency = rt["agency"]
         if not bykey: continue
         rs = []
         for e in bykey.values():
             e["dest"] = sorted(e["dest"])[:4]
+            e["sched"] = build_sched(e.pop("_times"), e.pop("_freq"), service_days)   # first/last + headway
             rs.append(e)
         rs.sort(key=lambda r: (r["short"] or r["long"] or "").rjust(6))
         alldays = set()
@@ -213,7 +320,8 @@ def to_doc(mdb_id, d):
         "name": d["name"],
         "lat": round(d["lat"], 6), "lng": round(d["lon"], 6),
         "location": {"lat": d["lat"], "lon": d["lon"]},
-        "routes": [{"short": r["short"], "long": r["long"], "mode": r["mode"], "dest": r.get("dest", [])} for r in d["routes"]],
+        "routes": [{"short": r["short"], "long": r["long"], "mode": r["mode"], "dest": r.get("dest", []),
+                    "sched": r.get("sched")} for r in d["routes"]],
         "route_labels": [route_label(r) for r in d["routes"]],
         "modes": d["modes"],
         "service": d["service"],
