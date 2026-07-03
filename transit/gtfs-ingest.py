@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""
+GTFS-static -> transit-stops NDJSON for the Knowledge Map.
+
+Pulls the Mobility Database catalog, filters to the covered regions (all of Canada +
+the international trial cities), downloads each agency's GTFS-static feed, and for
+every STOP computes the set of ROUTES that serve it (name + mode) plus a coarse
+service pattern. Emits one NDJSON doc per stop for the `transit-stops` OpenSearch
+index (mirrors map-features: keyed by a unique id, streamed by the upserter).
+
+Knowledge, not live times: "which routes serve nearby stops" is macronavigation, from
+the published static schedule. No realtime, no scraping. Feeds are free open data
+(Mobility Database catalog); attribution per feed licence.
+
+Usage:
+  gtfs-ingest.py --out transit-stops.ndjson            # full run (all matched feeds)
+  gtfs-ingest.py --out t.ndjson --limit 3              # first 3 matched feeds (test)
+  gtfs-ingest.py --out t.ndjson --only 903,1234        # specific feeds by mdb id
+  gtfs-ingest.py --list                                # list matched feeds; don't download
+Stdlib only (urllib/csv/zipfile) — no pip installs.
+"""
+import argparse, csv, io, json, os, sys, time, zipfile, urllib.request
+
+CATALOG_URL = "https://storage.googleapis.com/storage/v1/b/mdb-csv/o/sources.csv?alt=media"  # Mobility Database catalog
+REGIONS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "regions.json")
+UA = "a11ybob.com transit-ingest (bob@a11ybob.com)"
+MAX_ROUTES_PER_STOP = 14
+DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+def log(*a): print(*a, file=sys.stderr, flush=True)
+
+def fetch(url, timeout=120):
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    return urllib.request.urlopen(req, timeout=timeout).read()
+
+def read_catalog(cache="/tmp/mdb-sources.csv"):
+    fresh = (os.path.exists(cache) and os.path.getsize(cache) > 100000
+             and (time.time() - os.path.getmtime(cache)) < 86400)
+    if not fresh:
+        log("fetching Mobility Database catalog...")
+        data = fetch(CATALOG_URL, timeout=90)
+        if len(data) < 100000:
+            raise SystemExit(f"catalog download looks wrong ({len(data)} bytes)")
+        tmp = cache + ".tmp"
+        with open(tmp, "wb") as f: f.write(data)
+        os.replace(tmp, cache)   # atomic — a failed fetch never leaves a bad cache
+    with open(cache, encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+def load_region_boxes():
+    """The map's coverage as (south, north, west, east) boxes from regions.json. Transit is
+    scoped to exactly where the map has features (all-Canada provinces + the trial cities)."""
+    boxes = []
+    for r in json.load(open(REGIONS_JSON))["regions"]:
+        b = r.get("bounds")
+        if b and all(k in b for k in ("south", "north", "west", "east")):
+            boxes.append((b["south"], b["north"], b["west"], b["east"]))
+    return boxes
+
+def feed_box(row):
+    try:
+        return (float(row["location.bounding_box.minimum_latitude"]),
+                float(row["location.bounding_box.maximum_latitude"]),
+                float(row["location.bounding_box.minimum_longitude"]),
+                float(row["location.bounding_box.maximum_longitude"]))
+    except Exception:
+        return None
+
+def overlaps(fb, boxes):
+    if not fb: return False
+    la0, la1, lo0, lo1 = fb
+    return any(la0 <= n and la1 >= s and lo0 <= e and lo1 >= w for s, n, w, e in boxes)
+
+def in_boxes(lat, lon, boxes):
+    return any(s <= lat <= n and w <= lon <= e for s, n, w, e in boxes)
+
+def wanted(row, boxes):
+    """A GTFS-schedule feed — active, no-auth, with a download URL — whose coverage box
+    overlaps the map's coverage. (No-bbox feeds fall back to country == CA.)"""
+    if (row.get("data_type") or "").strip() != "gtfs":                      # not gtfs_rt
+        return False
+    if (row.get("status") or "active").strip().lower() in ("deprecated", "inactive"):
+        return False
+    if (row.get("urls.authentication_type") or "0").strip() not in ("0", "", "None"):
+        return False
+    if not (row.get("urls.direct_download") or row.get("urls.latest")):
+        return False
+    fb = feed_box(row)
+    if fb is None:
+        return (row.get("location.country_code") or "").strip().upper() == "CA"
+    return overlaps(fb, boxes)
+
+def mode_of(rt):
+    try: rt = int(str(rt).strip())
+    except Exception: return "transit"
+    base = {0: "streetcar", 1: "subway", 2: "train", 3: "bus", 4: "ferry",
+            5: "cable car", 6: "gondola", 7: "funicular", 11: "trolleybus", 12: "monorail"}
+    if rt in base: return base[rt]
+    if 100 <= rt < 200: return "train"
+    if 200 <= rt < 300: return "bus"
+    if 400 <= rt < 500: return "subway"
+    if 700 <= rt < 900: return "bus"
+    if 900 <= rt < 1000: return "streetcar"
+    if 1000 <= rt < 1100: return "ferry"
+    if 1400 <= rt < 1500: return "funicular"
+    return "transit"
+
+def parse_feed(zbytes):
+    """One GTFS zip -> list of stop dicts (only stops served by >=1 route)."""
+    z = zipfile.ZipFile(io.BytesIO(zbytes))
+    names = {n.lower().split("/")[-1]: n for n in z.namelist()}  # tolerate subdir/case
+    def rows(fname):
+        real = names.get(fname)
+        if not real: return
+        with z.open(real) as f:
+            for r in csv.DictReader(io.TextIOWrapper(f, encoding="utf-8-sig", errors="replace")):
+                yield r
+
+    agencies = {}
+    for r in rows("agency.txt"):
+        agencies[(r.get("agency_id") or "").strip()] = (r.get("agency_name") or "").strip()
+    default_agency = next((v for v in agencies.values() if v), "")
+
+    routes = {}
+    for r in rows("routes.txt"):
+        rid = (r.get("route_id") or "").strip()
+        routes[rid] = {
+            "short": (r.get("route_short_name") or "").strip(),
+            "long": (r.get("route_long_name") or "").strip(),
+            "mode": mode_of(r.get("route_type")),
+            "agency": agencies.get((r.get("agency_id") or "").strip(), default_agency) or default_agency,
+        }
+
+    trip_route, trip_service, trip_head = {}, {}, {}
+    for r in rows("trips.txt"):
+        t = (r.get("trip_id") or "").strip()
+        trip_route[t] = (r.get("route_id") or "").strip()
+        trip_service[t] = (r.get("service_id") or "").strip()
+        trip_head[t] = (r.get("trip_headsign") or "").strip()   # destination / direction
+
+    service_days = {}
+    for r in rows("calendar.txt"):
+        sid = (r.get("service_id") or "").strip()
+        service_days[sid] = set(i for i, d in enumerate(DAYS) if (r.get(d) or "0").strip() == "1")
+
+    feed_date = ""
+    for r in rows("feed_info.txt"):
+        feed_date = (r.get("feed_version") or r.get("feed_start_date") or "").strip()
+        break
+
+    stops = {}
+    for r in rows("stops.txt"):
+        if (r.get("location_type") or "0").strip() not in ("0", ""):  # actual stops/platforms only
+            continue
+        sid = (r.get("stop_id") or "").strip()
+        try:
+            lat, lon = float(r["stop_lat"]), float(r["stop_lon"])
+        except Exception:
+            continue
+        stops[sid] = {"name": (r.get("stop_name") or "").strip(), "lat": lat, "lon": lon,
+                      "rids": set(), "svcs": set(), "rheads": {}}
+
+    for r in rows("stop_times.txt"):  # the big join
+        s = stops.get((r.get("stop_id") or "").strip())
+        if not s: continue
+        t = (r.get("trip_id") or "").strip()
+        rid = trip_route.get(t)
+        if rid:
+            s["rids"].add(rid)
+            h = trip_head.get(t)
+            if h: s["rheads"].setdefault(rid, set()).add(h)   # destinations for this route AT this stop
+        if t in trip_service: s["svcs"].add(trip_service[t])
+
+    out = []
+    for sid, s in stops.items():
+        if not s["rids"]: continue
+        bykey, modes, agency = {}, set(), default_agency
+        for rid in s["rids"]:
+            rt = routes.get(rid)
+            if not rt: continue
+            key = (rt["short"], rt["long"], rt["mode"])
+            entry = bykey.setdefault(key, {"short": rt["short"], "long": rt["long"], "mode": rt["mode"], "dest": set()})
+            entry["dest"] |= s["rheads"].get(rid, set())   # merge destinations across branch route-ids
+            modes.add(rt["mode"])
+            if rt.get("agency"): agency = rt["agency"]
+        if not bykey: continue
+        rs = []
+        for e in bykey.values():
+            e["dest"] = sorted(e["dest"])[:4]
+            rs.append(e)
+        rs.sort(key=lambda r: (r["short"] or r["long"] or "").rjust(6))
+        alldays = set()
+        for svc in s["svcs"]:
+            alldays |= service_days.get(svc, set())
+        wd, we = ({0, 1, 2, 3, 4} & alldays), ({5, 6} & alldays)
+        service = ("daily" if len(alldays) >= 6 else
+                   "weekdays only" if wd and not we else
+                   "weekends only" if we and not wd else
+                   "some days" if alldays else "")
+        out.append({"sid": sid, "name": s["name"], "lat": s["lat"], "lon": s["lon"],
+                    "routes": rs[:MAX_ROUTES_PER_STOP], "modes": sorted(modes),
+                    "agency": agency, "service": service, "feed_date": feed_date})
+    return out
+
+def route_label(r):
+    lbl = (r["short"] + " " + r["long"]).strip() or r["short"] or r["long"]
+    return lbl
+
+def to_doc(mdb_id, d):
+    return {
+        "stop_id": f"{mdb_id}:{d['sid']}",
+        "agency": d["agency"],
+        "name": d["name"],
+        "lat": round(d["lat"], 6), "lng": round(d["lon"], 6),
+        "location": {"lat": d["lat"], "lon": d["lon"]},
+        "routes": [{"short": r["short"], "long": r["long"], "mode": r["mode"], "dest": r.get("dest", [])} for r in d["routes"]],
+        "route_labels": [route_label(r) for r in d["routes"]],
+        "modes": d["modes"],
+        "service": d["service"],
+        "feed_date": d["feed_date"],
+    }
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", help="NDJSON output path (default stdout)")
+    ap.add_argument("--limit", type=int, default=0, help="process only the first N matched feeds")
+    ap.add_argument("--only", help="comma list of mdb_source_id to process")
+    ap.add_argument("--list", action="store_true", help="list matched feeds and exit")
+    args = ap.parse_args()
+
+    cat = read_catalog()
+    boxes = load_region_boxes()
+    feeds = [r for r in cat if wanted(r, boxes)]
+    if args.only:
+        keep = set(args.only.split(","))
+        feeds = [r for r in feeds if (r.get("mdb_source_id") or "").strip() in keep]
+    log(f"catalog: {len(cat)} rows; matched feeds: {len(feeds)}")
+
+    if args.list:
+        for r in feeds:
+            log(f"  {r.get('mdb_source_id'):>5}  {r.get('location.country_code')}/{r.get('location.subdivision_name') or '-'}  "
+                f"{r.get('provider','')[:50]}")
+        return
+
+    if args.limit: feeds = feeds[:args.limit]
+    out = open(args.out, "w", encoding="utf-8") if args.out else sys.stdout
+
+    total_stops, ok, failed = 0, 0, 0
+    for i, r in enumerate(feeds, 1):
+        mid = (r.get("mdb_source_id") or "").strip()
+        prov = (r.get("provider") or "")[:45]
+        url = (r.get("urls.direct_download") or r.get("urls.latest") or "").strip()
+        try:
+            t0 = time.time()
+            docs = [d for d in parse_feed(fetch(url, timeout=180)) if in_boxes(d["lat"], d["lon"], boxes)]
+            for d in docs:
+                out.write(json.dumps(to_doc(mid, d), ensure_ascii=False) + "\n")
+            total_stops += len(docs); ok += 1
+            log(f"[{i}/{len(feeds)}] mdb {mid} {prov}: {len(docs)} stops  ({time.time()-t0:.0f}s)")
+        except Exception as e:
+            failed += 1
+            log(f"[{i}/{len(feeds)}] mdb {mid} {prov}: FAILED — {type(e).__name__}: {e}")
+    if args.out: out.close()
+    log(f"\nDONE — feeds ok {ok}, failed {failed}; {total_stops} stop docs written.")
+
+if __name__ == "__main__":
+    main()
