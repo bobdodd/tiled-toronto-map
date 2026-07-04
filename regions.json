@@ -24,6 +24,27 @@
       "tileSize": 0.01
     },
     {
+      "id": "austin",
+      "label": "Austin",
+      "localDir": "/Users/bob3/MapData/austin-svg-tiles",
+      "remotePath": "/srv/tiles/austin/",
+      "baseUrl": "https://tiles.a11ybob.com/austin/",
+      "source": "/Users/bob3/MapData/austin-city.osm.pbf",
+      "osmSource": "/Users/bob3/MapData/austin.osm.pbf",
+      "bounds": {
+        "north": 30.55,
+        "south": 30.1,
+        "east": -97.55,
+        "west": -98.0
+      },
+      "center": {
+        "lat": 30.2672,
+        "lng": -97.7431
+      },
+      "defaultZoom": 18,
+      "tileSize": 0.01
+    },
+    {
       "id": "trent-lakes",
       "label": "Trent Lakes (avatar / location-tracker test)",
       "localDir": "/Users/bob3/MapData/trent-lakes-tiles",
