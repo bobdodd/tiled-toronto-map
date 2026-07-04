@@ -98,3 +98,4 @@ terminal-map/
 tile-studio/
 # Local dev: symlink to freshly generated tiles for ?tiles= validation
 web-app/local-tiles
+transit/state/

@@ -19,7 +19,7 @@ Usage:
   gtfs-ingest.py --list                                # list matched feeds; don't download
 Stdlib only (urllib/csv/zipfile) — no pip installs.
 """
-import argparse, csv, io, json, os, ssl, sys, time, zipfile, urllib.request
+import argparse, csv, datetime, io, json, os, ssl, sys, time, zipfile, urllib.request
 
 # macOS Python ships without a system CA bundle, so verification of many feeds' HTTPS
 # certs fails and silently drops the feed. Verify against certifi's bundle when present.
@@ -193,6 +193,15 @@ def build_sched(times_by_svc, freq_by_svc, service_days):
         sched[name] = entry
     return sched or None
 
+def wheel_label(vals):
+    """GTFS wheelchair_accessible flags ('1'/'2') seen across a route's trips -> plain label.
+    1 = at least some accessible vehicles, 2 = not accessible, absent/0 = no info."""
+    has1, has2 = "1" in vals, "2" in vals
+    if has1 and has2: return "some"   # mixed fleet
+    if has1: return "yes"
+    if has2: return "no"
+    return ""                          # no info
+
 def parse_feed(zbytes):
     """One GTFS zip -> list of stop dicts (only stops served by >=1 route)."""
     z = zipfile.ZipFile(io.BytesIO(zbytes))
@@ -219,12 +228,13 @@ def parse_feed(zbytes):
             "agency": agencies.get((r.get("agency_id") or "").strip(), default_agency) or default_agency,
         }
 
-    trip_route, trip_service, trip_head = {}, {}, {}
+    trip_route, trip_service, trip_head, trip_wheel = {}, {}, {}, {}
     for r in rows("trips.txt"):
         t = (r.get("trip_id") or "").strip()
         trip_route[t] = (r.get("route_id") or "").strip()
         trip_service[t] = (r.get("service_id") or "").strip()
         trip_head[t] = (r.get("trip_headsign") or "").strip()   # destination / direction
+        trip_wheel[t] = (r.get("wheelchair_accessible") or "0").strip()  # 0 unknown, 1 accessible, 2 not
 
     freq_rid = {}   # route_id -> {service_id: [(start_sec, end_sec, headway_sec),...]} (frequencies.txt)
     for r in rows("frequencies.txt"):
@@ -241,6 +251,26 @@ def parse_feed(zbytes):
         sid = (r.get("service_id") or "").strip()
         service_days[sid] = set(i for i, d in enumerate(DAYS) if (r.get(d) or "0").strip() == "1")
 
+    # calendar_dates.txt: feeds without a weekly calendar list each service DATE explicitly.
+    # For service_ids with no (non-empty) calendar.txt row, derive the weekdays they run from
+    # their added (exception_type=1) dates, so those feeds still get a service pattern + sched.
+    cd_days = {}
+    for r in rows("calendar_dates.txt"):
+        if (r.get("exception_type") or "").strip() != "1":   # 1 = added; ignore 2 = removed
+            continue
+        sid = (r.get("service_id") or "").strip()
+        if service_days.get(sid):                             # calendar.txt is authoritative when present
+            continue
+        ds = (r.get("date") or "").strip()
+        if len(ds) == 8 and ds.isdigit():
+            try:
+                cd_days.setdefault(sid, set()).add(
+                    datetime.date(int(ds[:4]), int(ds[4:6]), int(ds[6:8])).weekday())  # 0=Mon..6=Sun
+            except ValueError:
+                pass
+    for sid, days in cd_days.items():
+        service_days[sid] = days
+
     feed_date = ""
     for r in rows("feed_info.txt"):
         feed_date = (r.get("feed_version") or r.get("feed_start_date") or "").strip()
@@ -256,7 +286,8 @@ def parse_feed(zbytes):
         except Exception:
             continue
         stops[sid] = {"name": (r.get("stop_name") or "").strip(), "lat": lat, "lon": lon,
-                      "rids": set(), "svcs": set(), "rheads": {}, "rtimes": {}}
+                      "rids": set(), "svcs": set(), "rheads": {}, "rtimes": {}, "rwheel": {},
+                      "wheel": (r.get("wheelchair_boarding") or "0").strip()}  # 0 unknown, 1 step-free, 2 not
 
     for r in rows("stop_times.txt"):  # the big join
         s = stops.get((r.get("stop_id") or "").strip())
@@ -267,6 +298,8 @@ def parse_feed(zbytes):
             s["rids"].add(rid)
             h = trip_head.get(t)
             if h: s["rheads"].setdefault(rid, set()).add(h)   # destinations for this route AT this stop
+            w = trip_wheel.get(t)
+            if w and w != "0": s["rwheel"].setdefault(rid, set()).add(w)  # accessible-vehicle info per route
             dep = hms_to_sec(r.get("departure_time") or r.get("arrival_time"))
             if dep is not None:                                # scheduled departure -> first/last + headway
                 s["rtimes"].setdefault(rid, {}).setdefault(trip_service.get(t, ""), []).append(dep)
@@ -281,8 +314,9 @@ def parse_feed(zbytes):
             if not rt: continue
             key = (rt["short"], rt["long"], rt["mode"])
             entry = bykey.setdefault(key, {"short": rt["short"], "long": rt["long"], "mode": rt["mode"],
-                                           "dest": set(), "_times": {}, "_freq": {}})
+                                           "dest": set(), "_times": {}, "_freq": {}, "_wheel": set()})
             entry["dest"] |= s["rheads"].get(rid, set())   # merge destinations across branch route-ids
+            entry["_wheel"] |= s["rwheel"].get(rid, set())  # accessible-vehicle flags across branches
             for svc, lst in s["rtimes"].get(rid, {}).items():   # merge departure times across branches
                 entry["_times"].setdefault(svc, []).extend(lst)
             for svc, flist in freq_rid.get(rid, {}).items():    # and any headway-based (frequencies.txt) windows
@@ -294,6 +328,7 @@ def parse_feed(zbytes):
         for e in bykey.values():
             e["dest"] = sorted(e["dest"])[:4]
             e["sched"] = build_sched(e.pop("_times"), e.pop("_freq"), service_days)   # first/last + headway
+            e["wheel"] = wheel_label(e.pop("_wheel"))   # accessible vehicles: yes/no/some/""
             rs.append(e)
         rs.sort(key=lambda r: (r["short"] or r["long"] or "").rjust(6))
         alldays = set()
@@ -306,7 +341,8 @@ def parse_feed(zbytes):
                    "some days" if alldays else "")
         out.append({"sid": sid, "name": s["name"], "lat": s["lat"], "lon": s["lon"],
                     "routes": rs[:MAX_ROUTES_PER_STOP], "modes": sorted(modes),
-                    "agency": agency, "service": service, "feed_date": feed_date})
+                    "agency": agency, "service": service, "feed_date": feed_date,
+                    "wheel": s.get("wheel", "0")})
     return out
 
 def route_label(r):
@@ -321,11 +357,12 @@ def to_doc(mdb_id, d):
         "lat": round(d["lat"], 6), "lng": round(d["lon"], 6),
         "location": {"lat": d["lat"], "lon": d["lon"]},
         "routes": [{"short": r["short"], "long": r["long"], "mode": r["mode"], "dest": r.get("dest", []),
-                    "sched": r.get("sched")} for r in d["routes"]],
+                    "sched": r.get("sched"), "wheel": r.get("wheel", "")} for r in d["routes"]],
         "route_labels": [route_label(r) for r in d["routes"]],
         "modes": d["modes"],
         "service": d["service"],
         "feed_date": d["feed_date"],
+        "wheelchair": {"1": "yes", "2": "no"}.get(d.get("wheel", "0"), ""),   # stop step-free access
     }
 
 def main():
