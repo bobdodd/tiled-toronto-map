@@ -2066,6 +2066,9 @@ class TileBuilder:
                     g = self._geom_for_search(f['geometry'])
                     if g is not None:
                         idoc['geom'] = g
+                    # geo_point (multi-point along the line) so geo_distance finds the nearest
+                    # point on the block — WITHOUT it the query-time estimate can never match.
+                    idoc['location'] = self._sample_geo_points(f['geometry'])
                     fh.write(json.dumps(idoc, ensure_ascii=False) + '\n')
                     n += 1
                     continue
