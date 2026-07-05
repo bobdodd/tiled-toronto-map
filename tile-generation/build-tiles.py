@@ -1908,6 +1908,22 @@ class TileBuilder:
         'automatic_door', 'door', 'entrance',
         'hearing_loop', 'audio_loop', 'induction_loop', 'blind', 'deaf',
     )
+    # Non-accessibility enrichment carried into the search doc's `info` block: identity /
+    # contact / knowledge links (feeds the knowledge layer) + heritage designation ("B").
+    _INFO_KEYS = (
+        'wikipedia', 'wikidata', 'website', 'contact:website',
+        'opening_hours', 'phone', 'contact:phone', 'operator',
+        'heritage', 'heritage:operator', 'heritage:website', 'ref:whc',
+    )
+    # #1 obstacles: accessibility-relevant barriers/passages a traveller navigates — kept for
+    # description even when unnamed. Deliberately EXCLUDES fences/walls/hedges/retaining/city
+    # walls (linear boundaries, millions of segments, not obstacles in a path).
+    _ACCESS_BARRIERS = frozenset({
+        'bollard', 'gate', 'lift_gate', 'swing_gate', 'stile', 'kissing_gate',
+        'cycle_barrier', 'turnstile', 'full-height_turnstile', 'cattle_grid',
+        'chain', 'block', 'kerb', 'handrail', 'debris', 'log', 'sump_buster',
+        'motorcycle_barrier', 'bump_gate', 'height_restrictor',
+    })
     # Categories whose features are findable even without a name (POIs).
     _SEARCH_POI_CATS = frozenset({
         'amenity', 'shop', 'facility', 'sensory', 'mobility', 'transport',
@@ -1931,6 +1947,12 @@ class TileBuilder:
             return 'path'
         if props.get('building') or props.get('building:part'):
             return 'building'
+        # #1: accessibility-relevant obstacles/passages (a bollard, gate, kissing gate,
+        # cattle grid...) — kept even when unnamed so a description can warn of them.
+        if props.get('barrier') in self._ACCESS_BARRIERS:
+            return 'obstacle'
+        if props.get('information') in ('tactile_map', 'tactile_model'):
+            return 'obstacle'
         return None
 
     def _building_size(self, geom, lat):
@@ -2028,6 +2050,25 @@ class TileBuilder:
         with open(out, 'w', encoding='utf-8') as fh:
             for f in features:
                 props = f['properties']
+                # addr:interpolation ways: a dedicated RANGE doc so the query side can estimate
+                # "about number N" anywhere along the line (option b — leaner than materialising
+                # every interpolated point). Handled first; skips the normal POI/anon logic.
+                if props.get('_interp_from') and props.get('_interp_to'):
+                    ic = f['geometry'].centroid
+                    if ic.is_empty:
+                        continue
+                    idoc = {
+                        'osm_id': props.get('osm_id'), 'kind': 'interpolation', 'category': 'address',
+                        'lat': round(ic.y, 6), 'lng': round(ic.x, 6), 'text': '',
+                        'interp': {'from': props['_interp_from'], 'to': props['_interp_to'],
+                                   'step': props.get('addr:interpolation'), 'street': props.get('addr:street')},
+                    }
+                    g = self._geom_for_search(f['geometry'])
+                    if g is not None:
+                        idoc['geom'] = g
+                    fh.write(json.dumps(idoc, ensure_ascii=False) + '\n')
+                    n += 1
+                    continue
                 cls = f['classification']
                 primary = cls.get('primary')
                 overlays = cls.get('overlays', [])
@@ -2068,6 +2109,7 @@ class TileBuilder:
                     e['label'] for e in ([primary] + overlays) if e and e.get('label')))
                 addr_str = ' '.join(filter(None, (addr.get('housenumber'), addr.get('street'))))
                 access = {k.replace(':', '_'): props[k] for k in self._A11Y_KEYS if k in props}
+                info = {k.replace(':', '_'): props[k] for k in self._INFO_KEYS if k in props}
                 # Hierarchy CONTEXT (the information model): the NAMED containers this
                 # feature nests inside (a campus building inside a school inside...).
                 # ALL named ancestors go into `text` so searching ANY of them surfaces
@@ -2122,10 +2164,21 @@ class TileBuilder:
                     # (laneways/footpaths) — kept out of named + text search, but used for
                     # description: counts, "you're in ..." containment, "a laneway nearby".
                     if not findable:
-                        doc['kind'] = anon or 'area'   # 'path' for unnamed ways, else 'area'
+                        doc['kind'] = anon or 'area'   # 'path' / 'obstacle' / else 'area'
                         if anon == 'path':
                             doc['category'] = 'path'
                             doc['subtype'] = props.get('highway')
+                        elif anon == 'obstacle':
+                            bval = props.get('barrier')
+                            if bval in self._ACCESS_BARRIERS:
+                                doc['category'] = 'barrier'
+                                doc['subtype'] = bval
+                                doc['display'] = bval.replace('_', ' ').replace('-', ' ').title()
+                            else:  # information=tactile_map / tactile_model
+                                iv = props.get('information') or 'tactile_map'
+                                doc['category'] = 'sensory'
+                                doc['subtype'] = iv
+                                doc['display'] = iv.replace('_', ' ').title()
                         doc['text'] = ''
                 if parent_name and parent_name != name:
                     doc['parent'] = parent_name
@@ -2134,6 +2187,8 @@ class TileBuilder:
                     doc['address'] = addr
                 if access:
                     doc['access'] = access
+                if info:
+                    doc['info'] = info
                 fh.write(json.dumps(doc, ensure_ascii=False) + '\n')
                 n += 1
         print(f"Search index: wrote {n} documents -> {out}", flush=True)

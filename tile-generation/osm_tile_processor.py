@@ -29,6 +29,7 @@ class OSMHandler(osmium.SimpleHandler):
         self.taxonomy = taxonomy or Taxonomy.load()
         self.wkb = osmium.geom.WKBFactory()
         self.features = []
+        self.hn_by_node = {}   # node_id -> addr:housenumber, to resolve addr:interpolation endpoints
         # The Toronto PATH is a branded pedestrian NETWORK (a route=foot relation,
         # ref/name=PATH), spanning tunnels, at-grade links and elevated skywalks —
         # NOT just "underground footways" (which also include station underpasses
@@ -91,6 +92,9 @@ class OSMHandler(osmium.SimpleHandler):
         tags = {t.k: t.v for t in n.tags}
         if not tags:
             return
+        hn = tags.get('addr:housenumber')
+        if hn:
+            self.hn_by_node[n.id] = hn   # cache for addr:interpolation endpoint resolution
         self._collect(Point(n.location.lon, n.location.lat), tags, n.id, 'node')
 
     def way(self, w):
@@ -107,6 +111,19 @@ class OSMHandler(osmium.SimpleHandler):
             return
         if not self._bbox_overlaps(line):
             return
+        # addr:interpolation ways carry a house-number RANGE on the line; the endpoint numbers
+        # live on the end nodes. Resolve them and force-collect (they often have no other
+        # classifiable tag) so the search index can carry the range for query-time estimation.
+        if 'addr:interpolation' in tags:
+            a = self.hn_by_node.get(w.nodes[0].ref)
+            b = self.hn_by_node.get(w.nodes[-1].ref)
+            if a and b:
+                self.features.append({
+                    'geometry': line,
+                    'properties': {**tags, 'osm_id': w.id, '_interp_from': a, '_interp_to': b},
+                    'classification': {'primary': None, 'overlays': []},
+                })
+                return
         self._collect(line, tags, w.id, 'way')
 
     def area(self, a):
