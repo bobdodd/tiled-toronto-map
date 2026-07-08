@@ -831,6 +831,26 @@
       "localDir": "/Users/bob3/MapData/virginia-search",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "delaware",
+      "label": "Delaware, USA (statewide) — SEARCH / Context-Map only. Build: search-region.py --region delaware.",
+      "source": "/Users/bob3/MapData/delaware.osm.pbf",
+      "osmSource": "/Users/bob3/MapData/delaware.osm.pbf",
+      "bounds": {
+        "north": 39.84,
+        "south": 38.45,
+        "east": -75.04,
+        "west": -75.79
+      },
+      "center": {
+        "lat": 39.16,
+        "lng": -75.52
+      },
+      "searchSlices": 4,
+      "localDir": "/Users/bob3/MapData/delaware-search",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
