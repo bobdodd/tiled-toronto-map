@@ -851,6 +851,26 @@
       "localDir": "/Users/bob3/MapData/delaware-search",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "rhode-island",
+      "label": "Rhode Island, USA (statewide) — SEARCH / Context-Map only, extends the Providence trial to the whole state. Build: search-region.py --region rhode-island.",
+      "source": "/Users/bob3/MapData/rhode-island.osm.pbf",
+      "osmSource": "/Users/bob3/MapData/rhode-island.osm.pbf",
+      "bounds": {
+        "north": 42.02,
+        "south": 41.09,
+        "east": -71.12,
+        "west": -71.91
+      },
+      "center": {
+        "lat": 41.68,
+        "lng": -71.55
+      },
+      "searchSlices": 3,
+      "localDir": "/Users/bob3/MapData/rhode-island-search",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
