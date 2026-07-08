@@ -791,6 +791,26 @@
       "localDir": "/Users/bob3/MapData/washington-dc-search",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "maryland",
+      "label": "Maryland, USA (statewide) — SEARCH / Context-Map only, DC-commuter coverage. Build: search-region.py --region maryland.",
+      "source": "/Users/bob3/MapData/maryland.osm.pbf",
+      "osmSource": "/Users/bob3/MapData/maryland.osm.pbf",
+      "bounds": {
+        "north": 39.73,
+        "south": 37.88,
+        "east": -75.0,
+        "west": -79.49
+      },
+      "center": {
+        "lat": 39.0,
+        "lng": -76.7
+      },
+      "searchSlices": 12,
+      "localDir": "/Users/bob3/MapData/maryland-search",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
