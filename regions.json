@@ -871,6 +871,26 @@
       "localDir": "/Users/bob3/MapData/rhode-island-search",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "north-carolina",
+      "label": "North Carolina, USA (statewide) — SEARCH / Context-Map only, university coverage (Duke, UNC Chapel Hill, NC State, Wake Forest) + the Research Triangle, Charlotte. Build: search-region.py --region north-carolina.",
+      "source": "/Users/bob3/MapData/north-carolina.osm.pbf",
+      "osmSource": "/Users/bob3/MapData/north-carolina.osm.pbf",
+      "bounds": {
+        "north": 36.59,
+        "south": 33.75,
+        "east": -75.4,
+        "west": -84.33
+      },
+      "center": {
+        "lat": 35.6,
+        "lng": -79.4
+      },
+      "searchSlices": 16,
+      "localDir": "/Users/bob3/MapData/north-carolina-search",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
