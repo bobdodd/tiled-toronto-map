@@ -771,6 +771,26 @@
       "osmSource": "/Users/bob3/MapData/new-hampshire.osm.pbf",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "washington-dc",
+      "label": "Washington, DC (the District proper), USA — SEARCH / Context-Map only, trial location. Build: search-region.py --region washington-dc.",
+      "source": "/Users/bob3/MapData/washington-dc.osm.pbf",
+      "osmSource": "/Users/bob3/MapData/washington-dc.osm.pbf",
+      "bounds": {
+        "north": 38.995,
+        "south": 38.79,
+        "east": -76.91,
+        "west": -77.12
+      },
+      "center": {
+        "lat": 38.9072,
+        "lng": -77.0369
+      },
+      "searchSlices": 3,
+      "localDir": "/Users/bob3/MapData/washington-dc-search",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
