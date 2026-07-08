@@ -811,6 +811,26 @@
       "localDir": "/Users/bob3/MapData/maryland-search",
       "defaultZoom": 18,
       "tileSize": 0.01
+    },
+    {
+      "id": "virginia",
+      "label": "Virginia, USA (statewide) — SEARCH / Context-Map only, DC-commuter coverage (Arlington/Alexandria/Fairfax) + Richmond, Virginia Beach. Build: search-region.py --region virginia.",
+      "source": "/Users/bob3/MapData/virginia.osm.pbf",
+      "osmSource": "/Users/bob3/MapData/virginia.osm.pbf",
+      "bounds": {
+        "north": 39.47,
+        "south": 36.54,
+        "east": -75.24,
+        "west": -83.68
+      },
+      "center": {
+        "lat": 37.7,
+        "lng": -78.0
+      },
+      "searchSlices": 16,
+      "localDir": "/Users/bob3/MapData/virginia-search",
+      "defaultZoom": 18,
+      "tileSize": 0.01
     }
   ]
 }
