@@ -406,12 +406,49 @@ def to_doc(mdb_id, d):
         "wheelchair": {"1": "yes", "2": "no"}.get(d.get("wheel", "0"), ""),   # stop step-free access
     }
 
+DEFAULT_FAIL_REPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state", "failed-feeds.md")
+
+def write_fail_report(path, matched, ok, recovered, still):
+    """Record the feeds that failed EVERY attempt, as markdown, to be triaged later — the run
+    itself always completes and always writes its corpus. Rewritten on every run, including
+    when nothing failed: a stale report from a previous run must never read as current."""
+    when = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    esc = lambda s: str(s).replace("|", r"\|").replace("\n", " ")
+    md = [
+        "# GTFS ingest — failed feeds", "",
+        f"_Run finished {when}._", "",
+        f"- feeds matched: **{matched}**",
+        f"- ingested: **{ok}**",
+        f"- recovered on retry: **{recovered}**",
+        f"- still failing: **{len(still)}**", "",
+    ]
+    if not still:
+        md += ["Every matched feed was ingested. Nothing to triage.", ""]
+    else:
+        md += [
+            "These agencies are **absent from this corpus**. The transit deploy is a `--rebuild`,",
+            "so deploying it drops their stops from the live index until the feed works again.", "",
+            "| mdb | provider | where | error | URLs tried |",
+            "|---|---|---|---|---|",
+        ]
+        for f in still:
+            urls = "<br>".join(f"`{esc(u)}`" for u in f["urls"]) or "_none published_"
+            md.append(f"| {esc(f['mdb'])} | {esc(f['provider'])} | {esc(f['where'])} | "
+                      f"{esc(type(f['error']).__name__)}: {esc(f['error'])} | {urls} |")
+        md.append("")
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(md))
+    log(f"failed-feed report: {path}")
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", help="NDJSON output path (default stdout)")
     ap.add_argument("--limit", type=int, default=0, help="process only the first N matched feeds")
     ap.add_argument("--only", help="comma list of mdb_source_id to process")
     ap.add_argument("--list", action="store_true", help="list matched feeds and exit")
+    ap.add_argument("--fail-report", default=DEFAULT_FAIL_REPORT,
+                    help=f"markdown report of feeds that failed every retry (default: {DEFAULT_FAIL_REPORT})")
     args = ap.parse_args()
 
     cat = read_catalog()
@@ -465,16 +502,23 @@ def main():
                 total_stops += ingest(r, RETRY_ATTEMPTS, f"[retry {i}/{len(failed)}] mdb {mid} {prov}")
                 ok += 1
             except Exception as e:
-                still.append((mid, prov, e))
+                still.append({
+                    "mdb": mid, "provider": (r.get("provider") or "").strip(),
+                    "where": f"{(r.get('location.country_code') or '?').strip()}/"
+                             f"{(r.get('location.subdivision_name') or '-').strip()}",
+                    "urls": feed_urls(r), "error": e,
+                })
                 log(f"[retry {i}/{len(failed)}] mdb {mid} {prov}: STILL FAILING — {type(e).__name__}: {e}")
 
     if args.out: out.close()
     log(f"\nDONE — feeds ok {ok}, failed {len(still)}; {total_stops} stop docs written.")
+    # A permanently dead feed is recorded, not fatal: the corpus is complete apart from it, and
+    # exiting non-zero here would block a deploy that is otherwise good. Triage from the report.
+    write_fail_report(args.fail_report, len(feeds), ok, len(failed) - len(still), still)
     if still:
-        # Name them: the deploy is a --rebuild, so these agencies would be dropped from the index.
         log("STILL FAILING after retries — their stops are ABSENT from this corpus:")
-        for mid, prov, e in still:
-            log(f"   mdb {mid}  {prov}: {type(e).__name__}: {e}")
+        for f in still:
+            log(f"   mdb {f['mdb']}  {f['provider'][:45]}: {type(f['error']).__name__}: {f['error']}")
 
 if __name__ == "__main__":
     main()
