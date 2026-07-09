@@ -48,6 +48,15 @@ def fetch(url, timeout=120):
 FETCH_ATTEMPTS = 2          # per URL, first pass — keep the main run moving
 RETRY_ATTEMPTS = 3          # per URL, final pass — try harder once nothing else is waiting
 BACKOFF = (5, 15, 45)       # seconds between attempts
+ZIP_MAGIC = b"PK\x03\x04"
+
+class FeedFetchError(Exception):
+    """Every candidate URL failed. Carries the error for EACH url: the agency's own host and
+    the mirror fail for different reasons (weak TLS here, a 404 there), and a report naming
+    only the last one sends you chasing the wrong problem."""
+    def __init__(self, errors):
+        self.errors = errors            # {url: Exception}, in the order tried
+        super().__init__("; ".join(f"{type(e).__name__}: {e}" for e in errors.values()) or "no download URL")
 
 def feed_urls(row):
     """Download candidates, best first: the agency's own URL, then the Mobility Database
@@ -61,20 +70,27 @@ def feed_urls(row):
 
 def fetch_feed(row, attempts, timeout=180):
     """Fetch a feed's zip, trying every candidate URL `attempts` times with backoff.
-    Raises the last error only once every candidate is exhausted."""
+
+    A 200 is not success: agencies serve an HTML error page under the .zip URL (Idaho's MRTA
+    does exactly this), and accepting it would blow up in parse_feed AFTER the mirror — which
+    serves a perfectly good zip — was already passed over. So check the payload really is a
+    zip, and treat anything else as a failure of that URL."""
     urls = feed_urls(row)
     if not urls:
-        raise ValueError("no download URL")
-    last = None
+        raise FeedFetchError({})
+    errors = {}
     for attempt in range(attempts):
         for u in urls:
             try:
-                return fetch(u, timeout=timeout)
+                data = fetch(u, timeout=timeout)
+                if data[:4] != ZIP_MAGIC:
+                    raise ValueError(f"not a zip: {len(data)} bytes beginning {data[:16]!r}")
+                return data
             except Exception as e:
-                last = e
+                errors[u] = e
         if attempt + 1 < attempts:
             time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
-    raise last
+    raise FeedFetchError(errors)
 
 def read_catalog(cache="/tmp/mdb-sources.csv"):
     fresh = (os.path.exists(cache) and os.path.getsize(cache) > 100000
@@ -428,13 +444,17 @@ def write_fail_report(path, matched, ok, recovered, still):
         md += [
             "These agencies are **absent from this corpus**. The transit deploy is a `--rebuild`,",
             "so deploying it drops their stops from the live index until the feed works again.", "",
-            "| mdb | provider | where | error | URLs tried |",
-            "|---|---|---|---|---|",
+            "| mdb | provider | where | what failed |",
+            "|---|---|---|---|",
         ]
         for f in still:
-            urls = "<br>".join(f"`{esc(u)}`" for u in f["urls"]) or "_none published_"
-            md.append(f"| {esc(f['mdb'])} | {esc(f['provider'])} | {esc(f['where'])} | "
-                      f"{esc(type(f['error']).__name__)}: {esc(f['error'])} | {urls} |")
+            if f["errors"]:                       # every URL, with its own error — they differ
+                detail = "<br>".join(f"`{esc(u)}`<br>&nbsp;&nbsp;↳ {esc(type(e).__name__)}: {esc(e)}"
+                                     for u, e in f["errors"].items())
+            else:                                 # failed after a good download (corrupt feed)
+                tried = "<br>".join(f"`{esc(u)}`" for u in f["urls"]) or "_none published_"
+                detail = f"{tried}<br>&nbsp;&nbsp;↳ {esc(type(f['error']).__name__)}: {esc(f['error'])}"
+            md.append(f"| {esc(f['mdb'])} | {esc(f['provider'])} | {esc(f['where'])} | {detail} |")
         md.append("")
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
@@ -507,6 +527,7 @@ def main():
                     "where": f"{(r.get('location.country_code') or '?').strip()}/"
                              f"{(r.get('location.subdivision_name') or '-').strip()}",
                     "urls": feed_urls(r), "error": e,
+                    "errors": getattr(e, "errors", {}),   # per-URL when the download failed
                 })
                 log(f"[retry {i}/{len(failed)}] mdb {mid} {prov}: STILL FAILING — {type(e).__name__}: {e}")
 
