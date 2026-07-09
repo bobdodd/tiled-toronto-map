@@ -87,7 +87,13 @@ def wanted(row, boxes):
     overlaps the map's coverage. (No-bbox feeds fall back to country == CA.)"""
     if (row.get("data_type") or "").strip() != "gtfs":                      # not gtfs_rt
         return False
-    if (row.get("status") or "active").strip().lower() in ("deprecated", "inactive"):
+    # Production feeds only, as an ALLOWLIST — a status the catalog invents later must not be
+    # ingested by default. The catalog also carries 'deprecated', 'inactive' and 'development'.
+    # TTC publishes both: mdb 732 (production) and mdb 2253 ('development', "Static feed for
+    # beta realtime feed"). Both were being ingested, so every Toronto stop existed twice under
+    # distinct ids; the beta feed carries no subway routes at all, and types route 882
+    # "Operator Shuttles" as route_type 4 (ferry), tagging 36 downtown stops as ferry stops.
+    if (row.get("status") or "active").strip().lower() not in ("", "active"):
         return False
     if (row.get("urls.authentication_type") or "0").strip() not in ("0", "", "None"):
         return False
