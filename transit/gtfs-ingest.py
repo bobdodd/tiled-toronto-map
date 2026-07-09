@@ -41,6 +41,41 @@ def fetch(url, timeout=120):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     return urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX).read()
 
+# A feed failure is almost always transient — a DNS blip, a momentary agency outage — not a
+# dead feed. It matters because the deploy is a --rebuild: a feed that yields nothing has its
+# agency DELETED from the live index, and the refresh guard only trips below 85% of live, so
+# losing one agency (TTC is ~3% of the corpus) sails straight through it.
+FETCH_ATTEMPTS = 2          # per URL, first pass — keep the main run moving
+RETRY_ATTEMPTS = 3          # per URL, final pass — try harder once nothing else is waiting
+BACKOFF = (5, 15, 45)       # seconds between attempts
+
+def feed_urls(row):
+    """Download candidates, best first: the agency's own URL, then the Mobility Database
+    mirror — which usually answers when the agency's own host doesn't."""
+    urls = []
+    for key in ("urls.direct_download", "urls.latest"):
+        u = (row.get(key) or "").strip()
+        if u and u not in urls:
+            urls.append(u)
+    return urls
+
+def fetch_feed(row, attempts, timeout=180):
+    """Fetch a feed's zip, trying every candidate URL `attempts` times with backoff.
+    Raises the last error only once every candidate is exhausted."""
+    urls = feed_urls(row)
+    if not urls:
+        raise ValueError("no download URL")
+    last = None
+    for attempt in range(attempts):
+        for u in urls:
+            try:
+                return fetch(u, timeout=timeout)
+            except Exception as e:
+                last = e
+        if attempt + 1 < attempts:
+            time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
+    raise last
+
 def read_catalog(cache="/tmp/mdb-sources.csv"):
     fresh = (os.path.exists(cache) and os.path.getsize(cache) > 100000
              and (time.time() - os.path.getmtime(cache)) < 86400)
@@ -396,23 +431,50 @@ def main():
     if args.limit: feeds = feeds[:args.limit]
     out = open(args.out, "w", encoding="utf-8") if args.out else sys.stdout
 
-    total_stops, ok, failed = 0, 0, 0
+    def ingest(row, attempts, label):
+        """Fetch, parse and write one feed. Returns the number of stops written."""
+        mid = (row.get("mdb_source_id") or "").strip()
+        t0 = time.time()
+        docs = [d for d in parse_feed(fetch_feed(row, attempts)) if in_boxes(d["lat"], d["lon"], boxes)]
+        for d in docs:
+            out.write(json.dumps(to_doc(mid, d), ensure_ascii=False) + "\n")
+        log(f"{label}: {len(docs)} stops  ({time.time()-t0:.0f}s)")
+        return len(docs)
+
+    total_stops, ok = 0, 0
+    failed = []                                  # rows to come back to, once nothing else is waiting
     for i, r in enumerate(feeds, 1):
         mid = (r.get("mdb_source_id") or "").strip()
         prov = (r.get("provider") or "")[:45]
-        url = (r.get("urls.direct_download") or r.get("urls.latest") or "").strip()
         try:
-            t0 = time.time()
-            docs = [d for d in parse_feed(fetch(url, timeout=180)) if in_boxes(d["lat"], d["lon"], boxes)]
-            for d in docs:
-                out.write(json.dumps(to_doc(mid, d), ensure_ascii=False) + "\n")
-            total_stops += len(docs); ok += 1
-            log(f"[{i}/{len(feeds)}] mdb {mid} {prov}: {len(docs)} stops  ({time.time()-t0:.0f}s)")
+            total_stops += ingest(r, FETCH_ATTEMPTS, f"[{i}/{len(feeds)}] mdb {mid} {prov}")
+            ok += 1
         except Exception as e:
-            failed += 1
-            log(f"[{i}/{len(feeds)}] mdb {mid} {prov}: FAILED — {type(e).__name__}: {e}")
+            failed.append(r)
+            log(f"[{i}/{len(feeds)}] mdb {mid} {prov}: FAILED — {type(e).__name__}: {e}  (queued for retry)")
+
+    # Retry the failures at the END, not inline: one flaky agency must never stall the other
+    # four hundred, but an agency silently missing from the corpus is far worse than a long run.
+    still = []
+    if failed:
+        log(f"\nRETRY — {len(failed)} feed(s) failed; retrying each with backoff...")
+        for i, r in enumerate(failed, 1):
+            mid = (r.get("mdb_source_id") or "").strip()
+            prov = (r.get("provider") or "")[:45]
+            try:
+                total_stops += ingest(r, RETRY_ATTEMPTS, f"[retry {i}/{len(failed)}] mdb {mid} {prov}")
+                ok += 1
+            except Exception as e:
+                still.append((mid, prov, e))
+                log(f"[retry {i}/{len(failed)}] mdb {mid} {prov}: STILL FAILING — {type(e).__name__}: {e}")
+
     if args.out: out.close()
-    log(f"\nDONE — feeds ok {ok}, failed {failed}; {total_stops} stop docs written.")
+    log(f"\nDONE — feeds ok {ok}, failed {len(still)}; {total_stops} stop docs written.")
+    if still:
+        # Name them: the deploy is a --rebuild, so these agencies would be dropped from the index.
+        log("STILL FAILING after retries — their stops are ABSENT from this corpus:")
+        for mid, prov, e in still:
+            log(f"   mdb {mid}  {prov}: {type(e).__name__}: {e}")
 
 if __name__ == "__main__":
     main()
