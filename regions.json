@@ -673,21 +673,21 @@
       "tileSize": 0.01
     },
     {
-      "id": "princeton",
-      "label": "Princeton / Princeton University, NJ, USA \u2014 SEARCH / Context-Map only, trial location (Ivy). Build: search-region.py --region princeton.",
+      "id": "new-jersey",
+      "label": "New Jersey, USA (statewide) \u2014 SEARCH / Context-Map only, replaces the Princeton trial with the whole state (Newark, Jersey City, Trenton, Princeton). Build: search-region.py --region new-jersey.",
       "source": "/Users/bob3/MapData/new-jersey.osm.pbf",
       "bounds": {
-        "north": 40.38,
-        "south": 40.32,
-        "east": -74.62,
-        "west": -74.7
+        "north": 41.36,
+        "south": 38.79,
+        "east": -73.88,
+        "west": -75.57
       },
       "center": {
-        "lat": 40.35,
-        "lng": -74.66
+        "lat": 40.2,
+        "lng": -74.6
       },
-      "searchSlices": 3,
-      "localDir": "/Users/bob3/MapData/princeton-search",
+      "searchSlices": 12,
+      "localDir": "/Users/bob3/MapData/new-jersey-search",
       "osmSource": "/Users/bob3/MapData/new-jersey.osm.pbf",
       "defaultZoom": 18,
       "tileSize": 0.01
