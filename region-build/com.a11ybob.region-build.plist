@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.a11ybob.region-build</string>
+
+  <!-- The region to build. Change this and `launchctl kickstart -k` to run the next state. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map/region-build/run.sh</string>
+    <string>new-york</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <!-- Start on load and after a reboot; the run.sh skips whatever is already done. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Restart ONLY on a non-zero exit: a dropped connection or a killed parse comes straight
+       back and resumes. A clean finish (exit 0) stops the job for good. -->
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <!-- Stay out of the way: low CPU priority, low disk I/O priority, background QoS. -->
+  <key>Nice</key>
+  <integer>10</integer>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map/region-build/state/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map/region-build/state/launchd.err.log</string>
+</dict>
+</plist>

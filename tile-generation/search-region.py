@@ -88,6 +88,10 @@ def main():
     ap.add_argument("--parallel", type=int, help="Concurrent slice parses (default: cores-3, min 2).")
     ap.add_argument("--keep-slices", action="store_true", help="Keep slice pbfs/outputs (default: clean up on success).")
     ap.add_argument("--skip-extract", action="store_true", help="Reuse existing slice pbfs (retry after a failure).")
+    ap.add_argument("--resume", action="store_true",
+                    help="Pick up where a killed run left off: reuse the slice pbfs and skip slices that "
+                         "already parsed successfully. Safe across a crash, a reboot, or a closed lid — "
+                         "a step counts as done only once it RETURNED 0, never because its output exists.")
     ap.add_argument("--extract-batch", type=int, help="Slices to cut per osmium pass (default: all at once). "
                     "Lower it (e.g. 8) if `osmium extract` OOMs on a dense province — fewer simultaneous "
                     "output buffers + relation-completion sets per pass, at the cost of re-reading the .pbf.")
@@ -111,9 +115,16 @@ def main():
     # 1) cut N vertical slices with osmium (smart = keep whole natural features). All in
     #    one pass by default; in batches if --extract-batch is set (dense provinces OOM
     #    osmium when cutting too many smart extracts at once — Ontario's 132M nodes did).
-    if args.skip_extract and all(spath(i).exists() for i in range(NS)):
+    # A killed `osmium extract` leaves partial slice .pbfs on disk, so "the file is there" is not
+    # proof it is whole. Only a marker written AFTER every pass returned means the slices can be
+    # trusted — and it records NS, because a different slice count invalidates all of them.
+    extract_done = work / "extract.done"
+    slices_whole = extract_done.exists() and extract_done.read_text().strip() == str(NS)
+    if (args.skip_extract or args.resume) and slices_whole and all(spath(i).exists() for i in range(NS)):
         print(f"[extract] reusing {NS} existing slices.", flush=True)
     else:
+        if extract_done.exists():
+            extract_done.unlink()
         EB = args.extract_batch or NS
         groups = [list(range(k, min(k + EB, NS))) for k in range(0, NS, EB)]
         print(f"[extract] {NS} vertical slices (smart) in {len(groups)} pass(es) of <={EB} "
@@ -126,21 +137,32 @@ def main():
             if len(groups) > 1:
                 print(f"  pass {gi + 1}/{len(groups)}: slices {grp[0]:02d}..{grp[-1]:02d}", flush=True)
             subprocess.run(["osmium", "extract", "--overwrite", "-s", "smart", "-c", str(cfg), src], check=True)
+        extract_done.write_text(str(NS))
 
     # 2) parse each slice in its own process, PAR at a time. Big/small interleaved so
     #    concurrent memory stays bounded.
+    dpath = lambda i: work / f"slice-{i:02d}.done"
+
     def run_slice(i):
         w = round(W + i * step, 5); e = round(W + (i + 1) * step, 5)
         odir = work / f"slice-{i:02d}-out"
+        nd = odir / "search" / "map-features.ndjson"
+        # A slice killed mid-write leaves a TRUNCATED ndjson. The marker is written only after the
+        # parse returned 0, so resuming re-parses that slice rather than shipping half of it.
+        if args.resume and dpath(i).exists() and nd.exists():
+            return (i, w, e, int(dpath(i).read_text().strip() or 0), 0, 0.0, True)
         t0 = time.time()
         with open(work / f"slice-{i:02d}.log", "w") as lg:
             # --bbox=... (joined form) so argparse doesn't read the leading negative lon as a flag.
             rc = subprocess.run([PY, str(BUILD), "--search-only",
                                  f"--source={spath(i)}", f"--bbox={w},{S},{e},{N}",
                                  f"--out={odir}"], stdout=lg, stderr=lg).returncode
-        nd = odir / "search" / "map-features.ndjson"
         c = sum(1 for _ in open(nd)) if nd.exists() else 0
-        return (i, w, e, c, rc, time.time() - t0)
+        if rc == 0:
+            tmp = work / f"slice-{i:02d}.done.tmp"      # atomic: never a half-written marker
+            tmp.write_text(str(c))
+            os.replace(tmp, dpath(i))
+        return (i, w, e, c, rc, time.time() - t0, False)
 
     by_size = sorted(range(NS), key=lambda i: -spath(i).stat().st_size)
     order = []
@@ -153,13 +175,28 @@ def main():
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=PAR) as ex:
         for fut in concurrent.futures.as_completed([ex.submit(run_slice, i) for i in order]):
-            i, w, e, c, rc, secs = fut.result(); results.append((i, w, e, c, rc, secs))
-            print(f"  slice {i:02d} done  rc={rc}  docs={c:,}  {secs/60:.1f} min   ({len(results)}/{NS})", flush=True)
+            r = fut.result(); results.append(r)
+            i, _w, _e, c, rc, secs, reused = r
+            tag = "  (reused)" if reused else ""
+            print(f"  slice {i:02d} done  rc={rc}  docs={c:,}  {secs/60:.1f} min{tag}   ({len(results)}/{NS})", flush=True)
 
-    # 3) concat + cap giant geoms in one streaming pass.
+    fails = [r[0] for r in results if r[4] != 0]
+    if fails:
+        # Don't concat a partial region: a missing slice would ship as a silently incomplete state.
+        print("\n===== SUMMARY =====")
+        for i, w, e, c, rc, secs, reused in sorted(results):
+            print(f"  slice {i:02d} [{w:8.3f}..{e:8.3f}]  docs={c:>9,}  {secs/60:5.1f} min" +
+                  ("  (reused)" if reused else "") + ("" if rc == 0 else f"   <-- FAILED rc={rc}"))
+        print(f"\nfailed slices: {fails}")
+        print("Retry with --resume; if a slice OOM'd, raise --slices to shrink the dense ones.")
+        sys.exit(1)
+
+    # 3) concat + cap giant geoms in one streaming pass. Written to .part and renamed, so a run
+    #    killed here leaves no half NDJSON for the deploy to pick up and ship as the whole region.
     print("[concat+cap] writing capped NDJSON...", flush=True)
     total = capped = 0
-    with open(out_nd, "w") as out:
+    part_nd = Path(str(out_nd) + ".part")
+    with open(part_nd, "w") as out:
         for i in range(NS):
             nd = work / f"slice-{i:02d}-out" / "search" / "map-features.ndjson"
             if not nd.exists():
@@ -168,17 +205,14 @@ def main():
                 for line in f:
                     nl, was = cap_line(line)
                     out.write(nl); total += 1; capped += was
+    os.replace(part_nd, out_nd)
 
-    fails = [r[0] for r in results if r[4] != 0]
     print("\n===== SUMMARY =====")
-    for i, w, e, c, rc, secs in sorted(results):
+    for i, w, e, c, rc, secs, reused in sorted(results):
         print(f"  slice {i:02d} [{w:8.3f}..{e:8.3f}]  docs={c:>9,}  {secs/60:5.1f} min" +
-              ("" if rc == 0 else f"   <-- FAILED rc={rc}"))
+              ("  (reused)" if reused else "") + ("" if rc == 0 else f"   <-- FAILED rc={rc}"))
     print(f"\nTOTAL: {total:,} docs  ({capped:,} giant geoms capped)  ->  {out_nd}")
-    print(f"failed slices: {fails if fails else 'none'}")
-    if fails:
-        print("Retry with --skip-extract; if a slice OOM'd, raise --slices to shrink the dense ones.")
-        sys.exit(1)
+    print("failed slices: none")
     if not args.keep_slices:
         shutil.rmtree(work, ignore_errors=True); print(f"cleaned {work}")
     print(f"\nNext: deploy with  tile-generation/deploy-search-region.sh {args.region}")
