@@ -127,9 +127,22 @@ def main():
             extract_done.unlink()
         EB = args.extract_batch or NS
         groups = [list(range(k, min(k + EB, NS))) for k in range(0, NS, EB)]
+        if not args.resume:                                   # a fresh run trusts no old markers
+            for old in work.glob("extract-*.done"):
+                old.unlink()
         print(f"[extract] {NS} vertical slices (smart) in {len(groups)} pass(es) of <={EB} "
               f"over {Path(src).name}...", flush=True)
         for gi, grp in enumerate(groups):
+            # Each pass gets its own marker. osmium holds an output buffer and a relation-completion
+            # set per extract, so a big pass is what OOMs; when one dies (SIGKILL, no traceback) the
+            # passes that already finished must not be paid for again. The signature pins the marker
+            # to this exact slicing — change --slices or --extract-batch and it is worthless.
+            gdone = work / f"extract-{gi:02d}.done"
+            sig = f"{NS}:{EB}:{grp[0]}-{grp[-1]}"
+            if args.resume and gdone.exists() and gdone.read_text().strip() == sig \
+                    and all(spath(i).exists() for i in grp):
+                print(f"  pass {gi + 1}/{len(groups)}: reusing slices {grp[0]:02d}..{grp[-1]:02d}", flush=True)
+                continue
             extracts = [{"output": f"slice-{i:02d}.osm.pbf",
                          "bbox": [round(W + i * step, 5), S, round(W + (i + 1) * step, 5), N]} for i in grp]
             cfg = work / f"extract-{gi:02d}.json"
@@ -137,6 +150,7 @@ def main():
             if len(groups) > 1:
                 print(f"  pass {gi + 1}/{len(groups)}: slices {grp[0]:02d}..{grp[-1]:02d}", flush=True)
             subprocess.run(["osmium", "extract", "--overwrite", "-s", "smart", "-c", str(cfg), src], check=True)
+            gdone.write_text(sig)
         extract_done.write_text(str(NS))
 
     # 2) parse each slice in its own process, PAR at a time. Big/small interleaved so

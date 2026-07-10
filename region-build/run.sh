@@ -72,6 +72,15 @@ NICE=10             # build runs niced so foreground work wins the CPU
 ZSTD_T=2            # compression threads (don't grab all cores)
 CHUNK_LINES="${REGION_BUILD_CHUNK_LINES:-500000}"   # ~280 MB raw / ~35 MB compressed per chunk
 MAX_TRIES="${REGION_BUILD_MAX_TRIES:-6}"   # per remote step, before handing back to launchd to retry the whole run
+# `osmium extract` holds an output buffer + a relation-completion set PER slice in a pass, so
+# cutting all 24 at once is what gets it SIGKILLed on a laptop whose swap is already full (it
+# died twice doing exactly that on New York). Cut them a few at a time; each pass re-reads the
+# .pbf, which costs a minute and is the cheapest insurance here.
+EXTRACT_BATCH="${REGION_BUILD_EXTRACT_BATCH:-6}"
+# A build that fails is usually DETERMINISTIC — an OOM, a bad bbox. launchd would relaunch it
+# every ThrottleInterval for ever, re-running a doomed extract. Park it instead and say so.
+MAX_BUILD_FAILURES="${REGION_BUILD_MAX_BUILD_FAILURES:-4}"
+FAILCOUNT="$STATE/build-failures"
 
 log()  { echo "$(date '+%F %T')  $*" | tee -a "$LOG"; }
 say()  { printf '%s\n' "$*" > "$STATUS"; log "$*"; }
@@ -119,13 +128,21 @@ SLICES="$(dirname "$LOCALDIR")/$REGION-slices"
 if [ -f "$STATE/parse.done" ] && [ -s "$NDJSON" ]; then
   say "$REGION: build already complete ($(nlines "$NDJSON") docs) — skipping to deploy."
 else
-  say "$REGION: building (niced, $PARALLEL slices at a time). This resumes if interrupted."
+  fails=$(cat "$FAILCOUNT" 2>/dev/null || echo 0)
+  if [ "$fails" -ge "$MAX_BUILD_FAILURES" ]; then
+    say "$REGION: PARKED after $fails failed builds — this is not transient. See $LOG. \
+Fix it, then: rm $FAILCOUNT && launchctl kickstart -k gui/$(id -u)/com.a11ybob.region-build"
+    exit 0                      # exit 0 so launchd stops relaunching a doomed build
+  fi
+  say "$REGION: building (niced, $PARALLEL slices at a time, extract $EXTRACT_BATCH at a time). Resumes if interrupted."
   if nice -n "$NICE" "$VENV_PY" "$SEARCH_REGION" --region "$REGION" \
-        --parallel "$PARALLEL" --resume --keep-slices >> "$LOG" 2>&1; then
+        --parallel "$PARALLEL" --extract-batch "$EXTRACT_BATCH" --resume --keep-slices >> "$LOG" 2>&1; then
+    rm -f "$FAILCOUNT"
     date '+%F %T' > "$STATE/parse.done"
     say "$REGION: build done — $(nlines "$NDJSON") docs."
   else
-    say "$REGION: build FAILED; launchd will retry and resume from the last good slice."
+    echo $((fails + 1)) > "$FAILCOUNT"
+    say "$REGION: build FAILED ($((fails + 1))/$MAX_BUILD_FAILURES); launchd will retry and resume from the last good slice/pass."
     exit 1
   fi
 fi

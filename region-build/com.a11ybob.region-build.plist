@@ -34,7 +34,7 @@
     <false/>
   </dict>
   <key>ThrottleInterval</key>
-  <integer>30</integer>
+  <integer>120</integer>
 
   <!-- Stay out of the way: low CPU priority, low disk I/O priority, background QoS. -->
   <key>Nice</key>
