@@ -16,9 +16,12 @@
     <a href="#map-svg" id="skip-to-map" class="skip-link" tabindex="2">Skip to map</a>
 
     <!-- Control Sidebar -->
-    <div id="control-sidebar" class="control-sidebar" role="banner">
+    <!-- The map's header (banner landmark), NAMED by the visible "Menu" text via
+         aria-labelledby. "Menu" is heading-STYLED, not a heading — the page has
+         exactly one heading in its outline, the sr-only H1 in <main>. -->
+    <div id="control-sidebar" class="control-sidebar" role="banner" aria-labelledby="sidebar-label">
         <div class="sidebar-header">
-            <h1 class="sidebar-title">Map</h1>
+            <div class="sidebar-title" id="sidebar-label">Menu</div>
             <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="true" tabindex="3">
                 <span class="icon hamburger-icon" style="display: none;">☰</span>
                 <span class="icon close-icon">✕</span>
@@ -150,6 +153,7 @@
     </div>
 
     <main>
+        <h1 class="screen-reader-only">Interactive map demo</h1>
         <div id="map-container">
             <!-- tabindex -1: programmatic focus only (the skip-link fallback). The
                  canvas is NOT a Tab stop — every visible feature already is, and the
