@@ -223,13 +223,16 @@ connections are broken.
   and hit, ironic next to the carefully-sized 48px compass.
 - **Fix direction:** Raise label sizes to a readable floor; enlarge the clickable row to ≥24px;
   allow wrapping or full labels.
-- **Parked (2026-07-12, Bob):** the filters and rotor panel will be REDESIGNED, so both symptoms
-  (9px labels, sub-24px rows) are addressed there rather than patched twice. Scope check: every
-  sub-24px target is in that panel — the MAP side was already made compliant on 2026-06-20:
-  POI dots carry a transparent 24px-screen hit-ring (`paint-order: stroke`), roads a baked
-  transparent `.road-hit` corridor; both cited to WCAG 2.5.8 in `main.css`.
+- **Mostly fixed 2026-06-19, remainder PARKED (2026-07-12, Bob):** the WCAG polish batch already
+  fixed the checkbox label ROWS (`display:flex; min-height:1.75rem` ≥24px, 13px text, wrapping
+  instead of nowrap+ellipsis). Still at 9px: `.filter-subcategory-title` and
+  `.filter-sub-accordion-header` — parked with the coming filters/rotor panel REDESIGN rather
+  than patched twice. Scope check: every remaining small target is in that panel — the MAP side
+  was already made compliant on 2026-06-20: POI dots carry a transparent 24px-screen hit-ring
+  (`paint-order: stroke`), roads a baked transparent `.road-hit` corridor; both cited to
+  WCAG 2.5.8 in `main.css`.
 
-### 12. Dark-mode / high-contrast cover ~10 of ~80 feature classes ⬜
+### 12. Dark-mode / high-contrast cover ~10 of ~80 feature classes ✅ FIXED 2026-06-19
 - **Where:** `web-app/styles/main.css:650-666` (dark) and `:804-833` (high-contrast).
 - **Problem:** Features get hardcoded `fill`/`stroke` attributes (CSS-overridable), but the
   adaptive blocks only style `building, road, road-casing, park` (dark) plus a few more in
@@ -237,21 +240,36 @@ connections are broken.
   mid-tone colour, so most of the map doesn't adapt and fails the contrast floor in those modes.
 - **Fix direction:** Extend the dark/high-contrast overrides to every rendered feature class, or
   drive feature colours from CSS custom properties that the media queries re-theme.
+- **Resolution (2026-06-19; doc not updated at the time — annotated 2026-07-12):** The audited
+  rules were doubly dead: they targeted the `<g>` while tiles bake fill/stroke as ATTRIBUTES on
+  the shapes (attribute beats inherited), and `.road-casing` didn't match the real class. Fixed
+  by recolouring SHAPES (`[fill]:not([fill="none"])` / `[stroke]:not([stroke="none"])`) inside
+  the media queries only, with `--c-*` palette custom properties per block and a CATCH-ALL so
+  every category adapts; since refined (transparent-stroke `:not()` guards, parking carve-outs).
+  Palette itself remains a first pass awaiting Bob's OS-toggle review.
 
-### 13. Avatar pulse ignores reduced-motion (and a dead CSS keyframe) ⬜
+### 13. Avatar pulse ignores reduced-motion (and a dead CSS keyframe) ✅ FIXED 2026-06-19
 - **Where:** `web-app/src/Avatar.js:260` (SMIL `<animate repeatCount="indefinite">` on `r`);
   `web-app/styles/main.css:1752` (`@keyframes avatarPulse`, never applied — no `animation:` ref).
 - **Problem:** The indefinite pulse runs for reduced-motion users; no `matchMedia` gate in JS, and
   the CSS keyframe that *was* written is orphaned.
 - **Fix direction:** Gate the SMIL animation on `prefers-reduced-motion`; delete or wire up the
   orphaned keyframe.
+- **Resolution (2026-06-19; annotated 2026-07-12):** SMIL gated in `Avatar.js` (`matchMedia`
+  check — CSS can't stop SMIL, so the animation is simply not created; a static ring remains),
+  plus a blanket reduced-motion block at the end of `main.css` covering the compass/zoom
+  animations the per-button blocks missed.
 
-### 14. `role="toolbar"` misused; no skip link ⬜
+### 14. `role="toolbar"` misused; no skip link ✅ FIXED 2026-06-18/19
 - **Where:** `web-app/index.html:11`.
 - **Problem:** A text input, fieldsets, accordions and 300+ checkboxes inside `role="toolbar"`,
   which implies a flat set of buttons with arrow-key roving — mis-setting AT expectations. There's
   also no skip link past the huge sidebar to the map.
 - **Fix direction:** Use a `<nav>`/region landmark instead of `toolbar`; add a "skip to map" link.
+- **Resolution (2026-06-18/19; annotated 2026-07-12):** Part of Bob's keyboard-model rebuild —
+  the sidebar is `role="banner"` (no `role="toolbar"` remains anywhere), the map svg is the named
+  `role="document"`, the compass `role="complementary"`. "Skip to compass" and "Skip to map" are
+  the first two tab stops; the skip-to-map target logic lives in `app.js focusFirstMapFeature`.
 
 ---
 
