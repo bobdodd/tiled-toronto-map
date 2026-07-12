@@ -323,26 +323,33 @@ export class AccessibilityManager {
         const announce = (msg) => { if (notify && region) { region.textContent = ''; region.textContent = msg; } };
 
         const selectedIds = this.getSelectedRotorValues();
+
+        // No rotor selection = no narrowing: EVERY on-screen feature is keyboard-
+        // reachable by default (each feature group carries role="img" + aria-label
+        // from the tile generator). Selecting rotor categories NARROWS Tab to just
+        // those — the rotor is a lens, not a gate.
+        let selectors;
+        let names;
         if (selectedIds.length === 0 || !this.taxonomy) {
-            announce('Rotor cleared.');
-            return;
-        }
-
-        const labelOf = (id) => {
-            const f = this.taxonomy.getById(id);
-            return f ? (f.label || id) : id;
-        };
-        const selectors = selectedIds
-            .map((id) => {
+            selectors = ['[role="img"]'];
+            names = 'all features';
+        } else {
+            const labelOf = (id) => {
                 const f = this.taxonomy.getById(id);
-                return f ? this.taxonomy.selectorFor(f) : null;
-            })
-            .filter(Boolean);
+                return f ? (f.label || id) : id;
+            };
+            selectors = selectedIds
+                .map((id) => {
+                    const f = this.taxonomy.getById(id);
+                    return f ? this.taxonomy.selectorFor(f) : null;
+                })
+                .filter(Boolean);
 
-        const names = selectedIds.map(labelOf).slice(0, 4).join(', ');
-        if (selectors.length === 0) {
-            announce(`Nothing to navigate for: ${names}`);
-            return;
+            names = selectedIds.map(labelOf).slice(0, 4).join(', ');
+            if (selectors.length === 0) {
+                announce(`Nothing to navigate for: ${names}`);
+                return;
+            }
         }
 
         // Make ONLY the selected categories keyboard-navigable. Positive tabindex

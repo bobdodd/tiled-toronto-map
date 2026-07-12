@@ -123,6 +123,17 @@ class MapApplication {
         // Delegates on #map-svg, so it covers tiles loaded later too.
         setupTooltip();
 
+        // Clicking a feature moves focus onto it — one focus model for mouse,
+        // search and Tab. A feature already in the tab circuit keeps its rotor
+        // position; anything else gets the same "direct target" treatment as a
+        // search result. Delegated, so it covers tiles loaded later too.
+        document.getElementById('map-svg').addEventListener('click', (e) => {
+            const feature = e.target.closest('#map-tiles [role="img"]');
+            if (!feature) return;
+            if (feature.hasAttribute('tabindex')) feature.focus({ preventScroll: true });
+            else this.focusFeatureElement(feature);
+        });
+
         // Map search (places / POIs / addresses, with accessibility filters),
         // backed by the OpenSearch map-features index via a same-origin proxy.
         // Selecting a result recentres and moves focus onto the actual feature.
@@ -1227,7 +1238,8 @@ class MapApplication {
         }
         const svg = document.getElementById('map-svg');
         if (svg) {
-            svg.setAttribute('tabindex', '-1');
+            // The svg carries a static tabindex="-1" (programmatic focus only) —
+            // set in the HTML, nothing to stamp here.
             svg.focus({ preventScroll: true });
         }
         this.announceStatus('Map. Choose a category in the Rotor to navigate features by keyboard.');
