@@ -8,6 +8,7 @@ import { TaxonomyClient } from './TaxonomyClient.js';
 import { buildFilterUI } from './FilterUI.js';
 import { setupTooltip } from './Tooltip.js';
 import { Announcer } from './Announcer.js';
+import { setupChat } from './Chat.js';
 import { SearchManager } from './SearchManager.js';
 import { LevelSwitch } from './LevelSwitch.js';
 import { HeadingProvider } from './HeadingProvider.js';
@@ -67,6 +68,7 @@ class MapApplication {
         // Speech-first announcements (aria-live only as fallback / audio-off).
         // Constructed first: everything that talks routes through it.
         this.announcer = new Announcer({ caption: (m) => this._caption(m) });
+        this.setupGate();
         this.setupAudioToggle();
         this.setupSettingsDialog();
         this.setupCompassToggle();
@@ -130,6 +132,25 @@ class MapApplication {
         // Sticky name tooltip on focus/hover (reads each feature's aria-label).
         // Delegates on #map-svg, so it covers tiles loaded later too.
         setupTooltip();
+
+        // The Chat — the Knowledge Map's conversation on the visual map. It
+        // shares the app's Announcer (one speech channel, latest wins) and
+        // HeadingProvider (facing → clock directions), and its spoken
+        // "follow me" / "stop following" drive the SAME follow switch as the
+        // Settings toggle — one behaviour, one state. Deliberately does not
+        // move or highlight anything on the map yet.
+        setupChat({
+            announcer: this.announcer,
+            heading: this.heading,
+            onFollow: () => {
+                const b = document.getElementById('describe-auto');
+                if (b && b.getAttribute('aria-pressed') !== 'true') b.click();
+            },
+            onUnfollow: () => {
+                const b = document.getElementById('describe-auto');
+                if (b && b.getAttribute('aria-pressed') === 'true') b.click();
+            },
+        });
 
         // Clicking a feature moves focus onto it — one focus model for mouse,
         // search and Tab. A feature already in the tab circuit keeps its rotor
@@ -280,13 +301,12 @@ class MapApplication {
             this.toggleLocationTracking(e.currentTarget);
         });
 
-        // Three spoken location descriptions at increasing depth.
-        const quickBtn = document.getElementById('describe-quick');
-        if (quickBtn) quickBtn.addEventListener('click', () => this.quickDescribe());
+        // Follow me (settings) — the running commentary. The one-shot Quick/
+        // Detailed describe buttons were REPLACED by the Chat: "where am I?"
+        // and "describe my surroundings" are questions now. (quickDescribe /
+        // detailedDescribe remain callable — the chat may drive them later.)
         const autoBtn = document.getElementById('describe-auto');
         if (autoBtn) autoBtn.addEventListener('click', (e) => this.toggleAutoDescribe(e.currentTarget));
-        const detailBtn = document.getElementById('describe-detailed');
-        if (detailBtn) detailBtn.addEventListener('click', () => this.detailedDescribe());
 
         // Detailed-surroundings modal: close button + click-outside.
         const detailClose = document.getElementById('detail-modal-close');
@@ -1352,6 +1372,45 @@ class MapApplication {
         // visible captions panel. (Location DATA has its own surface: the
         // visible #location-info panel.)
         this.announcer.announce(message);
+    }
+
+    // The disclaimer gate, same as every map in this family: the notice comes
+    // before the map — viewing the map is itself gaining information — and the
+    // app stays hidden (and out of the accessibility tree) until accepted.
+    // Re-shown every visit. The Start click is also the user gesture that
+    // primes the speech engine.
+    setupGate() {
+        const gate = document.getElementById('map-gate');
+        const accept = document.getElementById('gate-accept');
+        const start = document.getElementById('gate-start');
+        if (!gate || !accept || !start) return;
+        accept.addEventListener('change', () => { start.disabled = !accept.checked; });
+        start.addEventListener('click', () => {
+            gate.hidden = true;
+            ['skip-to-compass', 'skip-to-map', 'control-sidebar'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.hidden = false;
+            });
+            const main = document.querySelector('main:not(#map-gate)');
+            if (main) main.hidden = false;
+            // The compass toggle may have hidden the skip link + rose again —
+            // re-apply the persisted preference over the blanket reveal.
+            const compassOn = localStorage.getItem('map-compass-on') !== 'off';
+            const skipCompass = document.getElementById('skip-to-compass');
+            if (skipCompass) skipCompass.hidden = !compassOn;
+            // The map initialised while <main> was display:none, where every
+            // measurement is 0×0 — the viewBox and the initial tile load were
+            // computed against a zero-size viewport. Now that the map is
+            // visible and measurable, size and load it for real.
+            if (this.mapRenderer) {
+                this.mapRenderer.handleResize();
+                this.mapRenderer.render();
+                this.loadMapTiles(true);
+            }
+            this.announcer.prime();
+            const title = document.getElementById('app-title');
+            if (title) title.focus();
+        });
     }
 
     // The settings dialog: same idiom as the detail modal (Escape closes,

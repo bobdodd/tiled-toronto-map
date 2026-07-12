@@ -66,27 +66,63 @@ export class Announcer {
 
     /** Announce text on the current channel. Latest wins on BOTH channels: a
      *  new announcement cancels queued speech, and replaces a pending
-     *  live-region write that hasn't landed yet. */
-    announce(text) {
-        if (!text) return;
+     *  live-region write that hasn't landed yet.
+     *
+     *  `onDone` (optional) fires when the announcement has FINISHED — the chat's
+     *  hands-free loop re-opens the microphone on it, so it must never fire
+     *  mid-sentence and must always fire eventually. The end-detection is the
+     *  audio maps' hardened pattern: `onend` is unreliable and a length estimate
+     *  is outrun by long answers, so gate on the engine's real speaking state —
+     *  it must have been seen speaking, then stop. (An interruption by a newer
+     *  announcement satisfies that too, which is right: the turn is over.)
+     *  On the live-region channel there is no signal at all — estimate from the
+     *  text length, best effort. */
+    announce(text, onDone) {
+        if (!text) { if (onDone) onDone(); return; }
         if (this.caption) this.caption(text);
+
+        let done = false;
+        const finish = onDone ? () => { if (!done) { done = true; onDone(); } } : null;
 
         if (this.audioOn && this.synth && this.speechOk) {
             this.synth.cancel();
-            this.synth.speak(new SpeechSynthesisUtterance(text));
+            const u = new SpeechSynthesisUtterance(text);
+            if (finish) {
+                let sawSpeaking = false, waited = 0;
+                const poll = window.setInterval(() => {
+                    waited += 250;
+                    if (done) { window.clearInterval(poll); return; }
+                    if (this.synth.speaking) sawSpeaking = true;
+                    const finished = sawSpeaking && !this.synth.speaking; // real end (or interrupted)
+                    const engineDead = !sawSpeaking && waited >= 6000;    // never started — don't wedge the caller
+                    const runaway = waited >= 180000;                     // stuck speaking=true (rare engine bug)
+                    if (finished || engineDead || runaway) { window.clearInterval(poll); finish(); }
+                }, 250);
+                u.onend = () => { if (sawSpeaking) finish(); };
+                u.onerror = finish;
+            }
+            this.synth.speak(u);
             return;
         }
 
         const region = document.getElementById(this.regionId);
-        if (!region) return;
-        // Clear-then-set (async) so an identical consecutive message still
-        // re-announces. The pending write is cancelled if a newer one arrives
-        // first — the region gets the LATEST text, never a stale backlog.
-        if (this._regionTimer) window.clearTimeout(this._regionTimer);
-        region.textContent = '';
-        this._regionTimer = window.setTimeout(() => {
-            this._regionTimer = null;
-            region.textContent = text;
-        }, 60);
+        if (region) {
+            // Clear-then-set (async) so an identical consecutive message still
+            // re-announces. The pending write is cancelled if a newer one arrives
+            // first — the region gets the LATEST text, never a stale backlog.
+            if (this._regionTimer) window.clearTimeout(this._regionTimer);
+            region.textContent = '';
+            this._regionTimer = window.setTimeout(() => {
+                this._regionTimer = null;
+                region.textContent = text;
+            }, 60);
+        }
+        // No end signal from a screen reader — estimate the read time.
+        if (finish) window.setTimeout(finish, Math.min(12000, 900 + text.length * 55));
+    }
+
+    /** Stop any current speech immediately (the chat's "shush"). */
+    stop() {
+        if (this.synth) { try { this.synth.cancel(); } catch { /* engine quirk */ } }
     }
 }

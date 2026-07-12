@@ -397,20 +397,35 @@ export class MapRenderer {
     handleResize() {
         const container = this.svg.parentElement;
         const rect = container.getBoundingClientRect();
-        
+
+        // Grow/shrink the viewBox AROUND ITS CENTRE (the same convention as
+        // setZoom), never from the top-left corner. The stored centre and
+        // getBoundsFromView() are centre-derived: an anchored corner leaves
+        // them pointing at the OLD middle, so the newly exposed strip falls
+        // outside the computed bounds and no tile load ever covers it — the
+        // resize-then-grey-band bug.
+        const centerX = this.viewBox.x + this.viewBox.width / 2;
+        const centerY = this.viewBox.y + this.viewBox.height / 2;
+
         // Update viewport size
         this.viewport.width = rect.width;
         this.viewport.height = rect.height;
-        
+
         // Recalculate viewBox to maintain zoom level
         const scale = Math.pow(2, this.zoom - 18);
         this.viewBox.width = this.viewport.width / scale;
         this.viewBox.height = this.viewport.height / scale;
-        
+        this.viewBox.x = centerX - this.viewBox.width / 2;
+        this.viewBox.y = centerY - this.viewBox.height / 2;
+
         this.updateViewBox();
-        
+
         // Only re-render if we actually need new tiles
         // For now, keep the render call
         this.render();
+
+        // A grown window can still expose unloaded map — dispatch the same
+        // viewBoxChanged the pan/zoom paths use, so app.js checks and loads.
+        this.checkAndLoadTiles();
     }
 }

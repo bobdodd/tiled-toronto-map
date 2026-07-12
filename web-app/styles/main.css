@@ -30,9 +30,55 @@ body {
 /* Skip links — off-screen until focused, then pinned top-left. White on dark
    blue is ~9:1 (AAA); generous height/padding clears the WCAG 2.2 target size. */
 /* An authored display beats the [hidden] attribute's UA display:none — make
-   hidden mean hidden (the compass toggle hides the skip-to-compass link). */
-.skip-link[hidden] {
+   hidden mean hidden (the compass toggle hides the skip-to-compass link; the
+   disclaimer gate hides the whole app main until accepted). */
+.skip-link[hidden],
+main[hidden] {
     display: none;
+}
+
+/* ---- Disclaimer gate: shown before the map, like every map in this family. */
+.map-gate {
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: #1a1a1a;
+}
+.map-gate h1 {
+    font-size: 1.5rem;
+    margin: 0 0 0.25rem;
+}
+.map-gate h2 {
+    font-size: 1.125rem;
+    margin: 0 0 0.75rem;
+}
+.map-gate__body ul {
+    padding-left: 1.25rem;
+}
+.map-gate__body li {
+    margin-bottom: 0.5rem;
+}
+.map-gate__consent label {
+    display: flex;
+    gap: 0.625rem;
+    align-items: flex-start;
+}
+.map-gate__consent input {
+    width: 1.375rem;
+    height: 1.375rem;
+    flex: none;
+}
+.map-gate__start {
+    width: auto;
+    font-size: 1rem;
+    padding: 0.625rem 1.25rem;
+    margin-top: 0.75rem;
+}
+.map-gate__start:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .skip-link {
@@ -2396,6 +2442,89 @@ body.tooltip-below .poi-tooltip::after {
     flex-direction: column;
     gap: 0.5rem;
     min-width: 16rem;
+}
+
+/* ---- Chat (the Knowledge Map's conversation, in the header accordion) ---- */
+.chat-consent p {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    margin: 0.25rem 0 0.5rem;
+}
+.chat-consent__label {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    min-height: 1.75rem; /* 24px target floor (WCAG 2.5.8) */
+    margin-bottom: 0.5rem;
+}
+.chat-consent__label input {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: none;
+}
+.chat-logwrap {
+    max-height: 16rem;
+    overflow-y: auto;
+    margin-bottom: 0.5rem;
+}
+.chat-msg {
+    margin: 0.375rem 0;
+}
+.chat-msg__text {
+    margin: 0;
+    padding: 0.375rem 0.625rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: #1a1a1a;
+    background: #fff;
+    border: 1px solid #767676; /* grey boundary — invert-safe */
+}
+.chat-msg--user .chat-msg__text {
+    background: #eef2f7;
+    margin-left: 1.5rem;
+}
+.chat-msg--bot .chat-msg__text {
+    margin-right: 1.5rem;
+}
+.chat-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    margin-bottom: 0.125rem;
+}
+.chat-hint {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    margin: 0 0 0.375rem;
+    color: #333;
+}
+.chat-inputrow {
+    display: flex;
+    gap: 0.375rem;
+    align-items: stretch;
+}
+.chat-input {
+    flex: 1;
+    min-width: 0;
+    min-height: 1.75rem;
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #767676;
+    border-radius: 6px;
+}
+.chat-btn {
+    width: auto;
+    flex: none;
+    min-height: 1.75rem;
+}
+.chat-status {
+    font-size: 0.8125rem;
+    margin: 0.375rem 0 0;
+    color: #333;
+    min-height: 1.2em; /* keep the layout steady when it empties */
 }
 .detail-modal__body h3 {
     margin: 0.875rem 0 0.25rem;
