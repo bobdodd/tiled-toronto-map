@@ -215,7 +215,7 @@ connections are broken.
 
 ## TIER 3 — Accessibility quality
 
-### 11. Tiny filter text and sub-24px targets ⬜
+### 11. Tiny filter text and sub-24px targets ⏸ PARKED — filters/rotor redesign
 - **Where:** `web-app/styles/main.css:1588` (`.filter-sub-accordion-header` 0.5625rem = 9px),
   `:257` (category titles 10px); labels use `white-space: nowrap; text-overflow: ellipsis`.
 - **Problem:** Filter labels at 9–10px, clipped with ellipsis; checkbox rows are well under the
@@ -223,6 +223,11 @@ connections are broken.
   and hit, ironic next to the carefully-sized 48px compass.
 - **Fix direction:** Raise label sizes to a readable floor; enlarge the clickable row to ≥24px;
   allow wrapping or full labels.
+- **Parked (2026-07-12, Bob):** the filters and rotor panel will be REDESIGNED, so both symptoms
+  (9px labels, sub-24px rows) are addressed there rather than patched twice. Scope check: every
+  sub-24px target is in that panel — the MAP side was already made compliant on 2026-06-20:
+  POI dots carry a transparent 24px-screen hit-ring (`paint-order: stroke`), roads a baked
+  transparent `.road-hit` corridor; both cited to WCAG 2.5.8 in `main.css`.
 
 ### 12. Dark-mode / high-contrast cover ~10 of ~80 feature classes ⬜
 - **Where:** `web-app/styles/main.css:650-666` (dark) and `:804-833` (high-contrast).
