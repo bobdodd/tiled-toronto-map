@@ -136,7 +136,7 @@ connections are broken.
   (the slot the canvas vacated: location → compass → features) + `role="button"`. Awaiting
   sign-off on the ordering.
 
-### 6. Three competing live regions; the declared ones go unused ⬜
+### 6. Three competing live regions; the declared ones go unused ✅ CONSOLIDATED, then SUPERSEDED
 - **Where:** declared `#map-announcements` (`index.html:1263`) and `#location-info`
   (`index.html:1243`); pan/zoom announcements routed to a dynamically-created
   `#status-live-region` (`app.js:665`); `LocationTracker` builds its own `#location-live-region`
@@ -148,6 +148,15 @@ connections are broken.
   or dropped announcements.
 - **Fix direction:** Consolidate to the two declared regions; use a clear-then-set idiom so
   identical consecutive messages re-announce and writers don't clobber each other.
+- **Resolution (2026-07-12, commit d90b963):** Two stages. The consolidation had already
+  happened by the time of the verification pass (one region, `#map-announcements`,
+  clear-then-set via `announceStatus`, plus the visible captions mirror). Then the model was
+  REPLACED: a polite region QUEUES, and explore-by-touch on a dense map backs it up with stale
+  audio. `Announcer.js` (the audio-only maps' pattern) makes cancel-then-speak Web Speech the
+  primary channel for hover / touch / focus / status — latest always wins — with the region kept
+  ONLY as the fallback (audio toggled off, or no speech engine), itself now latest-wins too.
+  New: audio on/off button (persisted) and single-finger touch-explore. Live 2026-07-12; AT pass
+  (double-speak interplay with VO/TalkBack native reading under audio-on) awaiting Bob's testing.
 
 ---
 
