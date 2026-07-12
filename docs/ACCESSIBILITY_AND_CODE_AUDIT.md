@@ -180,13 +180,17 @@ connections are broken.
   NB the tile's `data-osm-id` does not carry the element TYPE (node/way ids can collide across
   types) — worth remembering when tracing a feature back to OSM.
 
-### 8. Dead "Everything" / category-cascade code ⬜
+### 8. Dead "Everything" / category-cascade code ✅ RESOLVED BY REMOVAL
 - **Where:** `web-app/src/AccessibilityManager.js:135-140`.
 - **Problem:** Queries `input[name="rotor-quick"]` and `input[name="rotor-category"]`, but **no
   `<input>` in the page has a `name` attribute** (the only `name=` is the viewport meta). The
   "Everything" shortcut and the cascade never run.
 - **Fix direction:** Either add the `name` attributes the code expects, or drive these from the
   checkbox `id`s like the rest.
+- **Resolution (verified 2026-07-12):** The `rotor-quick`/`rotor-category` queries and the
+  "Everything" shortcut were removed wholesale in the taxonomy/FilterUI rebuild — no dead
+  selector code remains. The one surviving `[name=]` query (`LevelSwitch`, `map-level`) is
+  correctly paired: all four level checkboxes carry `name="map-level"` in the HTML.
 
 ### 9. Tile failures are swallowed and reported as success ⬜
 - **Where:** `web-app/src/SVGTileManager.js:94` (`loadTile` catches → returns `null`),
@@ -198,12 +202,14 @@ connections are broken.
 - **Fix direction:** Surface partial-load failures to the user; add an `AbortController` for real
   cancellation.
 
-### 10. Dead CSS from a shell-escaping artifact ⬜
+### 10. Dead CSS from a shell-escaping artifact ✅ RESOLVED BY REMOVAL
 - **Where:** `web-app/styles/main.css:1727-1737`.
 - **Problem:** The WCAG-debug rules contain `opacity: 0.3 \!important;` (six `\!important`). The
   literal backslash makes each declaration invalid, so all six rules are dropped by the parser.
   Looks like the file was written through a shell that escaped `!`.
 - **Fix direction:** Remove the backslashes (or the whole debug block if unused).
+- **Resolution (verified 2026-07-12):** Zero `\!important` left in `main.css`; the whole
+  WCAG-debug block is gone. The "whole debug block if unused" branch is what happened.
 
 ---
 
