@@ -7,6 +7,7 @@ import { Avatar } from './Avatar.js';
 import { TaxonomyClient } from './TaxonomyClient.js';
 import { buildFilterUI } from './FilterUI.js';
 import { setupTooltip } from './Tooltip.js';
+import { Announcer } from './Announcer.js';
 import { SearchManager } from './SearchManager.js';
 import { LevelSwitch } from './LevelSwitch.js';
 import { HeadingProvider } from './HeadingProvider.js';
@@ -63,6 +64,11 @@ class MapApplication {
     }
 
     async init() {
+        // Speech-first announcements (aria-live only as fallback / audio-off).
+        // Constructed first: everything that talks routes through it.
+        this.announcer = new Announcer({ caption: (m) => this._caption(m) });
+        this.setupAudioToggle();
+
         // Initialize map renderer
         const mapSvg = document.getElementById('map-svg');
         this.mapRenderer = new MapRenderer(mapSvg);
@@ -91,7 +97,7 @@ class MapApplication {
 
         // Initialize filter and accessibility managers
         this.filterManager = new FilterManager(this.taxonomy);
-        this.accessibilityManager = new AccessibilityManager(this.taxonomy);
+        this.accessibilityManager = new AccessibilityManager(this.taxonomy, this.announcer);
 
         // After a filter change, refresh the rotor's tab order too.
         const originalUpdateVisibility = this.filterManager.updateVisibility.bind(this.filterManager);
@@ -1319,6 +1325,10 @@ class MapApplication {
         });
         el.setAttribute('tabindex', '8500');
         el.setAttribute('data-search-focus', '');
+        // The search announcement (name, distance, direction) is already
+        // speaking; pre-mark the feature as announced so the focus event's
+        // bare label doesn't cancel that richer message mid-sentence.
+        if (this.accessibilityManager) this.accessibilityManager._lastAnnounced = el;
         el.focus({ preventScroll: true });
     }
 
@@ -1334,19 +1344,37 @@ class MapApplication {
     }
 
     announceStatus(message) {
-        // ONE polite region for all transient status — pan/zoom, search, tracking,
-        // tile-load, the skip-link hint. (Location DATA has its own region: the
-        // visible #location-info panel.) Clear-then-set so an identical
-        // consecutive message still re-announces and writers don't clobber each
-        // other mid-phrase. Polite, not assertive: status should never interrupt
-        // the screen reader mid-sentence.
-        const region = document.getElementById('map-announcements');
-        if (region) {
-            region.textContent = '';
-            region.textContent = message;
-        }
-        // Mirror to the VISIBLE captions panel for Deaf/deafened and sighted users.
-        this._caption(message);
+        // ONE announcer for all transient status — pan/zoom, search, tracking,
+        // tile-load, the skip-link hint. Spoken (Web Speech, latest-wins) when
+        // audio is on; the polite #map-announcements region when audio is off or
+        // there is no speech engine. The announcer mirrors every message to the
+        // visible captions panel. (Location DATA has its own surface: the
+        // visible #location-info panel.)
+        this.announcer.announce(message);
+    }
+
+    // The audio toggle: ON = announcements spoken aloud (cancellable, so a
+    // finger sweep never hears a stale backlog); OFF = the polite live region,
+    // for screen-reader users who want one voice, theirs. State persists.
+    setupAudioToggle() {
+        const btn = document.getElementById('toggle-audio');
+        if (!btn) return;
+        const reflect = () => {
+            const on = this.announcer.audioOn;
+            btn.setAttribute('aria-pressed', String(on));
+            const icon = btn.querySelector('.icon');
+            if (icon) icon.textContent = on ? '🔊' : '🔇';
+        };
+        reflect(); // honour the persisted preference on load
+        btn.addEventListener('click', () => {
+            this.announcer.setAudio(!this.announcer.audioOn);
+            reflect();
+            // Announced on the channel just SWITCHED TO, so the confirmation
+            // itself demonstrates where announcements now go.
+            this.announceStatus(this.announcer.audioOn
+                ? 'Audio on. Announcements are spoken aloud.'
+                : 'Audio off. Announcements go to the screen reader.');
+        });
     }
 
     // Append a spoken line to the visible captions log. The panel is aria-hidden, so

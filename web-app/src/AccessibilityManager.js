@@ -1,6 +1,7 @@
 export class AccessibilityManager {
-    constructor(taxonomy) {
+    constructor(taxonomy, announcer = null) {
         this.taxonomy = taxonomy;
+        this.announcer = announcer;
         this.currentRotor = 'none';
         // The rotor derives its keyboard-navigation targets from the taxonomy
         // (taxonomy.json) in updateTabOrder() — the single source of truth.
@@ -8,8 +9,26 @@ export class AccessibilityManager {
         this.SVG_NS = 'http://www.w3.org/2000/svg';
         this.focusOutline = null;
         this.currentFocusedElement = null;
-        
+        this._lastAnnounced = null; // dedupe: a feature announces once per visit
+        this._touchPoints = 0;      // >1 = pinch, not explore
+
         this.setupEventListeners();
+    }
+
+    // Announce a feature's name on the current channel (spoken when audio is
+    // on — latest-wins, so a moving finger or a fast Tab never hears a stale
+    // backlog). The label lives on the wrapping <g role="img"> — the pointer
+    // usually hits the inner geometry, so resolve upward. Deduped per visit:
+    // the same feature doesn't re-announce until another (or none) intervenes.
+    announceFeature(target) {
+        if (!this.announcer || !target || !target.closest) return;
+        const g = target.closest('#map-tiles [aria-label]');
+        if (!g) return;
+        if (g === this._lastAnnounced) return;
+        this._lastAnnounced = g;
+        const label = g.getAttribute('aria-label');
+        if (label) this.announcer.announce(label);
+        return g;
     }
     
     setupEventListeners() {
@@ -73,32 +92,77 @@ export class AccessibilityManager {
         // Listen for mouse events on tile features
         mapSvg.addEventListener('mouseover', (e) => this.handleMouseOver(e));
         mapSvg.addEventListener('mouseout', (e) => this.handleMouseOut(e));
+
+        // Explore by touch, without a screen reader: ONE finger sweeping the
+        // map announces whatever is under it, each feature cancelling the last
+        // — always what's under the finger NOW, never a queued backlog. Two
+        // fingers is the pinch zoom, never exploring. Touch pointer events
+        // implicitly capture to the touch-start target, so the element under
+        // the moving finger must be resolved by point, not by event target.
+        // (With a screen reader running, the SR owns the touch and drives
+        // accessibility focus instead — that path announces via handleFocusIn.)
+        mapSvg.addEventListener('pointerdown', (e) => {
+            if (e.pointerType !== 'touch') return;
+            this._touchPoints++;
+            if (this._touchPoints === 1) this._exploreAt(e.clientX, e.clientY);
+        });
+        mapSvg.addEventListener('pointermove', (e) => {
+            if (e.pointerType !== 'touch' || this._touchPoints !== 1) return;
+            this._exploreAt(e.clientX, e.clientY);
+        });
+        const endTouch = (e) => {
+            if (e.pointerType === 'touch') this._touchPoints = Math.max(0, this._touchPoints - 1);
+        };
+        mapSvg.addEventListener('pointerup', endTouch);
+        mapSvg.addEventListener('pointercancel', endTouch);
+    }
+
+    // What is under the finger at (x, y)? Announce + outline it once per visit;
+    // moving onto empty map resets the dedupe so returning re-announces.
+    _exploreAt(x, y) {
+        const under = document.elementFromPoint(x, y);
+        const g = under && under.closest ? under.closest('#map-tiles [aria-label]') : null;
+        if (!g) { this._lastAnnounced = null; return; }
+        if (g !== this._lastAnnounced) {
+            this.showFocusOutline(g);
+            this.announceFeature(g);
+        }
     }
     
     handleFocusIn(event) {
         const target = event.target;
         if (this.isMapFeature(target)) {
             this.showFocusOutline(target);
+            // Focus announcements go through the announcer (spoken when audio
+            // is on) — with a screen reader sweeping accessibility focus, this
+            // is what keeps the audio fresh instead of a queued backlog.
+            this.announceFeature(target);
         }
     }
-    
+
     handleFocusOut() {
         // Remove focus outline
         this.hideFocusOutline();
+        this._lastAnnounced = null;
     }
-    
+
     handleMouseOver(event) {
         const target = event.target;
         // Show outline on hover for ANY map feature, not just those with tabindex
         if (this.isMapFeatureForHover(target)) {
             this.showFocusOutline(target);
+            this.announceFeature(target);
         }
     }
-    
+
     handleMouseOut(event) {
         const target = event.target;
         if (target === this.currentFocusedElement) {
             this.hideFocusOutline();
+        }
+        if (this._lastAnnounced && target && target.closest &&
+            target.closest('#map-tiles [aria-label]') === this._lastAnnounced) {
+            this._lastAnnounced = null; // leaving and returning re-announces
         }
     }
     

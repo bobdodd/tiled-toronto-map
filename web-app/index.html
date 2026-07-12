@@ -60,6 +60,17 @@
                 <span class="label">Heading up</span>
             </button>
 
+            <!-- Audio on/off. ON (default): announcements — hover, touch, focus,
+                 status — are SPOKEN via the Web Speech API, latest-wins, so a
+                 finger sweeping the map always hears what is under it NOW, never
+                 a queued backlog. OFF (or no speech engine): announcements go to
+                 the polite live region instead, for screen-reader-only listening
+                 with no second voice. Preference persists. -->
+            <button id="toggle-audio" class="control-button" aria-pressed="true" tabindex="4">
+                <span class="icon" aria-hidden="true">🔊</span>
+                <span class="label">Audio</span>
+            </button>
+
             <!-- Search Accordion -->
             <div class="accordion-item">
                 <button class="accordion-header" aria-expanded="false" aria-controls="navigation-content" tabindex="5">
