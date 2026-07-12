@@ -2444,30 +2444,163 @@ body.tooltip-below .poi-tooltip::after {
     min-width: 16rem;
 }
 
-/* ---- Chat (the Knowledge Map's conversation, in the header accordion) ---- */
-.chat-consent p {
-    font-size: 0.8125rem;
-    line-height: 1.45;
-    margin: 0.25rem 0 0.5rem;
-}
-.chat-consent__label {
+/* ---- Chat (the Knowledge Map's conversation, in a panel over the map) ----
+   Two housings, one markup (see index.html):
+   - DESKTOP (default): a floating panel — moveable, resizable, closeable from
+     Settings. Docks at the bottom by default, sized to clear the menu sidebar
+     (left) and the navigation rose (right). Geometry rides on custom
+     properties (set inline by ChatPanel.js — the sanctioned inline use).
+   - MOBILE (body.chat-split, set by ChatPanel.js): split screen — map on top,
+     panel across the bottom, a draggable divider controls the ratio.
+   Grey borders carry the non-text contrast (invert-safe). */
+.chat-panel {
+    position: fixed;
+    left: var(--chat-left, 17rem);         /* clears the 15rem sidebar + gaps */
+    bottom: var(--chat-bottom, 1rem);
+    width: var(--chat-width, min(50vw, calc(100vw - 34rem)));  /* …and the rose */
+    height: var(--chat-height, 21rem);     /* ≈ an 8-line transcript + chrome */
+    min-width: 18rem;
+    min-height: 13rem;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
     display: flex;
-    gap: 0.5rem;
-    align-items: flex-start;
-    font-size: 0.8125rem;
-    line-height: 1.45;
-    min-height: 1.75rem; /* 24px target floor (WCAG 2.5.8) */
-    margin-bottom: 0.5rem;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.98);
+    border: 2px solid #5a5a5a;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 85;   /* over the rose (80), under the sidebar (90) when dragged there */
 }
-.chat-consent__label input {
-    width: 1.25rem;
-    height: 1.25rem;
+.chat-panel[hidden] { display: none; }
+
+/* The bar: drag surface for MOVE, plus the keyboard Move/Resize buttons. */
+.chat-panel__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 2.25rem 0.25rem 0.75rem; /* right inset clears the grip */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+.chat-panel__bar.dragging { cursor: grabbing; }
+.chat-panel__title {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.chat-panel__tool {
     flex: none;
+    min-height: 1.75rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+    background: #fff;
+    color: #1a1a1a;
+    border: 1px solid #767676;
+    border-radius: 6px;
+    cursor: pointer;
 }
+.chat-panel__tool:hover { background: #f8f8f8; border-color: #444; }
+.chat-panel__tool:focus { outline: 2px solid #0066ff; outline-offset: 2px; }
+
+/* Resize grip — POINTER twin of the Resize button, top-right corner (the
+   bottom edge stays docked; you pull the top corner up/out). aria-hidden. */
+.chat-panel__grip {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-left: 1px solid #767676;
+    border-bottom: 1px solid #767676;
+    border-radius: 0 0.4rem 0 0.4rem;
+    background:
+        repeating-linear-gradient(45deg,
+            transparent 0 5px, #767676 5px 7px, transparent 7px 10px);
+    cursor: nesw-resize;
+    touch-action: none;
+}
+
+.chat-form { padding: 0.5rem 0.75rem 0; }
+
 .chat-logwrap {
-    max-height: 16rem;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
-    margin-bottom: 0.5rem;
+    margin: 0.25rem 0.75rem;
+}
+
+/* ── Mobile split screen: map on top, panel across the bottom. ────────────── */
+.chat-divider { display: none; }
+.chat-divider[hidden] { display: none; }
+
+/* :not([hidden]) keeps the disclaimer gate's main[hidden] authoritative. */
+body.chat-split main:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+}
+body.chat-split #map-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+}
+body.chat-split .chat-divider {
+    display: block;
+    flex: none;
+    position: relative;
+    height: 1.5rem;   /* 24px band — WCAG 2.5.8 target floor */
+    background: #fff;
+    border-top: 2px solid #5a5a5a;
+    border-bottom: 2px solid #5a5a5a;
+    cursor: row-resize;
+    touch-action: none;
+}
+.chat-divider::after {   /* the visible pill affordance */
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 3rem;
+    height: 0.375rem;
+    border-radius: 999px;
+    background: #5a5a5a;
+}
+.chat-divider:focus { outline: 3px solid #0066ff; outline-offset: -3px; }
+body.chat-split .chat-panel {
+    position: static;
+    flex: none;
+    height: var(--chat-split-h, 40vh);
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+/* No float chrome in split mode: the divider does the resizing, and the
+   panel is always open, so Move/Resize/grip (and their Settings toggle,
+   see below) retire. */
+body.chat-split .chat-panel__bar { display: none; }
+body.chat-split .chat-panel__grip { display: none; }
+body.chat-split #toggle-chat-panel { display: none; }
+/* Keep the location read-out above the panel, not underneath it. */
+body.chat-split .location-info {
+    bottom: calc(var(--chat-split-h, 40vh) + 2.25rem);
+}
+/* The captions panel lives below the fold (scroll to read) — keep it there,
+   out of the flex flow, or it would squeeze the map. */
+body.chat-split .captions-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
 }
 .chat-msg {
     margin: 0.375rem 0;
@@ -2522,7 +2655,7 @@ body.tooltip-below .poi-tooltip::after {
 }
 .chat-status {
     font-size: 0.8125rem;
-    margin: 0.375rem 0 0;
+    margin: 0 0.75rem 0.5rem;
     color: #333;
     min-height: 1.2em; /* keep the layout steady when it empties */
 }
@@ -2553,4 +2686,40 @@ body.tooltip-below .poi-tooltip::after {
     .captions-log li:last-child { color: #000; }
     .detail-modal { background: rgba(0, 0, 0, 0.7); }
     .detail-modal__close { border-color: #000; color: #000; }
+    .chat-panel { border-color: #000; border-width: 3px; }
+    body.chat-split .chat-divider { border-color: #000; }
+    .chat-divider::after { background: #000; }
+    .chat-panel__tool, .chat-panel__grip { border-color: #000; }
+    .chat-status { color: #000; }
+}
+
+@media (prefers-color-scheme: dark) {
+    .chat-panel {
+        background: rgba(30, 30, 30, 0.98);
+        color: #e0e0e0;
+        border-color: #9a9a9a;   /* grey luminance boundary, invert-safe */
+    }
+    .chat-panel__bar { border-bottom-color: rgba(255, 255, 255, 0.1); }
+    .chat-panel__tool {
+        background: #2a2a2a;
+        color: #e0e0e0;
+        border-color: #9a9a9a;
+    }
+    .chat-panel__tool:hover { background: #333; }
+    .chat-panel__grip {
+        border-color: #9a9a9a;
+        background:
+            repeating-linear-gradient(45deg,
+                transparent 0 5px, #9a9a9a 5px 7px, transparent 7px 10px);
+    }
+    body.chat-split .chat-divider { background: #1e1e1e; border-color: #9a9a9a; }
+    .chat-divider::after { background: #9a9a9a; }
+    .chat-label { color: #e0e0e0; }
+    .chat-hint, .chat-status { color: #c9c9c9; }
+    .chat-msg__text {
+        background: #252525;
+        color: #e0e0e0;
+        border-color: #9a9a9a;
+    }
+    .chat-msg--user .chat-msg__text { background: #103050; }
 }

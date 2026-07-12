@@ -105,20 +105,34 @@ export class Announcer {
             return;
         }
 
-        const region = document.getElementById(this.regionId);
-        if (region) {
-            // Clear-then-set (async) so an identical consecutive message still
-            // re-announces. The pending write is cancelled if a newer one arrives
-            // first — the region gets the LATEST text, never a stale backlog.
-            if (this._regionTimer) window.clearTimeout(this._regionTimer);
-            region.textContent = '';
-            this._regionTimer = window.setTimeout(() => {
-                this._regionTimer = null;
-                region.textContent = text;
-            }, 60);
-        }
+        this._toRegion(text);
         // No end signal from a screen reader — estimate the read time.
         if (finish) window.setTimeout(finish, Math.min(12000, 900 + text.length * 55));
+    }
+
+    /** State notes for the screen reader ONLY — the chat's "Listening…" /
+     *  "Thinking…" line. The chat panel can be closed (desktop) so no live
+     *  region may live inside it: the note goes out through THIS region
+     *  instead, whatever the audio setting. Never spoken aloud — the beeps
+     *  and the busy tone are the audible channel, and speech here would leak
+     *  into the open microphone. Not captioned — the panel's visible status
+     *  line is the sighted twin. */
+    status(text) {
+        this._toRegion(text || '');
+    }
+
+    _toRegion(text) {
+        const region = document.getElementById(this.regionId);
+        if (!region) return;
+        // Clear-then-set (async) so an identical consecutive message still
+        // re-announces. The pending write is cancelled if a newer one arrives
+        // first — the region gets the LATEST text, never a stale backlog.
+        if (this._regionTimer) window.clearTimeout(this._regionTimer);
+        region.textContent = '';
+        this._regionTimer = window.setTimeout(() => {
+            this._regionTimer = null;
+            region.textContent = text;
+        }, 60);
     }
 
     /** Stop any current speech immediately (the chat's "shush"). */

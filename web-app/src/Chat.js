@@ -7,9 +7,15 @@
  * Voice input streams directly to Deepgram over a WebSocket using a 30-second
  * token minted server-side, with diarisation + voice-locking so a noisy street
  * doesn't hijack the conversation. Adapted from the Knowledge Map's client —
- * the behaviour is deliberately the same; only the housing differs (an
- * accordion panel instead of a whole page, and the map app's own Announcer,
+ * the behaviour is deliberately the same; only the housing differs (the chat
+ * PANEL over the map — see ChatPanel.js — and the map app's own Announcer,
  * HeadingProvider and follow-me instead of private ones).
+ *
+ * The housing split: the SPEAK button lives in the menu, first stop — voice
+ * needs no panel at all. The panel holds the typed input and the transcript,
+ * and on desktop it can be CLOSED, so nothing aria-live lives inside it:
+ * state notes ("Listening…", "Thinking…") go to the visible #chat-status line
+ * AND out through the app's existing live region via announcer.status().
  *
  * DELIBERATELY NOT YET: answers do not move or highlight anything on the
  * visual map. This is the conversation only; driving the viewport comes later.
@@ -17,9 +23,9 @@
  * Consent: covered by the PAGE gate — the whole map sits behind the notice
  * (accepted before the map is seen at all, like every map in this family),
  * and that notice discloses what the chat sends off-device. The chat's own
- * location/compass/speech initialisation happens lazily, on the first opening
- * of the accordion — a real user gesture, which is what the permission
- * prompts and the iOS speech engine need.
+ * location/compass/speech initialisation happens lazily, on the first real
+ * user gesture at the chat — a Speak tap or focusing the input — which is
+ * what the permission prompts and the iOS speech engine need.
  */
 
 const CHAT_API = '/api/knowledge-chat';
@@ -38,10 +44,9 @@ const MEM_KEY = 'tiled-map-memory-v1';
 
 export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
     const $ = (id) => document.getElementById(id);
-    const panel = $('chat-content');
+    const panel = $('chat-panel');
     if (!panel) return;
 
-    const header = $('chat-header');
     const form = $('chat-form');
     const input = $('chat-input');
     const send = $('chat-send');
@@ -49,7 +54,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
     const log = $('chat-log');
     const status = $('chat-status');
 
-    let started = false;   // first accordion open done (location/compass/speech primed)
+    let started = false;   // first chat gesture done (location/compass/speech primed)
     let memory = [];
     try { const m = JSON.parse(localStorage.getItem(MEM_KEY) || '[]'); if (Array.isArray(m)) memory = m; } catch { /* fresh */ }
     const saveMemory = (items) => {
@@ -61,19 +66,33 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
     let lastUserInput = '';
     let pending = null;     // AbortController for the in-flight answer (shush cancels it)
 
-    // ── First open of the accordion: the click is the user gesture the
-    //    location prompt, the iOS compass, and the speech engine all need.
-    //    (Terms were already accepted at the page gate.) ──
-    if (header) header.addEventListener('click', () => {
-        if (started || header.getAttribute('aria-expanded') !== 'false') return;
-        // The generic accordion handler runs after this and flips aria-expanded;
-        // 'false' here means this click is the OPENING one.
+    // ── First gesture at the chat — a Speak tap or focusing the input. Either
+    //    is the real user gesture the location prompt, the iOS compass, and
+    //    the speech engine all need. (Terms were already accepted at the page
+    //    gate; no welcome speech — the Speak path is about to open the mic,
+    //    and the typed path has its visible label and hint.) ──
+    function startOnce() {
+        if (started) return;
         started = true;
         requestLocation();
         if (heading && heading.start) heading.start().catch(() => {});
         announcer.prime();
-        announcer.announce('Ready. Ask where you are, or about anywhere on the map — I can tell you what a place is known for, too. Type it, or use the Speak button.');
-    });
+    }
+    if (input) input.addEventListener('focus', startOnce);
+
+    // The status line is VISIBLE ONLY (the panel can be closed on desktop, so
+    // no live region lives in it) — every note also goes out through the app's
+    // existing live region. Same text, both places, latest wins.
+    function setStatus(note) {
+        status.textContent = note || '';
+        announcer.status(note || '');
+    }
+
+    // Focus the input only when it is actually on screen — on desktop the
+    // panel may be switched off while the voice conversation carries on.
+    function focusInput() {
+        if (!panel.hidden && input.getClientRects().length) input.focus();
+    }
 
     // ── Location: chat keeps its own fix, independent of the map's Track
     //    Location toggle — a fresh read per question, so walking registers. ──
@@ -136,7 +155,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
         send.disabled = busy;
         input.disabled = busy;
         if (speakBtn) speakBtn.disabled = busy;
-        status.textContent = note || '';
+        setStatus(note);
         if (busy) startBusyTone(); else stopBusyTone();
     }
 
@@ -168,7 +187,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
                 const msg = data.error || `Something went wrong (${res.status}).`;
                 setBusy(false, msg);
                 if (convo) { convo = false; clearIdle(); setConvoButton(false); }
-                announcer.announce(msg); input.focus(); return;
+                announcer.announce(msg); focusInput(); return;
             }
             const reply = (data.reply || '').trim() || "I'm not sure how to answer that.";
             addMessage('bot', reply);
@@ -176,7 +195,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
             if (history.length > MAX_HISTORY * 2) history.splice(0, history.length - MAX_HISTORY * 2);
             setBusy(false, '');
             announcer.announce(reply, onAnswerSpoken);  // hands-free: re-open the mic when done
-            input.focus();
+            focusInput();
         } catch (e) {
             if (e && e.name === 'AbortError' && !ctrl.timedOut) return;  // mid-flight shush
             const msg = ctrl.timedOut
@@ -184,7 +203,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
                 : "I couldn't reach the assistant. Check your connection and try again.";
             setBusy(false, msg);
             if (convo) { convo = false; clearIdle(); setConvoButton(false); }
-            announcer.announce(msg); input.focus();
+            announcer.announce(msg); focusInput();
         } finally {
             window.clearTimeout(chatTimer);
             if (pending === ctrl) pending = null;
@@ -293,7 +312,10 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
     }
 
     function setConvoButton(on) {
-        speakBtn.textContent = on ? 'Stop' : 'Speak';
+        // The menu button is icon + label spans; only the label flips.
+        const label = speakBtn.querySelector('.label');
+        if (label) label.textContent = on ? 'Stop' : 'Speak';
+        else speakBtn.textContent = on ? 'Stop' : 'Speak';
         speakBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
 
@@ -307,6 +329,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
 
     async function toggleRecord() {
         if (convo) { endConvo('Conversation ended. Tap Speak to start again.'); return; }
+        startOnce();   // a Speak tap may be the chat's very first gesture
         convo = true;
         setConvoButton(true);
         await startListen();
@@ -322,7 +345,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
         announcer.stop();
         setConvoButton(false);
         beep(440);
-        if (message) status.textContent = message;
+        if (message) setStatus(message);
     }
 
     function handleUtterance(t) { input.value = t; handleInput(t); }
@@ -331,6 +354,8 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
 
     function bailListen(msg) {
         opening = false;
+        // Visible line only — announcer.announce below carries the message on
+        // whichever live channel is active; a status() write too would race it.
         status.textContent = msg;
         announcer.announce(msg);
         if (convo) { convo = false; setConvoButton(false); }
@@ -384,7 +409,7 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
 
         recording = true;
         opening = false;
-        status.textContent = 'Listening… ask your question, or reply. It sends when you pause; tap Stop to end.';
+        setStatus('Listening… ask your question, or reply. It sends when you pause; tap Stop to end.');
         beep(880);
         armIdle();
     }

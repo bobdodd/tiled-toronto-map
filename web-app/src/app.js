@@ -9,6 +9,7 @@ import { buildFilterUI } from './FilterUI.js';
 import { setupTooltip } from './Tooltip.js';
 import { Announcer } from './Announcer.js';
 import { setupChat } from './Chat.js';
+import { setupChatPanel } from './ChatPanel.js';
 import { SearchManager } from './SearchManager.js';
 import { LevelSwitch } from './LevelSwitch.js';
 import { HeadingProvider } from './HeadingProvider.js';
@@ -93,9 +94,11 @@ class MapApplication {
         }
 
         // Build the filter + rotor controls from the taxonomy (replaces the old hand-coded HTML)
-        // Tabindex bands keep header < map controls < map (positive throughout):
-        // filter controls start at 101, rotor controls at 4002, map features at
-        // 9000+ (assigned by the rotor in AccessibilityManager.updateTabOrder).
+        // Tabindex bands keep header < chat < rose < map (positive throughout):
+        // filter controls start at 101, rotor controls at 4002, the chat panel
+        // sits at 6000-6004 (between the header and the rose, with its own
+        // skip link), the rose at 8000s, map features at 9000+ (assigned by
+        // the rotor in AccessibilityManager.updateTabOrder).
         buildFilterUI(this.taxonomy, document.getElementById('filter-groups'), 'filter', 101);
         buildFilterUI(this.taxonomy, document.getElementById('rotor-groups'), 'rotor', 4002);
 
@@ -132,6 +135,15 @@ class MapApplication {
         // Sticky name tooltip on focus/hover (reads each feature's aria-label).
         // Delegates on #map-svg, so it covers tiles loaded later too.
         setupTooltip();
+
+        // The chat panel's housing: floating (moveable/resizable/closeable)
+        // on desktop, split-screen with a draggable divider on mobile. The
+        // divider changes the map's height without a window resize, so it
+        // drives handleResize itself.
+        this.chatPanel = setupChatPanel({
+            announce: (msg) => this.announceStatus(msg),
+            onLayoutChange: () => { if (this.mapRenderer) this.mapRenderer.handleResize(); },
+        });
 
         // The Chat — the Knowledge Map's conversation on the visual map. It
         // shares the app's Announcer (one speech channel, latest wins) and
@@ -1387,7 +1399,7 @@ class MapApplication {
         accept.addEventListener('change', () => { start.disabled = !accept.checked; });
         start.addEventListener('click', () => {
             gate.hidden = true;
-            ['skip-to-compass', 'skip-to-map', 'control-sidebar'].forEach((id) => {
+            ['skip-to-compass', 'skip-to-map', 'skip-to-chat', 'control-sidebar'].forEach((id) => {
                 const el = document.getElementById(id);
                 if (el) el.hidden = false;
             });
@@ -1398,6 +1410,11 @@ class MapApplication {
             const compassOn = localStorage.getItem('map-compass-on') !== 'off';
             const skipCompass = document.getElementById('skip-to-compass');
             if (skipCompass) skipCompass.hidden = !compassOn;
+            // Same for the chat skip link: it tracks the panel (hidden when
+            // the desktop panel is switched off in Settings).
+            const chatPanel = document.getElementById('chat-panel');
+            const skipChat = document.getElementById('skip-to-chat');
+            if (skipChat && chatPanel) skipChat.hidden = chatPanel.hidden;
             // The map initialised while <main> was display:none, where every
             // measurement is 0×0 — the viewBox and the initial tile load were
             // computed against a zero-size viewport. Now that the map is
@@ -1443,9 +1460,12 @@ class MapApplication {
         modal.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') { e.preventDefault(); shut(); return; }
             if (e.key !== 'Tab') return;
-            // Cycle focus through the dialog's buttons — the page's positive
-            // tabindex bands must not pull focus out of an open modal.
-            const items = Array.from(modal.querySelectorAll('button'));
+            // Cycle focus through the dialog's VISIBLE buttons — the page's
+            // positive tabindex bands must not pull focus out of an open modal,
+            // and a display:none button (the Chat panel toggle hides in mobile
+            // split mode) must not wedge the cycle.
+            const items = Array.from(modal.querySelectorAll('button'))
+                .filter((b) => b.getClientRects().length);
             if (!items.length) return;
             const i = items.indexOf(document.activeElement);
             e.preventDefault();

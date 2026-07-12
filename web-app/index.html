@@ -82,13 +82,16 @@
         </button>
     </main>
 
-    <!-- Skip links: the first two tab stops (tabindex 1, 2 — ahead of every
+    <!-- Skip links: the first tab stops (tabindex 1, 2, 3 — ahead of every
          banded control). Visually hidden until focused. "Skip to map" lands on
          the first feature that is BOTH in a selected rotor category AND on
          screen — the same viewport-only focus set you reach tabbing in from the
-         header — so the user arrives on something they can see and operate. -->
+         header — so the user arrives on something they can see and operate.
+         "Skip to chat" lands on the chat input, ready to type; it hides with
+         the panel (desktop off), like the compass link hides with the rose. -->
     <a href="#compass-navigator" id="skip-to-compass" class="skip-link" tabindex="1" hidden>Skip to compass</a>
     <a href="#map-svg" id="skip-to-map" class="skip-link" tabindex="2" hidden>Skip to map</a>
+    <a href="#chat-input" id="skip-to-chat" class="skip-link" tabindex="3" hidden>Skip to chat</a>
 
     <!-- Control Sidebar -->
     <!-- The map's header (banner landmark), NAMED by the visible "Menu" text via
@@ -104,45 +107,15 @@
         </div>
         
         <div class="sidebar-content">
-            <!-- Chat — the Knowledge Map's conversation, on the visual map. It
-                 REPLACES the old Quick describe / Detailed surroundings buttons:
-                 "where am I?" and "describe my surroundings" are now questions
-                 you ask, along with anything else. The consent for what the
-                 chat sends off-device lives in the page GATE, accepted before
-                 the map is seen at all — same as every map in this family. -->
-            <div class="accordion-item">
-                <button id="chat-header" class="accordion-header" aria-expanded="false" aria-controls="chat-content" tabindex="4">
-                    <span class="icon" aria-hidden="true">💬</span>
-                    <span class="label">Chat</span>
-                    <span class="accordion-arrow" aria-hidden="true">▼</span>
-                </button>
-                <div id="chat-content" class="accordion-content" hidden>
-                    <div id="chat-ui">
-                        <!-- The conversation. NOT a live region: it never double-
-                             announces and stays navigable for re-reading; answers
-                             are announced through the map's Announcer. -->
-                        <section class="chat-logwrap" aria-label="Conversation">
-                            <div id="chat-log" class="chat-log"></div>
-                        </section>
-                        <form id="chat-form" class="chat-form">
-                            <label for="chat-input" class="chat-label">Ask about where you are, or anywhere on the map</label>
-                            <p id="chat-hint" class="chat-hint">
-                                For example: &ldquo;what&rsquo;s near me?&rdquo;, &ldquo;is there
-                                a step-free caf&eacute; nearby?&rdquo;, &ldquo;what buses serve
-                                here?&rdquo;, or &ldquo;what&rsquo;s this area known for?&rdquo;
-                            </p>
-                            <div class="chat-inputrow">
-                                <input id="chat-input" class="chat-input" type="text"
-                                       aria-describedby="chat-hint" enterkeyhint="send" tabindex="4">
-                                <button id="chat-speak" class="control-button chat-btn" type="button" aria-pressed="false" tabindex="4">Speak</button>
-                                <button id="chat-send" class="control-button chat-btn" type="submit" tabindex="4">Send</button>
-                            </div>
-                        </form>
-                        <!-- Status: "Thinking…", "Listening…", errors. Short messages only. -->
-                        <p id="chat-status" class="chat-status" role="status" aria-live="polite"></p>
-                    </div>
-                </div>
-            </div>
+            <!-- Speak — the voice conversation, first stop in the menu. One tap
+                 opens the hands-free loop (Chat.js); no panel needed to talk.
+                 The typed conversation lives in the chat PANEL over the map;
+                 the consent for what the chat sends off-device lives in the
+                 page GATE, accepted before the map is seen at all. -->
+            <button id="chat-speak" class="control-button" type="button" aria-pressed="false" tabindex="4">
+                <span class="icon" aria-hidden="true">🎙️</span>
+                <span class="label">Speak</span>
+            </button>
 
             <!-- Settings live in a dialog (audio, location tracking, follow me,
                  heading up, navigation rose) so the header holds ACTIONS and
@@ -322,6 +295,73 @@
         </div>
         
 
+        <!-- Chat — the Knowledge Map's conversation, on the visual map. It
+             REPLACES the old Quick describe / Detailed surroundings buttons:
+             "where am I?" and "describe my surroundings" are now questions you
+             ask, along with anything else.
+
+             Two housings, one panel (ChatPanel.js):
+             - DESKTOP: a floating panel over the map — moveable (drag the bar,
+               or the Move button + arrow keys), resizable (the top-right grip,
+               or the Resize button + arrow keys), and switchable off in
+               Settings. By default it docks at the bottom, between the menu
+               sidebar and the navigation rose.
+             - MOBILE (narrow screens): the common split-screen pattern — map
+               on top, this panel across the bottom, with a draggable divider
+               (arrow keys when focused) controlling the ratio. Always open.
+
+             Because the panel can be CLOSED, nothing aria-live lives in here:
+             status messages go out through #map-announcements (the existing
+             live region) via the Announcer; #chat-status below is the visible
+             twin only. The transcript is NOT a live region either: it never
+             double-announces and stays navigable for re-reading; answers are
+             announced through the map's Announcer. -->
+        <!-- Tab band 6000: the chat sits BETWEEN the header's bands (which end
+             at the rotor, 4000s) and the navigation rose (8000s), with its own
+             skip link.
+
+             The divider is a SLIDER, not the ARIA window-splitter separator:
+             sliders are the one widget every AT supports for real — NVDA/JAWS
+             switch to focus mode on it so the arrows reach the page, and a
+             touch screen reader gets its native adjust gesture (swipe up/
+             down), which is the only non-drag control it has. Value = the
+             chat's share of the screen. -->
+        <div id="chat-divider" class="chat-divider" role="slider" tabindex="6000"
+             aria-orientation="vertical" aria-controls="chat-panel"
+             aria-label="Map and chat split"
+             aria-valuemin="20" aria-valuemax="75" aria-valuenow="40"
+             aria-valuetext="Chat 40% of the screen" hidden></div>
+        <section id="chat-panel" class="chat-panel" role="region" aria-labelledby="chat-panel-title" hidden>
+            <div class="chat-panel__bar">
+                <span id="chat-panel-title" class="chat-panel__title"><span aria-hidden="true">💬 </span>Chat</span>
+                <button id="chat-panel-move" class="chat-panel__tool" type="button" tabindex="6001"
+                        aria-describedby="chat-panel-keys">Move</button>
+                <button id="chat-panel-resize" class="chat-panel__tool" type="button" tabindex="6002"
+                        aria-describedby="chat-panel-keys">Resize</button>
+                <span id="chat-panel-keys" class="screen-reader-only">Use the arrow keys. With a screen reader, hold Alt and Shift with the arrow.</span>
+            </div>
+            <form id="chat-form" class="chat-form">
+                <label for="chat-input" class="chat-label">Ask about where you are, or anywhere on the map</label>
+                <div class="chat-inputrow">
+                    <input id="chat-input" class="chat-input" type="text"
+                           aria-describedby="chat-hint" enterkeyhint="send" tabindex="6003">
+                    <button id="chat-send" class="control-button chat-btn" type="submit" tabindex="6004">Send</button>
+                </div>
+                <p id="chat-hint" class="chat-hint">
+                    For example: &ldquo;what&rsquo;s near me?&rdquo;, &ldquo;is there
+                    a step-free caf&eacute; nearby?&rdquo;, &ldquo;what buses serve
+                    here?&rdquo;, or &ldquo;what&rsquo;s this area known for?&rdquo;
+                </p>
+            </form>
+            <section class="chat-logwrap" aria-label="Conversation">
+                <div id="chat-log" class="chat-log"></div>
+            </section>
+            <!-- Status: "Thinking…", "Listening…", errors. VISIBLE ONLY — the
+                 announcement itself goes through #map-announcements. -->
+            <p id="chat-status" class="chat-status"></p>
+            <div class="chat-panel__grip" aria-hidden="true"></div>
+        </section>
+
         <!-- Location read-out. NOT a live region: a GPS watch fires ~1/sec and the
              coordinates jitter at the 6th decimal even when stationary, so an
              aria-live panel here spams the screen reader with raw numbers. The
@@ -413,6 +453,14 @@
                 <button id="toggle-compass" class="control-button" aria-pressed="true">
                     <span class="icon" aria-hidden="true">🧭</span>
                     <span class="label">Navigation rose</span>
+                </button>
+                <!-- Desktop only: shows/hides the floating chat panel (speaking
+                     still works with it closed — the Speak button is in the
+                     menu). On mobile the split-screen panel is always open and
+                     this button is hidden. Persists. -->
+                <button id="toggle-chat-panel" class="control-button" aria-pressed="true">
+                    <span class="icon" aria-hidden="true">💬</span>
+                    <span class="label">Chat panel</span>
                 </button>
             </div>
             <button id="settings-modal-close" class="detail-modal__close" type="button">Close</button>
