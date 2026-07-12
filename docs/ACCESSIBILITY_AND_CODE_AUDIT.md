@@ -61,7 +61,7 @@ connections are broken.
   `-feature` group, so checking them in the rotor is a harmless no-op. Giving them feature groups
   belongs with Tier 1 #4 (feature roles) in `FeatureRenderer`.
 
-### 2. The map itself is not keyboard-reachable ⬜
+### 2. The map itself is not keyboard-reachable ✅ FIXED 2026-07-12
 - **Where:** `web-app/index.html:1163` — `<svg id="map-svg" role="document" focusable="true">`;
   `web-app/index.html:1162` — `#map-container role="application"` (no `tabindex`).
 - **Problem:** `focusable="true"` is a legacy SVG/IE attribute that does **not** make an element
@@ -71,8 +71,15 @@ connections are broken.
   escape hatch is unreachable because its target can't be focused.
 - **Fix direction:** Add `tabindex="0"` (or programmatic) to the focusable map element; ensure the
   keydown handler's host can actually receive focus.
+- **Resolution (2026-07-12, commit 5a87ad4):** Landed as a set. `focusable="true"` replaced by a
+  real tabindex — first `7999` (a Tab stop), then **`-1`** once the same commit made EVERY
+  viewport-visible feature tabbable by default (rotor cleared = the 9000+ band goes to all
+  `[role="img"]` groups; the rotor NARROWS, it no longer gates). With features always reachable
+  and the compass inside the keydown host, a canvas Tab stop was pure friction — it remains the
+  skip-link's programmatic target (and the fallback no longer clobbers its tabindex). Clicking a
+  feature now also moves focus onto it (search-result treatment, band 8500).
 
-### 3. Arrow keys are gated behind Ctrl/Cmd, and bare arrows are swallowed ⬜
+### 3. Arrow keys are gated behind Ctrl/Cmd, and bare arrows are swallowed ✅ RESOLVED BY REDESIGN
 - **Where:** `web-app/src/app.js:275-324`.
 - **Problem:** Panning only runs `if (hasModifier)` (Ctrl/Cmd). A bare `ArrowUp` enters the
   `case`, skips the pan, but `handled` was initialised `true` (`app.js:270`) and is never reset,
@@ -83,8 +90,13 @@ connections are broken.
   reason to use that role — so bare arrows should pan. The modifier requirement is undiscoverable
   and the swallow is actively harmful.
 - **Fix direction:** Make bare arrows pan; only set `handled = true` when a pan actually happens.
+- **Resolution (verified 2026-07-12):** The design moved the other way, deliberately —
+  `role="application"` was dropped, so bare arrows BELONG to the screen reader's virtual cursor.
+  The handler now sets `handled = false` for a bare arrow and falls through with no
+  `preventDefault` (no swallow, no false announcement); panning lives on Ctrl/Cmd+arrows. The
+  audit's premise (inside `role="application"`, bare arrows should pan) no longer applies.
 
-### 4. Map features have no reliable accessible name ⬜
+### 4. Map features have no reliable accessible name ✅ RESOLVED BY ARCHITECTURE
 - **Where:** `web-app/src/FeatureRenderer.js:280` (and every `renderXxx` method).
 - **Problem:** Each feature is a `<g>` with an `aria-label` but **no `role`** (0 `setAttribute('role'…)`
   in the file) and no `<title>`. `aria-label` on a roleless `<g>` is inconsistently exposed — many
@@ -94,8 +106,16 @@ connections are broken.
 - **Fix direction:** At render time set `role="img"` (or `graphics-symbol`) on each feature `<g>`
   *paired* with the existing `aria-label`, ideally plus a child `<title>` as a fallback. This
   anchors the name independent of the rotor overlay.
+- **Resolution (verified 2026-07-12):** The offending module was DELETED, not repaired —
+  `FeatureRenderer.js` (client-side rendering) went in `02d99cc`; features now come exclusively
+  pre-rendered in the tiles, and the generator stamps `role="img"` + a rich `aria-label` (name,
+  category, address, accessibility detail) on every feature group at build time
+  (`tile-generation/build-tiles.py:1429`). Verified against the live downtown tile
+  `43.650_-79.380`: **2,312 of 2,339 `<g>`s carry both**; the 27 without are clip/casing/halo
+  scaffolding, correctly `aria-hidden="true"`. Names are baked into the artefact — no runtime JS
+  to drift.
 
-### 5. Positive-tabindex collision: two code paths disagree ⬜
+### 5. Positive-tabindex collision: two code paths disagree ✅ RESOLVED (one residue, see below)
 - **Where:** `web-app/src/app.js:1233` (`feature.setAttribute('tabindex', index + 1)`) vs
   `web-app/src/AccessibilityManager.js:495` (`let tabIndex = 100; // come after UI controls`).
 - **Problem:** The tile path bases feature `tabindex` at 1, colliding with the static control
@@ -104,6 +124,17 @@ connections are broken.
   features interleave with the toolbar.
 - **Fix direction:** Base the tile path at 100 too (e.g. `index + 100`) so it matches the sibling
   path and clears the control range.
+- **Resolution (verified 2026-07-12):** The `index + 1` tile path went with `FeatureRenderer.js`
+  (deleted, `02d99cc`); the banding rework left three coordinated writers — rotor/default band
+  9000+ (`AccessibilityManager.js`), search/click direct target 8500 (`app.js`), and static bands
+  in the HTML (header 1–7, filter 101+, rotor controls 4002+, compass 8000–8005). No collision.
+- **Residue found during verification:** `Avatar.js:162` stamps the you-are-here marker
+  `tabindex="0"` — on an all-positive page, 0 sorts LAST, so the user's own location is the final
+  Tab stop after every feature. It is also an activatable control (click/Enter centres the map)
+  with an `aria-label` but **no `role`** — the #4 disease, on the one element #4's fix (the tile
+  generator) can't reach because the avatar is built client-side. Proposed: `tabindex="7999"`
+  (the slot the canvas vacated: location → compass → features) + `role="button"`. Awaiting
+  sign-off on the ordering.
 
 ### 6. Three competing live regions; the declared ones go unused ⬜
 - **Where:** declared `#map-announcements` (`index.html:1263`) and `#location-info`
@@ -122,7 +153,7 @@ connections are broken.
 
 ## TIER 2 — Correctness bugs
 
-### 7. Latitude/longitude swapped on 6 point-marker render paths ⬜
+### 7. Latitude/longitude swapped on 6 point-marker render paths ✅ RESOLVED BY ARCHITECTURE
 - **Where:** `web-app/src/FeatureRenderer.js:3301` (and `:3360, :3408, :3446, :3519, :3584`).
 - **Problem:** These call `toSVGCoordinates(coordinates[0], coordinates[1])` = `(lon, lat)`, but
   the signature is `toSVGCoordinates(lat, lon)` (`:523`) and the correct helper passes
@@ -130,6 +161,15 @@ connections are broken.
   variants of bridges, tunnels, towers, masts, piers and breakwaters render at the wrong location.
 - **Fix direction:** Swap the argument order on all six; a copy-paste divergence among the ~80
   near-identical render methods.
+- **Resolution (verified 2026-07-12):** Died with `FeatureRenderer.js` (`02d99cc`). The tile
+  generator has exactly ONE point-geometry path (`build-tiles.py:1248`, `(geom.y, geom.x)` —
+  correct), one line path and one polygon path, all through the single `coord_to_svg(lat, lng)`
+  helper; the shapely (lon, lat) convention is documented at the conversion site. All 7 call
+  sites audited correct. Empirically confirmed on live tile `43.650_-79.380`: OSM node 955598849
+  at (43.657789, −79.376763) projects to SVG (324, 221); the tile renders (323, 221) — integer
+  truncation only. A per-kind swap cannot recur: there are no per-kind conversions to diverge.
+  NB the tile's `data-osm-id` does not carry the element TYPE (node/way ids can collide across
+  types) — worth remembering when tracing a feature back to OSM.
 
 ### 8. Dead "Everything" / category-cascade code ⬜
 - **Where:** `web-app/src/AccessibilityManager.js:135-140`.
