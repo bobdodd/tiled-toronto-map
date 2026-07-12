@@ -29,6 +29,12 @@ body {
 
 /* Skip links — off-screen until focused, then pinned top-left. White on dark
    blue is ~9:1 (AAA); generous height/padding clears the WCAG 2.2 target size. */
+/* An authored display beats the [hidden] attribute's UA display:none — make
+   hidden mean hidden (the compass toggle hides the skip-to-compass link). */
+.skip-link[hidden] {
+    display: none;
+}
+
 .skip-link {
     position: absolute;
     left: 0.5rem;
@@ -1125,6 +1131,12 @@ main {
 }
 
 /* Compass Navigator */
+/* Defensive: keep the [hidden] attribute authoritative for the settings
+   toggle even if a display rule is ever added to the compass. */
+.compass-navigator[hidden] {
+    display: none;
+}
+
 .compass-navigator {
     position: fixed;
     right: 1rem;
@@ -2377,6 +2389,13 @@ body.tooltip-below .poi-tooltip::after {
     font-size: 1rem;
     line-height: 1.5;
     color: #1a1a1a;
+}
+/* The settings dialog's body is a short stack of toggle buttons. */
+.settings-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 16rem;
 }
 .detail-modal__body h3 {
     margin: 0.875rem 0 0.25rem;

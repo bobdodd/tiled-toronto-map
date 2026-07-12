@@ -29,50 +29,27 @@
         </div>
         
         <div class="sidebar-content">
-            <button id="toggle-tracking" class="control-button" aria-pressed="false" tabindex="4">
-                <span class="icon" aria-hidden="true">📍</span>
-                <span class="label">Track Location</span>
+            <!-- Settings live in a dialog (audio, location tracking, navigation
+                 rose) so the header holds ACTIONS and settings are one stop. -->
+            <button id="open-settings" class="control-button" aria-haspopup="dialog" tabindex="4">
+                <span class="icon" aria-hidden="true">⚙️</span>
+                <span class="label">Settings</span>
             </button>
 
-            <!-- Three spoken location descriptions, increasing depth. They sit right
-                 after Track Location (their natural pair) and share its tab stop.
-                 QUICK: one-line "where am I". AUTO: a running commentary as you move
-                 AND as you turn (rotation counts as movement — vital when you're
-                 jostled round in a crowd). DETAILED: the full surround, read into a
-                 modal. All three also caption to the visible panel below for
-                 Deaf/deafened and sighted users. -->
+            <!-- Two on-demand spoken location descriptions. QUICK: one-line
+                 "where am I". DETAILED: the full surround, read into a modal.
+                 (The running commentary lives in Settings as "Follow me".)
+                 Both also caption to the visible panel below for Deaf/deafened
+                 and sighted users. -->
             <button id="describe-quick" class="control-button" tabindex="4">
                 <span class="icon" aria-hidden="true">🧭</span>
                 <span class="label">Quick describe</span>
-            </button>
-            <button id="describe-auto" class="control-button" aria-pressed="false" tabindex="4">
-                <span class="icon" aria-hidden="true">🔇</span>
-                <span class="label">Describe as I move</span>
             </button>
             <button id="describe-detailed" class="control-button" tabindex="4">
                 <span class="icon" aria-hidden="true">📋</span>
                 <span class="label">Detailed surroundings</span>
             </button>
 
-            <!-- Heading-up toggle (off by default = north-up). On, the map turns so
-                 the way you face is always up; it also loads a wider tile area to
-                 cover the rotated corners, so it's opt-in to keep the default view
-                 light for screen-reader users. -->
-            <button id="toggle-heading-up" class="control-button" aria-pressed="false" tabindex="4">
-                <span class="icon" aria-hidden="true">🔄</span>
-                <span class="label">Heading up</span>
-            </button>
-
-            <!-- Audio on/off. ON (default): announcements — hover, touch, focus,
-                 status — are SPOKEN via the Web Speech API, latest-wins, so a
-                 finger sweeping the map always hears what is under it NOW, never
-                 a queued backlog. OFF (or no speech engine): announcements go to
-                 the polite live region instead, for screen-reader-only listening
-                 with no second voice. Preference persists. -->
-            <button id="toggle-audio" class="control-button" aria-pressed="true" tabindex="4">
-                <span class="icon" aria-hidden="true">🔊</span>
-                <span class="label">Audio</span>
-            </button>
 
             <!-- Search Accordion -->
             <div class="accordion-item">
@@ -291,6 +268,52 @@
             <h2 id="detail-modal-title" class="detail-modal__title">Your surroundings</h2>
             <div id="detail-modal-body" class="detail-modal__body"></div>
             <button id="detail-modal-close" class="detail-modal__close" type="button">Close</button>
+        </div>
+    </div>
+
+    <!-- Settings dialog. Same modal idiom as the detail modal (focus trapped,
+         Escape closes, focus returns to the Settings button), but with a real
+         Tab CYCLE — it holds several controls, not one.
+         - Audio: ON = announcements (hover/touch/focus/status) are SPOKEN,
+           latest-wins, so a sweeping finger never hears a queued backlog.
+           OFF (or no speech engine) = the polite live region, one voice.
+         - Track Location: the GPS watch (was a header button).
+         - Navigation rose: shows/hides the on-map compass controls.
+         Audio and the rose persist across visits. -->
+    <div id="settings-modal" class="detail-modal" role="dialog" aria-modal="true"
+         aria-labelledby="settings-modal-title" hidden>
+        <div class="detail-modal__panel" role="document">
+            <h2 id="settings-modal-title" class="detail-modal__title">Settings</h2>
+            <div class="detail-modal__body settings-body">
+                <button id="toggle-audio" class="control-button" aria-pressed="true">
+                    <span class="icon" aria-hidden="true">🔊</span>
+                    <span class="label">Audio</span>
+                </button>
+                <button id="toggle-tracking" class="control-button" aria-pressed="false">
+                    <span class="icon" aria-hidden="true">📍</span>
+                    <span class="label">Track Location</span>
+                </button>
+                <!-- The Context/Knowledge maps' follow-along mode, same name here:
+                     a running commentary as you move AND as you turn (rotation
+                     counts as movement — vital when you're jostled in a crowd). -->
+                <button id="describe-auto" class="control-button" aria-pressed="false">
+                    <span class="icon" aria-hidden="true">🚶</span>
+                    <span class="label">Follow me</span>
+                </button>
+                <!-- Off by default = north-up. On, the map turns so the way you
+                     face is always up; it also loads a wider tile area to cover
+                     the rotated corners, so it's opt-in to keep the default view
+                     light for screen-reader users. -->
+                <button id="toggle-heading-up" class="control-button" aria-pressed="false">
+                    <span class="icon" aria-hidden="true">🔄</span>
+                    <span class="label">Heading up</span>
+                </button>
+                <button id="toggle-compass" class="control-button" aria-pressed="true">
+                    <span class="icon" aria-hidden="true">🧭</span>
+                    <span class="label">Navigation rose</span>
+                </button>
+            </div>
+            <button id="settings-modal-close" class="detail-modal__close" type="button">Close</button>
         </div>
     </div>
 

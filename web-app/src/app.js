@@ -68,6 +68,8 @@ class MapApplication {
         // Constructed first: everything that talks routes through it.
         this.announcer = new Announcer({ caption: (m) => this._caption(m) });
         this.setupAudioToggle();
+        this.setupSettingsDialog();
+        this.setupCompassToggle();
 
         // Initialize map renderer
         const mapSvg = document.getElementById('map-svg');
@@ -922,21 +924,20 @@ class MapApplication {
     toggleAutoDescribe(button) {
         this.autoDescribe = !this.autoDescribe;
         button.setAttribute('aria-pressed', this.autoDescribe);
-        const icon = button.querySelector('.icon');
+        // No icon flip: state is aria-pressed. (The old 🔊/🔇 flip would sit
+        // beside the Audio toggle's identical glyphs in the settings dialog.)
         if (this.autoDescribe) {
-            if (icon) icon.textContent = '🔊';
             this.heading.start();                 // turns are announced even before a fix
             this._lastFacing = null; this._settleH = null;
             this._lastRoadId = null; this._lastSpokenId = null;
             this.lastProximityTime = 0; this.lastProximityPos = null;
             this._startAutoHeadingWatch();
             this.announceStatus(this.isTracking
-                ? 'Describing as you move. I will call out where you are and tell you when you turn.'
-                : 'Describing as you turn. Turn on Track Location too, to hear places as you move.');
+                ? 'Following you. I will call out where you are and tell you when you turn.'
+                : 'Following your turns. Turn on Track Location too, to hear places as you move.');
         } else {
-            if (icon) icon.textContent = '🔇';
             this._stopAutoHeadingWatch();
-            this.announceStatus('Stopped the running description.');
+            this.announceStatus('Stopped following.');
         }
     }
 
@@ -1351,6 +1352,73 @@ class MapApplication {
         // visible captions panel. (Location DATA has its own surface: the
         // visible #location-info panel.)
         this.announcer.announce(message);
+    }
+
+    // The settings dialog: same idiom as the detail modal (Escape closes,
+    // focus returns to the opener), but with a real Tab CYCLE — it holds
+    // several controls. The toggles inside keep their own id-based wiring;
+    // the dialog is only their home.
+    setupSettingsDialog() {
+        const modal = document.getElementById('settings-modal');
+        const opener = document.getElementById('open-settings');
+        const close = document.getElementById('settings-modal-close');
+        if (!modal || !opener || !close) return;
+
+        const open = () => {
+            this._settingsReturnFocus = document.activeElement;
+            modal.hidden = false;
+            const first = modal.querySelector('button');
+            if (first) first.focus();
+        };
+        const shut = () => {
+            modal.hidden = true;
+            const back = this._settingsReturnFocus;
+            if (back && back.focus) back.focus();
+        };
+
+        opener.addEventListener('click', open);
+        close.addEventListener('click', shut);
+        // Click on the backdrop (the modal element itself) closes, like the
+        // detail modal.
+        modal.addEventListener('click', (e) => { if (e.target === modal) shut(); });
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); shut(); return; }
+            if (e.key !== 'Tab') return;
+            // Cycle focus through the dialog's buttons — the page's positive
+            // tabindex bands must not pull focus out of an open modal.
+            const items = Array.from(modal.querySelectorAll('button'));
+            if (!items.length) return;
+            const i = items.indexOf(document.activeElement);
+            e.preventDefault();
+            const next = e.shiftKey
+                ? items[(i - 1 + items.length) % items.length]
+                : items[(i + 1) % items.length];
+            next.focus();
+        });
+    }
+
+    // The navigation rose (compass) toggle: hides/shows the on-map compass
+    // controls. Off also hides the "Skip to compass" link — a skip link must
+    // never lead to a hidden target. Preference persists.
+    setupCompassToggle() {
+        const btn = document.getElementById('toggle-compass');
+        if (!btn) return;
+        const compass = document.getElementById('compass-navigator');
+        const skip = document.getElementById('skip-to-compass');
+        const apply = (on) => {
+            btn.setAttribute('aria-pressed', String(on));
+            if (compass) compass.hidden = !on;
+            if (skip) skip.hidden = !on;
+        };
+        apply(localStorage.getItem('map-compass-on') !== 'off');
+        btn.addEventListener('click', () => {
+            const on = btn.getAttribute('aria-pressed') !== 'true';
+            localStorage.setItem('map-compass-on', on ? 'on' : 'off');
+            apply(on);
+            this.announceStatus(on
+                ? 'Navigation rose on.'
+                : 'Navigation rose off. Pan with Control and the arrow keys.');
+        });
     }
 
     // The audio toggle: ON = announcements spoken aloud (cancellable, so a
