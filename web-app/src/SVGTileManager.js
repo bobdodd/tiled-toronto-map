@@ -119,13 +119,18 @@ export class SVGTileManager {
         if (this.tileIndex) return this.tileIndex;
         
         try {
-            // Add timestamp to bypass cache
-            const indexUrl = `${this.indexUrl}?t=${Date.now()}`;
-            const response = await fetch(indexUrl);
+            // NO cache-buster (the old ?t=Date.now() forced a full re-download
+            // of the multi-megabyte whole-city index on EVERY visit and band
+            // switch): the server now compresses the index in transit and
+            // caches it for only 5 minutes, so a tile republish still
+            // propagates quickly. Tile URLs carry ?v=<version> for their own
+            // cache busting, as before.
+            const response = await fetch(this.indexUrl);
             this.tileIndex = await response.json();
-            // Content version (from the index, fetched fresh above) appended to
-            // tile URLs so a tile republish busts the browser cache for everyone
-            // — without it, the 24h max-age on stable tile URLs hides updates.
+            // Content version (from the index, at most 5 minutes stale)
+            // appended to tile URLs so a tile republish busts the browser
+            // cache for everyone — without it, the 24h max-age on stable
+            // tile URLs hides updates.
             this.tileVersion = this.tileIndex.version || null;
             // The set of tile ids that actually exist, so empty cells in a sparse
             // map aren't mistaken for load failures.
@@ -364,7 +369,7 @@ export class SVGTileManager {
         let bi = this.bandIndex[band];
         if (!bi) {
             try {
-                const r = await fetch(this.bandBase(band) + 'tile-index.json?t=' + Date.now());
+                const r = await fetch(this.bandBase(band) + 'tile-index.json');
                 const idx = await r.json();
                 bi = this.bandIndex[band] = {
                     tileIndex: idx,
