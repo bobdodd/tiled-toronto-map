@@ -398,6 +398,15 @@ export class MapRenderer {
         const container = this.svg.parentElement;
         const rect = container.getBoundingClientRect();
 
+        // Behind the disclaimer gate the app <main> is display:none and every
+        // measurement is 0×0. Fall back to the WINDOW size (the map container
+        // is the window, less the mobile split panel — a slight overfetch
+        // there, nothing worse) so the warm-up that runs while the disclaimer
+        // is being read sizes the REAL viewport and fetches the right tiles,
+        // not the 800×600 SVG default's two.
+        const width = rect.width || window.innerWidth;
+        const height = rect.height || window.innerHeight;
+
         // Grow/shrink the viewBox AROUND ITS CENTRE (the same convention as
         // setZoom), never from the top-left corner. The stored centre and
         // getBoundsFromView() are centre-derived: an anchored corner leaves
@@ -408,8 +417,8 @@ export class MapRenderer {
         const centerY = this.viewBox.y + this.viewBox.height / 2;
 
         // Update viewport size
-        this.viewport.width = rect.width;
-        this.viewport.height = rect.height;
+        this.viewport.width = width;
+        this.viewport.height = height;
 
         // Recalculate viewBox to maintain zoom level
         const scale = Math.pow(2, this.zoom - 18);

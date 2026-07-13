@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accessible Interactive Map</title>
+    <!-- Tiles live on their own origin: set up that TLS connection while the
+         page is still parsing, so the first index/tile fetch doesn't pay for
+         it on the critical path. crossorigin because the app uses fetch()
+         (CORS) — a plain preconnect would open the wrong kind of socket.
+         (Dev tile overrides via ?tiles= just don't benefit; harmless.) -->
+    <link rel="preconnect" href="https://tiles.a11ybob.com" crossorigin>
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
@@ -206,6 +212,15 @@
 
     <main hidden>
         <h1 id="app-title" class="screen-reader-only" tabindex="-1">Interactive map demo</h1>
+        <!-- Busy state between Start and the first full render: the dialog
+             goes IMMEDIATELY, this shows in its place, and the announcement
+             goes through #map-announcements ("Loading the map…" / "Map
+             ready."). Static text, not a spinner — nothing to reduce for
+             prefers-reduced-motion, and the map renders whole, never
+             partially. -->
+        <div id="map-busy" class="map-busy" hidden>
+            <p class="map-busy__text">Loading the map&hellip;</p>
+        </div>
         <div id="map-container">
             <!-- tabindex -1: programmatic focus only (the skip-link fallback). The
                  canvas is NOT a Tab stop — every visible feature already is, and the

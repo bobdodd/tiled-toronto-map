@@ -28,6 +28,17 @@ const TILE_BASE = (() => {
 // zoom >= its minZoom (so the list is tried high-to-low). The coarse sets drop
 // features below the readable-"m" floor for that zoom (see RENDERING_AT_SCALE.md),
 // so zooming out fetches fewer AND lighter tiles.
+// The index's `tiles` list is a bare array of FILENAME STRINGS (slimmed — every
+// other per-entry field was derivable or unread, and the whole-city list is
+// 21,760 entries per band). Object entries ({file}/{id}) are still accepted:
+// older indexes and local dev tile sets use them.
+function tileIdSet(tiles) {
+    return new Set((tiles || [])
+        .map((t) => String(typeof t === 'string' ? t : (t.file || t.id || ''))
+            .replace(/\.svg(\.gz)?$/, ''))
+        .filter(Boolean));
+}
+
 const LOD_BANDS = [
     { name: 'lod22', minZoom: 22 },  // zoom in: ~individuals, full inspection
     { name: 'lod21', minZoom: 21 },
@@ -134,9 +145,7 @@ export class SVGTileManager {
             this.tileVersion = this.tileIndex.version || null;
             // The set of tile ids that actually exist, so empty cells in a sparse
             // map aren't mistaken for load failures.
-            this.existingTileIds = new Set((this.tileIndex.tiles || [])
-                .map(t => String(t.file || t.id || '').replace(/\.svg(\.gz)?$/, ''))
-                .filter(Boolean));
+            this.existingTileIds = tileIdSet(this.tileIndex.tiles);
             // Per-region coverage rectangles, for the "outside the mapped area" test.
             this.regions = this.tileIndex.regions || null;
             // Remember this band's index so a later switch back doesn't re-fetch it.
@@ -373,8 +382,7 @@ export class SVGTileManager {
                 const idx = await r.json();
                 bi = this.bandIndex[band] = {
                     tileIndex: idx,
-                    existingTileIds: new Set((idx.tiles || [])
-                        .map(t => String(t.file || t.id || '').replace(/\.svg(\.gz)?$/, '')).filter(Boolean)),
+                    existingTileIds: tileIdSet(idx.tiles),
                     tileVersion: idx.version || null,
                     regions: idx.regions || null,
                 };

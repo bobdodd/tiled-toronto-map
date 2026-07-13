@@ -13,6 +13,15 @@ them to the shared served base alongside all locations' tile files. The viewer
 loads the one index, requests only tiles that exist (existingTileIds), and leaves
 the gaps blank.
 
+The PUBLISHED index is SLIM: `tiles` is a bare array of filenames. The viewer
+reads only the filename (its exists-set), `version`, and `regions`; per-entry
+lat/lng/bounds are derivable from the filename + tile_size, and size_bytes is
+read by nothing — at whole-city scale (21,760 entries per band) the fat entries
+made the index the dominant first-load cost. The per-REGION indexes that feed
+this tool stay fat (build-tiles.py unchanged): size_bytes still feeds the
+content `version` hash here, and lat/lng/bounds remain available to any build
+tooling. The viewer accepts both shapes.
+
 To ADD a location: build it, append its dir to LOCATIONS, re-run, redeploy.
 
 Usage: combine-map.py <out-dir> <location-dir> [<location-dir> ...]
@@ -92,7 +101,9 @@ def main():
     for rel in band_rel_paths(primary):
         tiles, bounds, version = merge_band(rel, locations)
         meta = json.load(open(os.path.join(primary, rel)))  # template
-        meta["tiles"] = tiles
+        # Slim published form: filenames only. The version above was computed
+        # from the fat entries (size_bytes included) BEFORE this discards them.
+        meta["tiles"] = [t["file"] for t in tiles]
         meta["total_tiles"] = len(tiles)
         meta["bounds"] = bounds
         meta["version"] = version

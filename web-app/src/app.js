@@ -224,8 +224,14 @@ class MapApplication {
             const center = this.mapRenderer.center;
             this.avatar.setPosition(center.lat, center.lng, false);
             
-            // Load initial map tiles (clear any existing)
-            this.loadMapTiles(true);
+            // Warm the tile CACHE for the real viewport (handleResize above
+            // falls back to the window size while <main> is hidden) — network
+            // only, NO rendering. The disclaimer gate is still up: parsing and
+            // inserting several MB of SVG here is main-thread work that made
+            // the gate's checkbox and Start button feel stuck. The Start
+            // handler runs the real loadMapTiles, which renders from this
+            // cache — whole map at once, no partial paint.
+            this.warmMapTiles();
         }, 100);
         
         // Listen for map view changes
@@ -1423,18 +1429,36 @@ class MapApplication {
             const chatPanel = document.getElementById('chat-panel');
             const skipChat = document.getElementById('skip-to-chat');
             if (skipChat && chatPanel) skipChat.hidden = chatPanel.hidden;
-            // The map initialised while <main> was display:none, where every
-            // measurement is 0×0 — the viewBox and the initial tile load were
-            // computed against a zero-size viewport. Now that the map is
-            // visible and measurable, size and load it for real.
-            if (this.mapRenderer) {
-                this.mapRenderer.handleResize();
-                this.mapRenderer.render();
-                this.loadMapTiles(true);
-            }
+
+            // The dialog GOES on the click, unconditionally; a busy state
+            // holds its place until the first full render.
+            const busy = document.getElementById('map-busy');
+            if (busy) busy.hidden = false;
             this.announcer.prime();
             const title = document.getElementById('app-title');
             if (title) title.focus();
+            this.announceStatus('Loading the map…');
+
+            // Let that state PAINT before the heavy work: the warmed tiles
+            // resolve from cache in a microtask, so without a real frame here
+            // the multi-hundred-millisecond SVG insert runs before any
+            // repaint — the dead dialog stays frozen on screen and Start
+            // appears to ignore clicks.
+            requestAnimationFrame(() => setTimeout(() => {
+                if (!this.mapRenderer) { if (busy) busy.hidden = true; return; }
+                // Size against the now-visible container and load for real.
+                this.mapRenderer.handleResize();
+                this.mapRenderer.render();
+                Promise.resolve(this.loadMapTiles(true)).finally(() => {
+                    if (busy) busy.hidden = true;
+                    // Only claim readiness if tiles actually landed — on a
+                    // failure loadMapTiles has already announced the error,
+                    // and "Map ready" must not talk over it.
+                    if (document.querySelector('#map-tiles [data-tile-id]')) {
+                        this.announceStatus('Map ready.');
+                    }
+                });
+            }, 0));
         });
     }
 
@@ -1580,7 +1604,25 @@ class MapApplication {
         }
     }
     
+    // Pre-gate warm-up: pull the viewport's tiles (and the index) into the
+    // SVGTileManager cache and stop there. Failures stay silent — this is
+    // opportunistic; the real load at gate-start surfaces any error.
+    async warmMapTiles() {
+        try {
+            const bounds = this.getBoundsFromView();
+            await this.svgTileManager.loadTilesForArea(bounds, this.mapRenderer.zoom);
+        } catch { /* warm-up only */ }
+    }
+
     async loadMapTiles(clearExisting = false) {
+        // While the disclaimer gate is up, nothing may RENDER — parsing and
+        // inserting megabytes of SVG janks the gate's checkbox and Start
+        // button. Every entry point (init, resize, the debounced map-change
+        // listener) funnels through here, so divert them ALL to the
+        // network-only warm-up; the Start handler re-enters once the map is
+        // visible and renders from the warmed cache.
+        const gate = document.getElementById('map-gate');
+        if (gate && !gate.hidden) return this.warmMapTiles();
         // Load generation: if a newer load starts while this one awaits (fast
         // panning), the stale one bows out instead of rendering/announcing.
         const gen = (this._loadGen = (this._loadGen || 0) + 1);

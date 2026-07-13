@@ -2444,6 +2444,37 @@ body.tooltip-below .poi-tooltip::after {
     min-width: 16rem;
 }
 
+/* ---- Busy state between Start and the first full render ---- */
+.map-busy {
+    position: absolute;
+    inset: 0;
+    z-index: 70;   /* over the map, under the sidebar (90) and rose (80) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.map-busy[hidden] { display: none; }
+.map-busy__text {
+    margin: 0;
+    padding: 0.875rem 1.5rem;
+    background: rgba(255, 255, 255, 0.98);
+    border: 2px solid #5a5a5a;
+    border-radius: 8px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111;
+}
+@media (prefers-color-scheme: dark) {
+    .map-busy__text {
+        background: rgba(30, 30, 30, 0.98);
+        border-color: #9a9a9a;
+        color: #e0e0e0;
+    }
+}
+@media (prefers-contrast: high) {
+    .map-busy__text { border-color: #000; border-width: 3px; color: #000; }
+}
+
 /* ---- Chat (the Knowledge Map's conversation, in a panel over the map) ----
    Two housings, one markup (see index.html):
    - DESKTOP (default): a floating panel — moveable, resizable, closeable from
