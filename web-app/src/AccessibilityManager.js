@@ -147,6 +147,10 @@ export class AccessibilityManager {
     }
 
     handleMouseOver(event) {
+        // Not during a mouse drag: the map slides under the pointer, so every
+        // feature crossing it would announce and outline in turn — churn the
+        // user did not ask for (dragging is travel, not exploring).
+        if (document.body.classList.contains('map-dragging')) return;
         const target = event.target;
         // Show outline on hover for ANY map feature, not just those with tabindex
         if (this.isMapFeatureForHover(target)) {

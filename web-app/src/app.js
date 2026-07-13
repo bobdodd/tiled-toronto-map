@@ -106,10 +106,14 @@ class MapApplication {
         this.filterManager = new FilterManager(this.taxonomy);
         this.accessibilityManager = new AccessibilityManager(this.taxonomy, this.announcer);
 
-        // After a filter change, refresh the rotor's tab order too.
-        const originalUpdateVisibility = this.filterManager.updateVisibility.bind(this.filterManager);
-        this.filterManager.updateVisibility = (id, enabled) => {
-            originalUpdateVisibility(id, enabled);
+        // After a USER filter toggle, refresh the rotor's tab order too.
+        // Wrapped at toggleFilter, NOT updateVisibility: the programmatic
+        // re-application that runs when tiles load calls updateVisibility for
+        // EVERY filter, and a full tab-order pass per filter (N × 13k
+        // getBoundingClientRect) froze the map for seconds after each pan.
+        const originalToggleFilter = this.filterManager.toggleFilter.bind(this.filterManager);
+        this.filterManager.toggleFilter = (id, enabled) => {
+            originalToggleFilter(id, enabled);
             this.accessibilityManager.updateTabOrder();
         };
 
@@ -605,16 +609,23 @@ class MapApplication {
         mapContainer.addEventListener('mousedown', (e) => {
             // Only respond to left mouse button (button 0)
             if (e.button !== 0) return;
-            
+
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
             startLat = this.mapRenderer.center.lat;
             startLng = this.mapRenderer.center.lng;
-            
+
+            // While a MOUSE drag is live, the map slides under the pointer and
+            // every feature crossing it fires mouseover — without this signal
+            // each one would announce (speech cancel/speak churn) and drag the
+            // tooltip around, per feature, all drag long. Touch is untouched:
+            // explore-by-touch announcing under a sweeping finger is a feature.
+            document.body.classList.add('map-dragging');
+
             // Prevent text selection during drag
             e.preventDefault();
-            
+
             // Change cursor to grabbing
             mapContainer.style.cursor = 'grabbing';
         });
@@ -639,6 +650,7 @@ class MapApplication {
         window.addEventListener('mouseup', (e) => {
             if (isDragging && e.button === 0) {
                 isDragging = false;
+                document.body.classList.remove('map-dragging');
                 mapContainer.style.cursor = 'default';
             }
         });
@@ -1671,18 +1683,29 @@ class MapApplication {
             const newTiles = tiles.filter(tile => !loadedTileIds.has(tile.id));
             
             if (newTiles.length > 0) {
-                // Render only new tiles
-                this.renderSVGTiles(newTiles);
-                
-                // Apply current filters to the newly loaded tiles
-                this.applyFiltersToTiles();
-                
-                // Update accessibility for keyboard navigation
-                if (this.accessibilityManager) {
-                    this.accessibilityManager.updateTabOrder();
-                }
+                // Mid-pan loads insert ONE TILE PER FRAME: a vertical drag
+                // exposes a whole tile row (2–3 tiles), and parsing+inserting
+                // them in a single task froze the map at every settle. Each
+                // tile still appears WHOLE. Initial and band-switch loads
+                // (clearExisting) stay atomic — the view arrives all at once,
+                // never a partially assembled page.
+                await this.renderSVGTiles(newTiles, {
+                    chunked: !clearExisting,
+                    isCurrent: () => gen === this._loadGen,
+                });
+                if (gen !== this._loadGen) return; // superseded mid-insert
+                // (Filter states are applied per tile INSIDE the insert, so
+                // hidden-by-filter features never flash before hiding.)
             }
-            
+
+            // ONE viewport-focus pass per settled load, whether or not new
+            // tiles landed — a pan within already-loaded tiles still changes
+            // which features are on screen. (Previously this ran here AND in
+            // the map-change settle: two full 13k-feature passes back to back.)
+            if (this.accessibilityManager) {
+                this.accessibilityManager.updateTabOrder();
+            }
+
             // Clean up tiles that are far outside the current view
             this.cleanupDistantTiles();
 
@@ -1795,16 +1818,16 @@ class MapApplication {
         }, 450);
     }
 
-    renderSVGTiles(tiles) {
+    async renderSVGTiles(tiles, { chunked = false, isCurrent = () => true } = {}) {
         const tilesGroup = document.querySelector('#map-tiles') ||
                          this.mapRenderer.svg.querySelector('#map-tiles');
-        
+
         if (!tilesGroup) {
             console.error('No tiles group found in SVG');
             return;
         }
 
-        tiles.forEach(tile => {
+        const insertTile = (tile) => {
             if (!tile.content) return;
 
             const existingTile = tilesGroup.querySelector(`[data-tile-id="${tile.id}"]`);
@@ -1833,11 +1856,38 @@ class MapApplication {
                 }
                 tileGroup.appendChild(frag);
 
+                // Filter states land BEFORE the tile joins the document (and
+                // before its first paint): scoped to this one tile, skipping
+                // default-state filters — see FilterManager.applyVisibilityWithin.
+                if (this.filterManager) this.filterManager.applyVisibilityWithin(tileGroup);
+
                 tilesGroup.appendChild(tileGroup);
             } catch (error) {
                 console.error(`Failed to render tile ${tile.id}:`, error);
             }
-        });
+        };
+
+        if (chunked) {
+            // One tile per FRAME: each tile appears whole, and the main thread
+            // breathes between inserts so a live drag never wades through a
+            // multi-tile parse (a vertical pan settles with a whole tile row).
+            for (const tile of tiles) {
+                if (!isCurrent()) return;   // superseded mid-insert
+                insertTile(tile);
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+            }
+        } else {
+            // Atomic: initial load and band switches present the whole view
+            // at once — never a partially assembled map.
+            tiles.forEach(insertTile);
+        }
+
+        // In heading-up mode, labels in the tiles just inserted haven't had
+        // the flip pass (applyRotation only re-runs it when the ANGLE changes
+        // — see MapRenderer) — bring them the right way up now.
+        if (this.mapRenderer && this.mapRenderer.rotation) {
+            this.mapRenderer.applyLabelFlips();
+        }
     }
 
     latLngToPixel(lat, lng) {
@@ -1908,12 +1958,15 @@ class MapApplication {
         // Create a debounced version of loadMapTiles
         const debouncedLoad = () => {
             clearTimeout(loadTimeout);
-            
-            // Cancel any pending requests
-            if (this.svgTileManager) {
-                this.svgTileManager.cancelAllRequests();
-            }
-            
+
+            // Deliberately NO cancelAllRequests here: this fires on EVERY
+            // pointermove of a drag, so cancelling meant no tile fetch could
+            // ever complete while the user was still moving — mid-drag the
+            // map went grey and stayed grey until the hand paused. In-flight
+            // requests only ever start on a settle (below), so letting them
+            // finish wastes at most one viewport's worth of tiles, which the
+            // cache keeps anyway.
+
             loadTimeout = setTimeout(() => {
                 // Keep the renderer's VIEWPORT (container pixel size) current — it
                 // can change on resize — then DERIVE the viewBox from the current
@@ -1942,21 +1995,28 @@ class MapApplication {
                 // Check if bounds have changed significantly
                 if (this.boundsHaveChanged(bounds, lastRequestBounds)) {
                     lastRequestBounds = bounds;
+                    // loadMapTiles ends with its own viewport-focus pass.
                     this.loadMapTiles();
+                } else if (this.accessibilityManager) {
+                    // Sub-threshold pan: nothing to load, but the on-screen
+                    // set still shifted — refresh the rotor's focus set ONCE.
+                    // (Per-pointermove refreshes — 13k forced layouts per
+                    // twitch of the hand — are what made dragging wade; a
+                    // keyboard user interacts with a SETTLED view, so 300ms
+                    // staleness is imperceptible.)
+                    this.accessibilityManager.updateTabOrder();
                 }
             }, 300); // Wait 300ms after movement stops
         };
-        
+
         // Override MapRenderer methods to add tile loading
         const originalSetCenter = this.mapRenderer.setCenter.bind(this.mapRenderer);
         this.mapRenderer.setCenter = (lat, lng) => {
             originalSetCenter(lat, lng);
-            // Only load tiles when panning, not zooming
+            // Only load tiles when panning, not zooming. Per-move work is kept
+            // to the minimum a drag needs (viewBox + avatar); the tab-order
+            // refresh rides the debounced settle above.
             debouncedLoad();
-            // Update accessibility when view changes
-            if (this.accessibilityManager) {
-                this.accessibilityManager.updateTabOrder();
-            }
             // Update avatar position
             if (this.avatar) {
                 this.avatar.refresh();
@@ -2023,13 +2083,6 @@ class MapApplication {
                bounds.east > maxLng || bounds.west < minLng;
     }
     
-    applyFiltersToTiles() {
-        // Re-apply every current filter to the (re)loaded tiles. FilterManager
-        // now owns tile filtering (base hide/show, overlay highlight) via the
-        // taxonomy; this just refreshes it after new tiles appear.
-        if (this.filterManager) this.filterManager.applyInitialVisibility();
-    }
-
     isFeatureInViewport(feature, containerRect) {
         const featureRect = feature.getBoundingClientRect();
         

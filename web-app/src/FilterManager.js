@@ -49,6 +49,27 @@ export class FilterManager {
         }
     }
 
+    // Apply the current filter states WITHIN one root (a freshly inserted
+    // tile group). Two things keep this cheap enough to run per tile on
+    // every pan settle — the full applyInitialVisibility() sweep here (every
+    // filter × a whole-map querySelectorAll × style writes even for
+    // default-state filters) was a seconds-long freeze after each pan:
+    // - queries are scoped to the new tile, not #map-tiles;
+    // - filters in their AS-AUTHORED state (hide/show enabled, overlay off)
+    //   are skipped outright — fresh tile markup already looks like that.
+    applyVisibilityWithin(root) {
+        for (const [id, enabled] of Object.entries(this.filters)) {
+            const feature = this.taxonomy.getById(id);
+            if (!feature) continue;
+            const hideShow = this.isHideShow(feature);
+            if (hideShow ? enabled : !enabled) continue;   // as-authored — nothing to write
+            root.querySelectorAll(this.taxonomy.selectorFor(feature)).forEach((el) => {
+                if (hideShow) el.style.display = 'none';
+                else el.classList.add('filter-highlight');
+            });
+        }
+    }
+
     toggleFilter(id, enabled) {
         this.filters[id] = enabled;
         this.updateVisibility(id, enabled);

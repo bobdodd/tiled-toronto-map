@@ -2448,10 +2448,14 @@ body.tooltip-below .poi-tooltip::after {
 .map-busy {
     position: absolute;
     inset: 0;
-    z-index: 70;   /* over the map, under the sidebar (90) and rose (80) */
+    /* Above ALL the map chrome — sidebar (90), chat panel (85), rose (80) —
+       the loading note must never sit half-hidden behind a panel. Only the
+       modal dialogs (1000) outrank it. */
+    z-index: 200;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;   /* a note, not a shield — the chrome stays usable */
 }
 .map-busy[hidden] { display: none; }
 .map-busy__text {

@@ -70,9 +70,12 @@ export function setupTooltip() {
     // Desktop pointer + keyboard. Gated to hover-capable devices so no
     // pointer/focus wiring attaches on touch.
     if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
-        // Mouse: show on entering a feature, at the pointer. Sticky.
+        // Mouse: show on entering a feature, at the pointer. Sticky. Not
+        // during a drag — the map slides under the pointer and the pill would
+        // chase every feature that passes beneath it.
         map.addEventListener('pointerover', function (e) {
             if (e.pointerType !== 'mouse') return;
+            if (document.body.classList.contains('map-dragging')) return;
             const f = featureFrom(e);
             if (f) showAt(f, e.clientX, e.clientY);
         });
