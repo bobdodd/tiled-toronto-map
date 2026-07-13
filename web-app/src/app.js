@@ -154,6 +154,14 @@ class MapApplication {
         setupChat({
             announcer: this.announcer,
             heading: this.heading,
+            // The Track Location toggle decides what "where am I" means to
+            // the chat: tracking ON = the device's GPS; OFF = the AVATAR (the
+            // virtual you on the map, falling back to the map centre).
+            isTracking: () => this.isTracking,
+            getVirtualLocation: () => {
+                const p = (this.avatar && this.avatar.position) || (this.mapRenderer && this.mapRenderer.center);
+                return p ? { lat: +p.lat.toFixed(6), lon: +p.lng.toFixed(6) } : null;
+            },
             onFollow: () => {
                 const b = document.getElementById('describe-auto');
                 if (b && b.getAttribute('aria-pressed') !== 'true') b.click();

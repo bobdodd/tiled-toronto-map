@@ -42,7 +42,7 @@ const LISTEN_IDLE_MS = 10000; // silence after an answer before the conversation
 // separate from the Knowledge Map demo's store (same origin, different demo).
 const MEM_KEY = 'tiled-map-memory-v1';
 
-export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
+export function setupChat({ announcer, heading, isTracking, getVirtualLocation, onFollow, onUnfollow }) {
     const $ = (id) => document.getElementById(id);
     const panel = $('chat-panel');
     if (!panel) return;
@@ -74,7 +74,11 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
     function startOnce() {
         if (started) return;
         started = true;
-        requestLocation();
+        // Warm up the GPS (and its permission prompt) only when the map is
+        // actually TRACKING — with tracking off, "where am I" is the avatar,
+        // and prompting for the device's location would be both needless and
+        // misleading about what gets sent.
+        if (tracking()) requestLocation();
         if (heading && heading.start) heading.start().catch(() => {});
         announcer.prime();
     }
@@ -94,8 +98,14 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
         if (!panel.hidden && input.getClientRects().length) input.focus();
     }
 
-    // ── Location: chat keeps its own fix, independent of the map's Track
-    //    Location toggle — a fresh read per question, so walking registers. ──
+    // ── Location: the map's Track Location toggle decides what "where am I"
+    //    MEANS. Tracking ON: the device — a fresh GPS read per question, so
+    //    walking registers. Tracking OFF: the AVATAR — the virtual place the
+    //    map is exploring (falls back to the map centre) — because answering
+    //    a Toronto map view with the user's real-world road is wrong twice
+    //    over: it isn't what they asked about, and it ships their physical
+    //    location when the map never claimed to be using it. ──
+    const tracking = () => (isTracking ? !!isTracking() : true);
     let location_ = null;
     function requestLocation() {
         if (!('geolocation' in navigator)) return;
@@ -105,6 +115,9 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
         location_ = { lat: +p.coords.latitude.toFixed(6), lon: +p.coords.longitude.toFixed(6) };
     }
     function freshLocation() {
+        if (!tracking()) {
+            return Promise.resolve(getVirtualLocation ? getVirtualLocation() : null);
+        }
         return new Promise((resolve) => {
             if (!('geolocation' in navigator)) return resolve(location_);
             navigator.geolocation.getCurrentPosition(
@@ -168,7 +181,10 @@ export function setupChat({ announcer, heading, onFollow, onUnfollow }) {
         pending = ctrl;
         const chatTimer = window.setTimeout(() => { ctrl.timedOut = true; ctrl.abort(); }, CHAT_TIMEOUT_MS);
         const loc = await freshLocation();
-        if (loc && heading && heading.getHeading) {
+        // Physical facing only makes sense against a physical location: with
+        // tracking off the location is the avatar's, and stamping the user's
+        // real-world compass onto it would hand out wrong clock directions.
+        if (loc && tracking() && heading && heading.getHeading) {
             const h = heading.getHeading();
             if (h != null) loc.heading = Math.round(h);   // facing → clock directions
         }
