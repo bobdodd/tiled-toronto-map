@@ -10,7 +10,7 @@ import { setupTooltip } from './Tooltip.js';
 import { Announcer } from './Announcer.js';
 import { setupChat } from './Chat.js';
 import { setupChatPanel } from './ChatPanel.js';
-import { SearchManager } from './SearchManager.js';
+import { setupChatSuggest } from './ChatSuggest.js';
 import { LevelSwitch } from './LevelSwitch.js';
 import { HeadingProvider } from './HeadingProvider.js';
 
@@ -211,13 +211,15 @@ class MapApplication {
             else this.focusFeatureElement(feature);
         });
 
-        // Map search (places / POIs / addresses, with accessibility filters),
-        // backed by the OpenSearch map-features index via a same-origin proxy.
-        // Selecting a result recentres and moves focus onto the actual feature.
-        this.searchManager = new SearchManager({
+        // Map search lives in the CHAT: the chat input is an APG combobox
+        // offering place suggestions from the OpenSearch map-features index
+        // (same-origin proxy); picking one recentres and moves focus onto the
+        // actual tile feature — the retired Search accordion's behaviour.
+        // Free-text queries ("find the accessible washrooms nearby") go to
+        // the knowledge chat instead, which searches the same index by tool.
+        setupChatSuggest({
             getCenter: () => this.mapRenderer.center,
             onSelect: (result) => this.goToSearchResult(result),
-            announce: (msg) => this.announceStatus(msg),
         });
 
         // Set up keyboard navigation

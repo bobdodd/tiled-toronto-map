@@ -297,6 +297,9 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
     }
 
     function handleInput(message) {
+        // A message is leaving (typed, spoken, or command) — tell the input's
+        // suggestion combobox so the offer withdraws (ChatSuggest listens).
+        if (input) input.dispatchEvent(new CustomEvent('chat-send'));
         const n = normCmd(message);
         if (isQuiet(n)) { quietCommand(); return; }
         if (isRepeat(n)) { repeatCommand(); return; }
@@ -511,7 +514,13 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             const shown = [lockedTranscript(), interim].filter(Boolean).join(' ').trim();
             // Re-arm only while still recording: a message can arrive just after
             // closeMic() and would otherwise re-arm the idle timer into the answer.
-            if (recording && shown) { input.value = shown; armIdle(); }
+            // The real 'input' event makes the live transcript drive the place
+            // suggestions (ChatSuggest) — VISUALLY only; nothing announces.
+            if (recording && shown) {
+                input.value = shown;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                armIdle();
+            }
         };
         ws.onclose = () => {
             if (!opened && !tried) { openDeepgram(url, token, scheme === 'bearer' ? 'token' : 'bearer', true); return; }

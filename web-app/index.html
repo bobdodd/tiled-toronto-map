@@ -132,26 +132,11 @@
             </button>
 
 
-            <!-- Search Accordion -->
-            <div class="accordion-item">
-                <button class="accordion-header" aria-expanded="false" aria-controls="navigation-content" tabindex="5">
-                    <span class="icon" aria-hidden="true">🔍</span>
-                    <span class="label">Search</span>
-                    <span class="accordion-arrow">▼</span>
-                </button>
-                <div id="navigation-content" class="accordion-content" hidden>
-                    <div id="destination-search">
-                        <label for="destination-input">Search the map</label>
-                        <!-- No placeholder: muted placeholder text fails AAA 1.4.6
-                             contrast and vanishes on input. A visible hint below
-                             the field, wired with aria-describedby, replaces it. -->
-                        <input type="text" id="destination-input" aria-describedby="search-hint" tabindex="6">
-                        <button id="search-button" tabindex="7">Search</button>
-                        <span id="search-hint" class="search-hint">Find a place, address, or feature — a library, a washroom, “123 Main Street”. Tick a box to show only accessible results.</span>
-                    </div>
-                </div>
-            </div>
-            
+            <!-- Search lives in the CHAT now — typed gets combobox suggestions
+                 on the chat input (ChatSuggest.js), spoken/free-text queries
+                 ("find the accessible washrooms nearby") go through the
+                 knowledge chat. The old Search accordion is retired. -->
+
             <!-- Filter Accordion -->
             <div class="accordion-item">
                 <button class="accordion-header" aria-expanded="false" aria-controls="filter-content" tabindex="100">
@@ -357,15 +342,25 @@
             </div>
             <form id="chat-form" class="chat-form">
                 <label for="chat-input" class="chat-label">Ask about where you are, or anywhere on the map</label>
+                <!-- APG editable combobox with list autocomplete (ChatSuggest.js):
+                     typing a place name offers suggestions from the map search
+                     index; picking one goes there. An OFFER, never a gate —
+                     Enter with no active option sends the text to the chat as
+                     a question, so this one input carries everything. -->
                 <div class="chat-inputrow">
                     <input id="chat-input" class="chat-input" type="text"
+                           role="combobox" aria-autocomplete="list"
+                           aria-expanded="false" aria-controls="chat-suggest"
                            aria-describedby="chat-hint" enterkeyhint="send" tabindex="6003">
                     <button id="chat-send" class="control-button chat-btn" type="submit" tabindex="6004">Send</button>
                 </div>
+                <ul id="chat-suggest" class="chat-suggest" role="listbox"
+                    aria-label="Place suggestions" hidden></ul>
                 <p id="chat-hint" class="chat-hint">
-                    For example: &ldquo;what&rsquo;s near me?&rdquo;, &ldquo;is there
-                    a step-free caf&eacute; nearby?&rdquo;, &ldquo;what buses serve
-                    here?&rdquo;, or &ldquo;what&rsquo;s this area known for?&rdquo;
+                    For example: &ldquo;what&rsquo;s near me?&rdquo;, &ldquo;find the
+                    accessible washrooms nearby&rdquo;, or &ldquo;what&rsquo;s this
+                    area known for?&rdquo; Typing a place name offers suggestions
+                    you can pick to go there.
                 </p>
             </form>
             <section class="chat-logwrap" aria-label="Conversation">
