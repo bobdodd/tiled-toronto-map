@@ -174,6 +174,30 @@ class MapApplication {
                 const b = document.getElementById('describe-auto');
                 if (b && b.getAttribute('aria-pressed') === 'true') b.click();
             },
+            // Voice pan/zoom/centre CLICK the rose's own buttons — one
+            // behaviour, one state, one set of limits (and it works with the
+            // rose switched off in Settings: the buttons exist, just hidden —
+            // voice IS the alternative to the rose). The button's own
+            // announcement is CAPTURED and handed back rather than spoken
+            // here: the chat re-speaks it with its hands-free continuation,
+            // so a spoken command never strands the conversation loop.
+            onMapCommand: (action) => {
+                const ids = {
+                    'pan-north': 'nav-n', 'pan-northeast': 'nav-ne',
+                    'pan-east': 'nav-e', 'pan-southeast': 'nav-se',
+                    'pan-south': 'nav-s', 'pan-southwest': 'nav-sw',
+                    'pan-west': 'nav-w', 'pan-northwest': 'nav-nw',
+                    'zoom-in': 'nav-zoom-in', 'zoom-out': 'nav-zoom-out',
+                    'centre': 'nav-center',
+                };
+                const btn = document.getElementById(ids[action] || '');
+                if (!btn) return null;
+                if (btn.disabled) return { disabled: true };
+                let captured = null;
+                this.announceStatus = (m) => { captured = m; };
+                try { btn.click(); } finally { delete this.announceStatus; }
+                return { ok: true, say: captured };
+            },
         });
 
         // Clicking a feature moves focus onto it — one focus model for mouse,

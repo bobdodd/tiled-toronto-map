@@ -42,7 +42,7 @@ const LISTEN_IDLE_MS = 10000; // silence after an answer before the conversation
 // separate from the Knowledge Map demo's store (same origin, different demo).
 const MEM_KEY = 'tiled-map-memory-v1';
 
-export function setupChat({ announcer, heading, isTracking, getVirtualLocation, onFollow, onUnfollow }) {
+export function setupChat({ announcer, heading, isTracking, getVirtualLocation, onFollow, onUnfollow, onMapCommand }) {
     const $ = (id) => document.getElementById(id);
     const panel = $('chat-panel');
     if (!panel) return;
@@ -242,6 +242,60 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
     const isFollow = (n) => /^(follow me|start following|follow)$/.test(n);
     const isUnfollow = (n) => /^(stop following( me)?|unfollow|stop follow)$/.test(n);
 
+    // ── Map driving by voice: pan / zoom / centre. Same vocabulary of ACTIONS
+    //    as the navigation rose — the app-side callback clicks those very
+    //    buttons, so limits, step sizes and state are identical to a pointer
+    //    user's. left/up/right/down read as compass west/north/east/south
+    //    (the rose's frame; north-up is the default view). Bare compass words
+    //    ("west") pan too; bare "up"/"left" don't — too easily dictation noise. ──
+    const DIR_OF = {
+        north: 'north', up: 'north',
+        south: 'south', down: 'south',
+        east: 'east', right: 'east',
+        west: 'west', left: 'west',
+        'northeast': 'northeast', 'north east': 'northeast', 'up right': 'northeast',
+        'northwest': 'northwest', 'north west': 'northwest', 'up left': 'northwest',
+        'southeast': 'southeast', 'south east': 'southeast', 'down right': 'southeast',
+        'southwest': 'southwest', 'south west': 'southwest', 'down left': 'southwest',
+    };
+    function mapCommandOf(n) {
+        const s = n.replace(/^please\s+/, '').replace(/\s+please$/, '');
+        let m = s.match(/^zoom\s?(in|out)(?:\s+(?:more|again|a bit|a little))?$/);
+        if (m) return { action: `zoom-${m[1]}`, ack: `Zoomed ${m[1]}.` };
+        if (/^(?:zoom\s+)?closer$/.test(s)) return { action: 'zoom-in', ack: 'Zoomed in.' };
+        if (/^(?:zoom\s+)?(?:further|farther|back)\s+out$/.test(s)) return { action: 'zoom-out', ack: 'Zoomed out.' };
+        // Centre — BEFORE pan, so "go to my location" never parses as a pan.
+        if (/^(?:re)?cent(?:er|re)(?:\s+(?:the\s+)?map)?(?:\s+on\s+(?:me|my\s+(?:location|position)))?$/.test(s)
+            || /^(?:go|jump)\s+to\s+my\s+(?:location|position)$/.test(s)) {
+            return { action: 'centre', ack: 'Centred the map.' };
+        }
+        m = s.match(/^(?:pan|move|go|scroll|shift)(?:\s+(?:the\s+)?map)?(?:\s+to)?(?:\s+the)?\s+(.+)$/);
+        const dirWord = m ? m[1]
+            : (/^(?:north|south|east|west|north\s?east|north\s?west|south\s?east|south\s?west)$/.test(s) ? s : null);
+        if (dirWord) {
+            const dir = DIR_OF[dirWord] || DIR_OF[dirWord.replace(/\s+/g, ' ').trim()];
+            if (dir) return { action: `pan-${dir}`, ack: `Panned ${dir}.` };
+        }
+        return null;
+    }
+
+    // Run it, then speak: the button's own announcement (zoom's map-view
+    // line, centre's tracked/avatar/no-fix variants — captured by the app
+    // callback) wins over the generic ack, and the hands-free continuation
+    // rides along so the mic reopens after the answer, like any other turn.
+    function runMapCommand(cmd) {
+        const r = onMapCommand ? onMapCommand(cmd.action) : null;
+        let line;
+        if (!r) line = "The map controls aren't available right now.";
+        else if (r.disabled) {
+            line = cmd.action === 'zoom-in'
+                ? "You're already as zoomed in as it goes."
+                : "You're already as zoomed out as it goes.";
+        } else line = r.say || cmd.ack;
+        setStatus(line);
+        announcer.announce(line, convo ? onAnswerSpoken : undefined);
+    }
+
     function handleInput(message) {
         const n = normCmd(message);
         if (isQuiet(n)) { quietCommand(); return; }
@@ -250,6 +304,8 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         // spoken command drives the same switch, one behaviour, one state.
         if (isFollow(n)) { if (onFollow) onFollow(); return; }
         if (isUnfollow(n)) { if (onUnfollow) onUnfollow(); return; }
+        const mapCmd = mapCommandOf(n);
+        if (mapCmd) { runMapCommand(mapCmd); return; }
         lastUserInput = message;
         ask(message);
     }
