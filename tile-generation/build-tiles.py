@@ -1187,6 +1187,12 @@ class TileBuilder:
 
         M = 1.0 / 111000.0   # ~metres -> degrees
         ON_M, NEAR_M, EDGE_M, BIG_M = 30 * M, 120 * M, 15 * M, 120 * M
+        # Upper bound: past neighbourhood scale a feature can't be
+        # meaningfully street-positioned — the Trent Lakes MUNICIPALITY
+        # polygon got "between County Road 36 and County Road 507" from two
+        # arbitrary boundary contacts, wrong from wherever you stand (Bob).
+        # A big feature's own name is its context.
+        MAX_M = 600 * M
 
         streets, geoms = [], []
         for f in features:
@@ -1214,8 +1220,14 @@ class TileBuilder:
             if g is None or g.is_empty:
                 continue
 
+            # Administrative boundaries are regions, not physical features —
+            # never street-positioned, whatever their size.
+            if props.get('boundary'):
+                continue
             minx, miny, maxx, maxy = g.bounds
             extent = max(maxx - minx, maxy - miny)
+            if extent > MAX_M:
+                continue
             phrase = None
             primary = None
 
@@ -1812,6 +1824,10 @@ class TileBuilder:
                        or next((o for o in cls['overlays']
                                 if o.get('layer') == 'poi' and o.get('subtype') != 'address'), None)
                        or cls['primary'])
+        # No classification at all (a rural rebuild surfaced members whose
+        # primary is None): they're still countable, just typeless.
+        if type_source is None:
+            return 'features'
         type_label = type_source.get('label') or type_source['category'].replace('-', ' ').title()
         phrase = self._pluralise(type_label)
         # An aggregate has no single address, so the per-feature "Addresses"
@@ -1919,7 +1935,12 @@ class TileBuilder:
             cls = f['classification']
             prim = cls['primary']
             cnt = f.get('_aggregate_count', 1)
-            if self._is_address(prim):
+            if prim is None:
+                # A member with no primary classification (surfaced by the
+                # first RURAL rebuild through this path — Trent Lakes): it
+                # still counts, just with no theme of its own.
+                other['features'] = other.get('features', 0) + cnt
+            elif self._is_address(prim):
                 st = (f.get('properties') or {}).get('addr:street')
                 if st:
                     streets.add(st)
