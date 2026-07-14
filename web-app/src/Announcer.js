@@ -74,6 +74,11 @@ export class Announcer {
      *  its own entry in the visible transcript (the chat's replies), which
      *  would otherwise appear twice.
      *
+     *  opts.speak=false forces the live-region channel for THIS announcement
+     *  even when audio is on — the "mute tooltips" setting: a sighted user
+     *  reading the visual pill doesn't need it spoken over them, while a
+     *  screen reader still receives it from the region.
+     *
      *  `onDone` (optional) fires when the announcement has FINISHED — the chat's
      *  hands-free loop re-opens the microphone on it, so it must never fire
      *  mid-sentence and must always fire eventually. The end-detection is the
@@ -83,14 +88,14 @@ export class Announcer {
      *  announcement satisfies that too, which is right: the turn is over.)
      *  On the live-region channel there is no signal at all — estimate from the
      *  text length, best effort. */
-    announce(text, onDone, { caption = true } = {}) {
+    announce(text, onDone, { caption = true, speak = true } = {}) {
         if (!text) { if (onDone) onDone(); return; }
         if (caption && this.caption) this.caption(text);
 
         let done = false;
         const finish = onDone ? () => { if (!done) { done = true; onDone(); } } : null;
 
-        if (this.audioOn && this.synth && this.speechOk) {
+        if (speak && this.audioOn && this.synth && this.speechOk) {
             this._noteSpoken(text);
             this.synth.cancel();
             const u = new SpeechSynthesisUtterance(text);

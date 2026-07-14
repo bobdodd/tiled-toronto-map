@@ -75,6 +75,7 @@ class MapApplication {
         this.setupSettingsDialog();
         this.setupCompassToggle();
         this.setupRelativeToggle();
+        this.setupTooltipSpeechToggle();
 
         // Initialize map renderer
         const mapSvg = document.getElementById('map-svg');
@@ -113,6 +114,10 @@ class MapApplication {
         // covers block-scale features; bigger ones are positioned per-point,
         // at explore time (see StreetContext.js).
         this.accessibilityManager.positionContext = (g, x, y) => this.streetContextFor(g, x, y);
+        // The "Speak tooltips" setting: off = feature announcements go to the
+        // live region only, so a sighted user reading the pill isn't spoken
+        // over while chat and status speech stay audible.
+        this.accessibilityManager.speakFeatures = () => this.tooltipSpeechOn;
 
         // After a USER filter toggle, refresh the rotor's tab order too.
         // Wrapped at toggleFilter, NOT updateVisibility: the programmatic
@@ -1798,6 +1803,26 @@ class MapApplication {
             this.announceStatus(this.relativeOn
                 ? 'Relative location on. Features tell you their distance and direction from you.'
                 : 'Relative location off.');
+        });
+    }
+
+    // Speak tooltips: ON (default) = feature announcements (hover/click/
+    // touch/focus) are spoken like everything else. OFF = they route to the
+    // screen-reader live region only — a sighted user reading the visual pill
+    // silences just that voice, keeping chat answers and status speech, where
+    // the Audio toggle would silence everything. Preference persists.
+    setupTooltipSpeechToggle() {
+        this.tooltipSpeechOn = localStorage.getItem('map-tooltip-speech') !== 'off';
+        const btn = document.getElementById('toggle-tooltip-speech');
+        if (!btn) return;
+        btn.setAttribute('aria-pressed', String(this.tooltipSpeechOn));
+        btn.addEventListener('click', () => {
+            this.tooltipSpeechOn = !this.tooltipSpeechOn;
+            localStorage.setItem('map-tooltip-speech', this.tooltipSpeechOn ? 'on' : 'off');
+            btn.setAttribute('aria-pressed', String(this.tooltipSpeechOn));
+            this.announceStatus(this.tooltipSpeechOn
+                ? 'Tooltips spoken aloud.'
+                : 'Tooltips muted. They still go to the screen reader.');
         });
     }
 

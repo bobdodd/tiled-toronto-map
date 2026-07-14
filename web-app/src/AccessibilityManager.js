@@ -14,6 +14,11 @@ export class AccessibilityManager {
         // Optional (g, x, y) => suffix hook: live street positioning for the
         // explored point, injected by the app (see StreetContext.js).
         this.positionContext = null;
+        // Optional () => bool hook, injected by the app: false routes feature
+        // announcements to the live region even with audio on (the "Speak
+        // tooltips" setting — sighted users reading the pill can silence the
+        // voice; screen readers still get the region).
+        this.speakFeatures = null;
 
         this.setupEventListeners();
     }
@@ -42,7 +47,10 @@ export class AccessibilityManager {
             const ctx = this.positionContext(g, x, y);
             if (ctx) label = `${label}, ${ctx}`;
         }
-        if (label) this.announcer.announce(label);
+        if (label) {
+            const speak = this.speakFeatures ? !!this.speakFeatures() : true;
+            this.announcer.announce(label, undefined, { speak });
+        }
         return g;
     }
     

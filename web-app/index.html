@@ -430,6 +430,16 @@
                     <span class="icon" aria-hidden="true">🕖</span>
                     <span class="label">Relative location</span>
                 </button>
+                <!-- ON (default): feature announcements (hover / click / touch /
+                     focus) are spoken like everything else. OFF: they go to the
+                     screen-reader live region only — a sighted user reading the
+                     visual pill can silence the voice without losing chat and
+                     status speech (that's what the Audio toggle would do).
+                     Persists. -->
+                <button id="toggle-tooltip-speech" class="control-button" aria-pressed="true">
+                    <span class="icon" aria-hidden="true">🗨️</span>
+                    <span class="label">Speak tooltips</span>
+                </button>
                 <button id="toggle-tracking" class="control-button" aria-pressed="false">
                     <span class="icon" aria-hidden="true">📍</span>
                     <span class="label">Track Location</span>
