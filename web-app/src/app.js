@@ -197,6 +197,28 @@ class MapApplication {
                         if (!r.changed) return { ok: true, say: `${r.label} is already ${r.on ? 'shown' : 'hidden'}.` };
                         return { ok: true, say: captured };
                     }
+                    // Multi-step and extreme zooms ("zoom way out", "zoom
+                    // max"): the same setZoom the rose buttons drive, one
+                    // jump, one announcement — equivalent to N clicks without
+                    // N coordinate read-outs. The EXTREMES go to the tile
+                    // pyramid's PRESET ends — z12 (lod12, ~whole metro) to
+                    // z22 (lod22, individual features) — not the raw clamp:
+                    // z23 is only an over-zoom of the finest band's tiles,
+                    // still reachable by a stepped "zoom in" from 22. An
+                    // unchanged zoom means we were already at the limit.
+                    const zm = action.match(/^zoom-(in|out)-(\d+)$/);
+                    if (zm || action === 'zoom-min' || action === 'zoom-max') {
+                        const r = this.mapRenderer;
+                        const target = action === 'zoom-min' ? 12
+                            : action === 'zoom-max' ? 22
+                            : r.zoom + (zm[1] === 'in' ? +zm[2] : -zm[2]);
+                        const before = r.zoom;
+                        r.setZoom(target);
+                        if (r.zoom === before) return { disabled: true };
+                        this.updateZoomButtonStates();
+                        this.announceMapChange();
+                        return { ok: true, say: captured };
+                    }
                     const ids = {
                         'pan-north': 'nav-n', 'pan-northeast': 'nav-ne',
                         'pan-east': 'nav-e', 'pan-southeast': 'nav-se',
@@ -1784,11 +1806,81 @@ class MapApplication {
         wrap.scrollIntoView({ block: 'nearest' });
     }
 
+    // What the map is centred on, in the MAP'S vocabulary — never raw
+    // lat/lon (meaningless read aloud). Best-first: the named feature the
+    // centre point is INSIDE (a park, a campus, a named building — the paint
+    // stack's topmost is the most specific); a street corner (two distinct
+    // named roads under the point — their 24px hit corridors make this an
+    // ~12px tolerance); the road the centre is on; else the nearest named
+    // feature in view. Generic labels ("Building", "Footpath") never anchor.
+    describeMapCentre() {
+        const cont = document.getElementById('map-container');
+        if (!cont) return '';
+        const r = cont.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const GENERIC = /^(buildings?|apartment building|house|detached house|residential building|commercial building|office building|industrial building|garage|shed|roof|footpath|path|service road|minor road|parking|tree|grass|water|construction site|crossing|sidewalk|steps|fence|wall|gate|driveway|laneway|alley)$/i;
+        const nameOf = (g) => {
+            const label = g.getAttribute('aria-label') || '';
+            // Never anchor on the a11y overlay markers or on aggregate
+            // clusters ("2 Uncontrolled crossings") — those describe, they
+            // don't name. (Addresses also start with a digit but don't end
+            // in a plural s: "8 Adelaide Street West" passes.)
+            if (/^accessible features here/i.test(label)) return '';
+            const first = label.split(/[,.]/)[0].trim();
+            if (/^\d+\s/.test(first) && /s$/.test(first)) return '';
+            return first && !GENERIC.test(first) ? first : '';
+        };
+
+        // 1 + 2 + 3: what's UNDER the centre point, topmost (most specific)
+        // first. Point markers carry constant-size 24px touch rings that
+        // "contain" the centre at any zoom — a dot is never a container, so
+        // only meaningfully sized geometry counts.
+        const stack = [];
+        for (const el of document.elementsFromPoint(cx, cy)) {
+            const g = el.closest ? el.closest('#map-tiles [aria-label]') : null;
+            if (!g || stack.includes(g)) continue;
+            const b = g.getBoundingClientRect();
+            if (Math.max(b.width, b.height) < 30) continue;
+            stack.push(g);
+        }
+        const roadNames = [];
+        for (const g of stack) {
+            const name = nameOf(g);
+            if (!name) continue;
+            if (g.classList.contains('road')) {
+                if (!roadNames.includes(name)) roadNames.push(name);
+            } else {
+                return `centred on ${name}`;
+            }
+        }
+        // Road anchors come from constant-width (24px screen) hit corridors,
+        // so their GROUND tolerance grows as you zoom out — at z12 that's
+        // half a kilometre, and "at the corner of" would claim false
+        // precision. Stay honest: corners and "on" only at street-level
+        // zooms; "near" below that.
+        const tight = this.mapRenderer.zoom >= 15;
+        if (tight && roadNames.length >= 2) return `at the corner of ${roadNames[0]} and ${roadNames[1]}`;
+        if (roadNames.length >= 1) return `${tight ? 'on' : 'near'} ${roadNames[0]}`;
+
+        // 4: the nearest NAMED feature in view (within ~a third of the viewport).
+        const maxDist = Math.min(r.width, r.height) / 3;
+        let best = null, bestDist = Infinity;
+        for (const g of document.querySelectorAll('#map-tiles [aria-label]')) {
+            const name = nameOf(g);
+            if (!name) continue;
+            const b = g.getBoundingClientRect();
+            if (!b.width && !b.height) continue;   // hidden plane / filtered out
+            const d = Math.hypot(b.left + b.width / 2 - cx, b.top + b.height / 2 - cy);
+            if (d < bestDist) { bestDist = d; best = name; }
+        }
+        if (best && bestDist <= maxDist) return `near ${best}`;
+        return '';
+    }
+
     announceMapChange() {
-        const center = this.mapRenderer.center;
         const zoom = this.mapRenderer.zoom;
-        
-        this.announceStatus(`Map view: zoom level ${zoom}, centered at ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`);
+        const where = this.describeMapCentre();
+        this.announceStatus(`Map view: zoom level ${zoom}${where ? ', ' + where : ''}`);
     }
     
     updateZoomButtonStates() {

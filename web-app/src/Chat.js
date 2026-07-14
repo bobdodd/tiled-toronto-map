@@ -297,8 +297,29 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
     };
     function mapCommandOf(n) {
         const s = n.replace(/^please\s+/, '').replace(/\s+please$/, '');
-        let m = s.match(/^zoom\s?(in|out)(?:\s+(?:more|again|a bit|a little))?$/);
-        if (m) return { action: `zoom-${m[1]}`, ack: `Zoomed ${m[1]}.` };
+        // Zoom, in ascending strength: "zoom in/out" = one level ("more",
+        // "a bit" tolerated); "zoom in twice / out three times" = counted;
+        // "zoom way in/out" = a big jump (3 levels); "zoom right/all the
+        // way/fully/completely in/out" and "zoom max/min" = the extremes.
+        let m = s.match(/^zoom (?:(way|right|all the way|fully|completely) )?(in|out)(?: (way|right|all the way|fully|completely|more|again|a bit|a little))?$/);
+        if (m) {
+            const dir = m[2];
+            const mod = m[1] || m[3] || '';
+            if (/^(?:right|all the way|fully|completely)$/.test(mod)) {
+                return dir === 'in'
+                    ? { action: 'zoom-max', ack: 'Zoomed right in.' }
+                    : { action: 'zoom-min', ack: 'Zoomed right out.' };
+            }
+            if (mod === 'way') return { action: `zoom-${dir}-3`, ack: `Zoomed way ${dir}.` };
+            return { action: `zoom-${dir}`, ack: `Zoomed ${dir}.` };
+        }
+        if (/^zoom (?:to )?(?:the )?max(?:imum)?$/.test(s)) return { action: 'zoom-max', ack: 'Zoomed right in.' };
+        if (/^zoom (?:to )?(?:the )?min(?:imum)?$/.test(s)) return { action: 'zoom-min', ack: 'Zoomed right out.' };
+        m = s.match(/^zoom (in|out) (twice|(?:two|three|four|five|2|3|4|5) times)$/);
+        if (m) {
+            const count = { twice: 2, 'two times': 2, '2 times': 2, 'three times': 3, '3 times': 3, 'four times': 4, '4 times': 4, 'five times': 5, '5 times': 5 }[m[2]];
+            return { action: `zoom-${m[1]}-${count}`, ack: `Zoomed ${m[1]} ${m[2]}.` };
+        }
         if (/^(?:zoom\s+)?closer$/.test(s)) return { action: 'zoom-in', ack: 'Zoomed in.' };
         if (/^(?:zoom\s+)?(?:further|farther|back)\s+out$/.test(s)) return { action: 'zoom-out', ack: 'Zoomed out.' };
         // Centre — BEFORE pan, so "go to my location" never parses as a pan.
@@ -345,7 +366,7 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         let line;
         if (!r) line = "The map controls aren't available right now.";
         else if (r.disabled) {
-            line = cmd.action === 'zoom-in'
+            line = /^zoom-(?:in|max)/.test(cmd.action)
                 ? "You're already as zoomed in as it goes."
                 : "You're already as zoomed out as it goes.";
         } else line = r.say || cmd.ack;
