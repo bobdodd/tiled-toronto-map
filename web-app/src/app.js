@@ -137,8 +137,10 @@ class MapApplication {
         this.setupEventListeners();
 
         // Sticky name tooltip on focus/hover (reads each feature's aria-label).
-        // Delegates on #map-svg, so it covers tiles loaded later too.
-        setupTooltip();
+        // Delegates on #map-svg, so it covers tiles loaded later too. The
+        // returned handle lets go-to arrivals clear a stale pill and label a
+        // destination that has no drawn feature (a bare address).
+        this.tooltip = setupTooltip();
 
         // The chat panel's housing: floating (moveable/resizable/closeable)
         // on desktop, split-screen with a draggable divider on mobile. The
@@ -207,12 +209,15 @@ class MapApplication {
                 if (!t || !Number.isFinite(t.lat) || !Number.isFinite(t.lon)) return null;
                 if (this.mapRenderer.zoom < 18) this.mapRenderer.setZoom(18);
                 this.mapRenderer.setCenter(t.lat, t.lon);
-                if (!t.osm_id) return null;   // recentre only — nothing to focus
-                return () => {
-                    this.waitForFeature(String(t.osm_id), 3000).then((el) => {
-                        if (el) this.focusFeatureElement(el);
-                    });
-                };
+                // The departed feature's sticky pill/outline must not hang
+                // over the new view while the reply speaks (focus and the
+                // destination's own pill arrive after it, via the lander).
+                if (this.tooltip) this.tooltip.hide();
+                if (this.accessibilityManager) this.accessibilityManager.hideFocusOutline();
+                // The virtual you arrives too (tracking off) — the reply
+                // narrates the move; the next "near me" anchors here.
+                this._arriveAt(t.lat, t.lon);
+                return () => { this._focusArrival(t.osm_id, t.name); };
             },
         });
 
@@ -1357,20 +1362,63 @@ class MapApplication {
     // outline behave exactly as for ordinary keyboard navigation. Features carry
     // role="img" + aria-label from the generator, so focusing one announces its
     // name. Addresses with no drawn feature simply recentre.
+    // How far (and which way) a go-to moved the user, as a spoken phrase.
+    // Empty under 30 m — "you moved 4 metres" is noise, not orientation.
+    _movedPhrase(fromLat, fromLng, toLat, toLng) {
+        const R = 6371000, rad = Math.PI / 180;
+        const dLat = (toLat - fromLat) * rad, dLng = (toLng - fromLng) * rad;
+        const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(fromLat * rad) * Math.cos(toLat * rad) * Math.sin(dLng / 2) ** 2;
+        const m = Math.round(2 * R * Math.asin(Math.sqrt(a)));
+        if (m < 30) return '';
+        const y = Math.sin(dLng) * Math.cos(toLat * rad);
+        const x = Math.cos(fromLat * rad) * Math.sin(toLat * rad)
+            - Math.sin(fromLat * rad) * Math.cos(toLat * rad) * Math.cos(dLng);
+        const brg = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        const dir = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(brg / 45) % 8];
+        const dist = m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} kilometres` : `${m} metres`;
+        return ` — ${dist} ${dir} of where you were`;
+    }
+
+    // A go-to relocates the VIRTUAL you (tracking off): the avatar moves to
+    // the destination, so "where am I" and every "near me" now anchor there.
+    // Tracking ON = the avatar is the physical you — the view moves, you don't.
+    _arriveAt(lat, lng) {
+        if (!this.isTracking && this.avatar) this.avatar.setPosition(lat, lng, false);
+    }
+
+    // Keyboard/screen-reader context must ARRIVE too: the actual feature when
+    // its tile has it, otherwise the map itself (the skip-link's programmatic
+    // target) so focus is at the destination, never stranded where you were.
+    // The sticky tooltip arrives with it: the pill from the place just LEFT is
+    // cleared up front (it would otherwise hang, stale, over the new view —
+    // seen live: "86 Shuter Street" still showing after a go-to to Hannaford),
+    // and a destination with NO drawn feature (a bare address) gets the pill +
+    // marker at the recentred point with the destination's own name.
+    async _focusArrival(osmId, name) {
+        if (this.tooltip) this.tooltip.hide();
+        if (this.accessibilityManager) this.accessibilityManager.hideFocusOutline();
+        const el = osmId ? await this.waitForFeature(String(osmId), 8000) : null;
+        if (el) { this.focusFeatureElement(el); return; }
+        const svg = document.getElementById('map-svg');
+        if (svg) svg.focus({ preventScroll: true });
+        // The destination IS the map centre (we just recentred on it).
+        if (this.tooltip && name) {
+            const r = document.getElementById('map-container').getBoundingClientRect();
+            this.tooltip.showLabel(name, r.left + r.width / 2, r.top + r.height / 2);
+        }
+    }
+
     async goToSearchResult(result) {
         if (!result || !Number.isFinite(result.lat) || !Number.isFinite(result.lng)) return;
 
+        const from = (this.avatar && this.avatar.position) || this.mapRenderer.center;
         // Pull in to a readable street-level zoom if we're currently zoomed out.
         if (this.mapRenderer.zoom < 18) this.mapRenderer.setZoom(18);
         this.mapRenderer.setCenter(result.lat, result.lng);
-        this.announceStatus(`Showing ${result.display}`);
-
-        const el = await this.waitForFeature(String(result.id), 3000);
-        if (el) {
-            this.focusFeatureElement(el);
-        }
-        // else: the point is recentred but has no labelled feature to focus
-        // (e.g. a bare address node). The recentre is the result.
+        this._arriveAt(result.lat, result.lng);
+        this.announceStatus(`Showing ${result.display}${this._movedPhrase(from.lat, from.lng, result.lat, result.lng)}.`);
+        await this._focusArrival(result.id, result.display);
     }
 
     // Resolve the tile feature element for an OSM id, waiting for its tile to

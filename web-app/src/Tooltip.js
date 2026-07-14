@@ -54,6 +54,17 @@ export function setupTooltip() {
         current = null;
     }
 
+    // Pill + marker for a POINT WITHOUT a drawn feature (an address a go-to
+    // arrives at): same visual as a feature's tooltip, arbitrary text.
+    function showLabel(text, x, y) {
+        if (!text) return;
+        current = null;
+        tooltipTitle.textContent = text;
+        tooltip.hidden = false;
+        if (marker) marker.hidden = false;
+        positionAt(x, y);
+    }
+
     // The feature is the nearest labelled element inside the tile layer, resolved
     // up from whatever geometry the pointer/focus landed on.
     function featureFrom(e) {
@@ -95,4 +106,8 @@ export function setupTooltip() {
 
     // Avoid a stale position if the map re-lays-out.
     window.addEventListener('resize', function () { if (!tooltip.hidden) hideTooltip(); });
+
+    // For the app's go-to arrival handling: clear a stale pill from the place
+    // just LEFT, and label a destination that has no drawn feature.
+    return { hide: hideTooltip, showLabel };
 }
