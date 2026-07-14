@@ -108,6 +108,20 @@ export class AccessibilityManager {
         mapSvg.addEventListener('mouseover', (e) => this.handleMouseOver(e));
         mapSvg.addEventListener('mouseout', (e) => this.handleMouseOut(e));
 
+        // A click/tap is an EXPLICIT ask — announce the feature under it just
+        // like hover, but past the once-per-visit dedupe (the user asked
+        // again, so say it again, distance and direction included). The
+        // announcer picks the channel: speech when there's an engine and
+        // audio is on, the polite live region otherwise — so a screen-reader
+        // double-tap still gets the answer on a device with no speech API.
+        mapSvg.addEventListener('click', (e) => {
+            const g = e.target && e.target.closest ? e.target.closest('#map-tiles [aria-label]') : null;
+            if (!g) return;
+            this._lastAnnounced = null;
+            this.showFocusOutline(g);
+            this.announceFeature(g, e.clientX, e.clientY);
+        });
+
         // Explore by touch, without a screen reader: ONE finger sweeping the
         // map announces whatever is under it, each feature cancelling the last
         // — always what's under the finger NOW, never a queued backlog. Two

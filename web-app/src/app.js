@@ -74,6 +74,7 @@ class MapApplication {
         this.setupAudioToggle();
         this.setupSettingsDialog();
         this.setupCompassToggle();
+        this.setupRelativeToggle();
 
         // Initialize map renderer
         const mapSvg = document.getElementById('map-svg');
@@ -701,12 +702,24 @@ class MapApplication {
         let startLat = 0;
         let startLng = 0;
         
+        // A mouse drag ends in a browser 'click' at the release point — not
+        // an ask. Swallow exactly that click in the CAPTURE phase, before the
+        // tooltip and announce handlers on #map-svg see it, so panning never
+        // announces whatever the map happened to stop under. Taps are
+        // unaffected (a click only counts as a drag after real movement), and
+        // touch drags never synthesize clicks.
+        let dragMoved = false;
+        mapContainer.addEventListener('click', (e) => {
+            if (dragMoved) { dragMoved = false; e.stopPropagation(); }
+        }, true);
+
         // Mouse drag events
         mapContainer.addEventListener('mousedown', (e) => {
             // Only respond to left mouse button (button 0)
             if (e.button !== 0) return;
 
             isDragging = true;
+            dragMoved = false;
             startX = e.clientX;
             startY = e.clientY;
             startLat = this.mapRenderer.center.lat;
@@ -731,7 +744,8 @@ class MapApplication {
             
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
-            
+            if (Math.abs(dx) + Math.abs(dy) > 5) dragMoved = true;
+
             // Convert pixel movement to degrees
             // Use the MapRenderer's coordinate system
             const pixelsPerDegree = 100000; // 0.01 degrees = 1000 pixels
@@ -1767,6 +1781,26 @@ class MapApplication {
         });
     }
 
+    // Relative location: ON (default) appends where the explored point sits
+    // relative to YOU — "35 metres at 7 o'clock" — to every click/hover/
+    // touch/focus announcement and tooltip. OFF for quieter announcements;
+    // the street anchor ("15 metres from County Road 507") stays either way.
+    // Preference persists.
+    setupRelativeToggle() {
+        this.relativeOn = localStorage.getItem('map-relative-on') !== 'off';
+        const btn = document.getElementById('toggle-relative');
+        if (!btn) return;
+        btn.setAttribute('aria-pressed', String(this.relativeOn));
+        btn.addEventListener('click', () => {
+            this.relativeOn = !this.relativeOn;
+            localStorage.setItem('map-relative-on', this.relativeOn ? 'on' : 'off');
+            btn.setAttribute('aria-pressed', String(this.relativeOn));
+            this.announceStatus(this.relativeOn
+                ? 'Relative location on. Features tell you their distance and direction from you.'
+                : 'Relative location off.');
+        });
+    }
+
     // The audio toggle: ON = announcements spoken aloud (cancellable, so a
     // finger sweep never hears a stale backlog); OFF = the polite live region,
     // for screen-reader users who want one voice, theirs. State persists.
@@ -1842,7 +1876,9 @@ class MapApplication {
     // (the physical you when tracking, the virtual you otherwise). Clock face
     // when the compass knows which way you face, cardinal words otherwise.
     // Silent within 10 m: that's where you're standing, not a direction.
+    // The Settings "Relative location" toggle turns this phrase off entirely.
     _relativeToYou(x, y) {
+        if (!this.relativeOn) return '';
         if (!Number.isFinite(x) || !Number.isFinite(y)) return '';
         const you = (this.avatar && this.avatar.position) || (this.mapRenderer && this.mapRenderer.center);
         if (!you || !this.locationTracker) return '';

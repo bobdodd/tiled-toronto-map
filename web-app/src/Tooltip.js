@@ -41,13 +41,14 @@ export function setupTooltip(opts = {}) {
         tooltip.style.top = y + 'px';
     }
 
-    function showAt(feature, x, y) {
+    function showAt(feature, x, y, force) {
         if (!feature) { hideTooltip(); return; }
-        if (feature !== current) {
+        if (feature !== current || force) {
             current = feature;
-            let label = feature.getAttribute('aria-label');
             // Positioned from where the pill was SUMMONED (the entry point of
-            // the hover/tap) — one suffix per visit, like the announcement.
+            // the hover, or the tap) — one suffix per visit, like the
+            // announcement; a click forces a re-read at the clicked point.
+            let label = feature.getAttribute('aria-label');
             const extra = contextFor ? contextFor(feature, x, y) : '';
             if (extra) label = `${label}, ${extra}`;
             tooltipTitle.textContent = label;
@@ -84,7 +85,7 @@ export function setupTooltip(opts = {}) {
     // Every platform: a click / tap shows the pill at the tap point. Coexists
     // with explore-by-touch so it doesn't disturb screen readers on touch.
     map.addEventListener('click', function (e) {
-        const f = featureFrom(e); if (f) showAt(f, e.clientX, e.clientY);
+        const f = featureFrom(e); if (f) showAt(f, e.clientX, e.clientY, true);
     });
 
     // Desktop pointer + keyboard. Gated to hover-capable devices so no
