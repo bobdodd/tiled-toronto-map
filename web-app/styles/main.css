@@ -80,6 +80,13 @@ main[hidden] {
     opacity: 0.55;
     cursor: not-allowed;
 }
+/* Dark mode for the gate — it inherited the dark body background while keeping
+   its light-mode #1a1a1a text: black on black (seen live). */
+@media (prefers-color-scheme: dark) {
+    .map-gate { color: #e0e0e0; }
+    .map-gate h1,
+    .map-gate h2 { color: #f0f0f0; }
+}
 
 .skip-link {
     position: absolute;
@@ -2009,6 +2016,19 @@ body.tooltip-below .poi-tooltip::after {
     border-top-color: transparent;
     border-bottom-color: rgba(255, 255, 255, 0.97);
 }
+/* Dark tooltip: dark pill, light text, a lighter blue edge (the light-mode
+   navy vanishes against a dark map). The tail's fill must match the pill. */
+@media (prefers-color-scheme: dark) {
+    .poi-tooltip {
+        background: rgba(30, 30, 30, 0.97);
+        color: #f0f0f0;
+        border-color: #8ab0f0;
+    }
+    .poi-tooltip::before { border-top-color: #8ab0f0; }
+    .poi-tooltip::after { border-top-color: rgba(30, 30, 30, 0.97); }
+    body.tooltip-below .poi-tooltip::before { border-top-color: transparent; border-bottom-color: #8ab0f0; }
+    body.tooltip-below .poi-tooltip::after { border-top-color: transparent; border-bottom-color: rgba(30, 30, 30, 0.97); }
+}
 
 /* Point marker — a constant-size ring pinned at the feature point. Navy ring +
    white halo so it shows over parks, water, roads and buildings alike. Lives in
@@ -2164,14 +2184,19 @@ body.tooltip-below .poi-tooltip::after {
     #map-container,
     #map-svg { background: #16191d; }
 
+    /* A LIGHTNESS LADDER, darkest to lightest: ground (the svg background)
+       < landuse < misc (the catch-all — most of the base polygons, so it
+       must stay LOW or the whole map goes pale, seen live) < buildings.
+       EDGES carry the detail; roads are the bright skeleton on near-black
+       casings. All knobs live here — tune by eye. */
     #map-tiles {
-        --c-misc-fill:  #31363c;  --c-misc-stroke:  #4a5058;
-        --c-water-fill: #15323f;  --c-water-stroke: #1f4a5e;
-        --c-bldg-fill:  #2b2f36;  --c-bldg-stroke:  #454b54;
-        --c-park-fill:  #1f3a24;  --c-park-stroke:  #2c5233;
-        --c-veg-fill:   #1c3320;  --c-veg-stroke:   #284a2e;
-        --c-land-fill:  #26241f;  --c-land-stroke:  #34302a;
-        --c-road:       #6b7280;  --c-road-casing:  #20242a;
+        --c-misc-fill:  #23272d;  --c-misc-stroke:  #4d545e;
+        --c-water-fill: #173a4a;  --c-water-stroke: #2b5f78;
+        --c-bldg-fill:  #2f353d;  --c-bldg-stroke:  #5d656f;
+        --c-park-fill:  #1e3d23;  --c-park-stroke:  #35663c;
+        --c-veg-fill:   #1b3720;  --c-veg-stroke:   #2f5836;
+        --c-land-fill:  #1d2025;  --c-land-stroke:  #383e46;
+        --c-road:       #848c99;  --c-road-casing:  #14171b;
     }
 
     /* Generic re-colour for tangible features — but NEVER the overlay elements
@@ -2548,6 +2573,22 @@ body.chat-split .location-info {
 }
 .detail-modal__close:hover { background: #e3f2fd; }
 .detail-modal__close:focus { outline: 2px solid #0066ff; outline-offset: 2px; }
+/* Dark mode for the dialogs (Detailed surroundings + Settings share the idiom). */
+@media (prefers-color-scheme: dark) {
+    .detail-modal__panel {
+        background: #1e1e1e;
+        border-color: #9a9a9a;
+    }
+    .detail-modal__title,
+    .detail-modal__body h3 { color: #f0f0f0; }
+    .detail-modal__body { color: #e0e0e0; }
+    .detail-modal__close {
+        background: #2a2a2a;
+        border-color: #5b8def;
+        color: #cfe0ff;
+    }
+    .detail-modal__close:hover { background: #333; }
+}
 
 @media (prefers-contrast: high) {
     .detail-modal__panel { border-color: #000; border-width: 3px; }
