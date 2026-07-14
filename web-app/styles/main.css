@@ -516,6 +516,15 @@ main {
     z-index: 1000;
 }
 
+/* The GPS layer (accuracy disc + blue dot + heading arrow) is an overlay,
+   not a feature: nothing in it is interactive (the explorable "you" is the
+   avatar), so it must never shadow the map beneath — the accuracy disc can
+   be tens of metres wide and was a hover/explore dead zone over everything
+   it covered. */
+#user-location {
+    pointer-events: none;
+}
+
 /* Style map features */
 #map-features polygon,
 #map-features polyline,

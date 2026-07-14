@@ -13,7 +13,11 @@
 // on its wrapping <g role="img" aria-label> (the pointer actually hits the inner
 // geometry), so featureFrom resolves the nearest labelled ancestor inside
 // #map-tiles rather than reading the hit element directly.
-export function setupTooltip() {
+// opts.contextFor(feature, x, y) — optional live positional suffix for the
+// explored point ("80 metres from County Road 507", see StreetContext.js),
+// appended to the label when the feature carries no baked positioning.
+export function setupTooltip(opts = {}) {
+    const contextFor = opts.contextFor || null;
     const tooltip = document.getElementById('poiTooltip');
     const map = document.querySelector('#map-svg');
     if (!tooltip || !map) return;
@@ -41,7 +45,12 @@ export function setupTooltip() {
         if (!feature) { hideTooltip(); return; }
         if (feature !== current) {
             current = feature;
-            tooltipTitle.textContent = feature.getAttribute('aria-label');
+            let label = feature.getAttribute('aria-label');
+            // Positioned from where the pill was SUMMONED (the entry point of
+            // the hover/tap) — one suffix per visit, like the announcement.
+            const extra = contextFor ? contextFor(feature, x, y) : '';
+            if (extra) label = `${label}, ${extra}`;
+            tooltipTitle.textContent = label;
         }
         tooltip.hidden = false;
         if (marker) marker.hidden = false;

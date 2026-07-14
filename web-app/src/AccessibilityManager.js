@@ -11,6 +11,9 @@ export class AccessibilityManager {
         this.currentFocusedElement = null;
         this._lastAnnounced = null; // dedupe: a feature announces once per visit
         this._touchPoints = 0;      // >1 = pinch, not explore
+        // Optional (g, x, y) => suffix hook: live street positioning for the
+        // explored point, injected by the app (see StreetContext.js).
+        this.positionContext = null;
 
         this.setupEventListeners();
     }
@@ -20,13 +23,25 @@ export class AccessibilityManager {
     // backlog). The label lives on the wrapping <g role="img"> — the pointer
     // usually hits the inner geometry, so resolve upward. Deduped per visit:
     // the same feature doesn't re-announce until another (or none) intervenes.
-    announceFeature(target) {
+    // (x, y) is the explored point — the finger or pointer when there is
+    // one, the feature's own box centre for keyboard focus — and feeds the
+    // live positional suffix ("80 metres from County Road 507").
+    announceFeature(target, x, y) {
         if (!this.announcer || !target || !target.closest) return;
         const g = target.closest('#map-tiles [aria-label]');
         if (!g) return;
         if (g === this._lastAnnounced) return;
         this._lastAnnounced = g;
-        const label = g.getAttribute('aria-label');
+        let label = g.getAttribute('aria-label');
+        if (label && this.positionContext) {
+            if (!Number.isFinite(x)) {
+                const b = g.getBoundingClientRect();
+                x = b.left + b.width / 2;
+                y = b.top + b.height / 2;
+            }
+            const ctx = this.positionContext(g, x, y);
+            if (ctx) label = `${label}, ${ctx}`;
+        }
         if (label) this.announcer.announce(label);
         return g;
     }
@@ -125,7 +140,7 @@ export class AccessibilityManager {
         if (!g) { this._lastAnnounced = null; return; }
         if (g !== this._lastAnnounced) {
             this.showFocusOutline(g);
-            this.announceFeature(g);
+            this.announceFeature(g, x, y);
         }
     }
     
@@ -155,7 +170,7 @@ export class AccessibilityManager {
         // Show outline on hover for ANY map feature, not just those with tabindex
         if (this.isMapFeatureForHover(target)) {
             this.showFocusOutline(target);
-            this.announceFeature(target);
+            this.announceFeature(target, event.clientX, event.clientY);
         }
     }
 

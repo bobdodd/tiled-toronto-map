@@ -13,6 +13,7 @@ import { setupChatPanel } from './ChatPanel.js';
 import { setupChatSuggest } from './ChatSuggest.js';
 import { LevelSwitch } from './LevelSwitch.js';
 import { HeadingProvider } from './HeadingProvider.js';
+import { streetContextAt, GENERIC_NAME } from './StreetContext.js';
 
 class MapApplication {
     constructor() {
@@ -106,6 +107,12 @@ class MapApplication {
         this.filterManager = new FilterManager(this.taxonomy);
         this.accessibilityManager = new AccessibilityManager(this.taxonomy, this.announcer);
 
+        // Announcements gain live street positioning ("80 metres from County
+        // Road 507") computed at the explored point — the tile-time pass only
+        // covers block-scale features; bigger ones are positioned per-point,
+        // at explore time (see StreetContext.js).
+        this.accessibilityManager.positionContext = (g, x, y) => this.streetContextFor(g, x, y);
+
         // After a USER filter toggle, refresh the rotor's tab order too.
         // Wrapped at toggleFilter, NOT updateVisibility: the programmatic
         // re-application that runs when tiles load calls updateVisibility for
@@ -141,7 +148,9 @@ class MapApplication {
         // Delegates on #map-svg, so it covers tiles loaded later too. The
         // returned handle lets go-to arrivals clear a stale pill and label a
         // destination that has no drawn feature (a bare address).
-        this.tooltip = setupTooltip();
+        this.tooltip = setupTooltip({
+            contextFor: (g, x, y) => this.streetContextFor(g, x, y),
+        });
 
         // The chat panel's housing: floating (moveable/resizable/closeable)
         // on desktop, split-screen with a draggable divider on mobile. The
@@ -873,6 +882,9 @@ class MapApplication {
             this.announceStatus('Location tracking disabled');
 
             // When tracking is disabled, revert avatar to center position
+            // and take the GPS overlay (accuracy disc + dot) with it — a
+            // stale disc would claim a fix we no longer have.
+            this.mapRenderer.clearUserLocation();
             const center = this.mapRenderer.center;
             this.avatar.setPosition(center.lat, center.lng, false);
         }
@@ -1813,12 +1825,39 @@ class MapApplication {
     // named roads under the point — their 24px hit corridors make this an
     // ~12px tolerance); the road the centre is on; else the nearest named
     // feature in view. Generic labels ("Building", "Footpath") never anchor.
+    // Live positional suffix for a feature being announced/tooltipped, from
+    // the explored point: street anchor + where that point sits relative to
+    // YOU — "15 metres from County Road 507, 35 metres at 7 o'clock". The
+    // street pins the point to the world, the relative phrase pins it to you.
+    streetContextFor(g, x, y) {
+        if (!this.mapRenderer) return '';
+        const street = streetContextAt(g, x, y, {
+            svg: this.mapRenderer.svg,
+            viewBox: this.mapRenderer.viewBox,
+        });
+        return [street, this._relativeToYou(x, y)].filter(Boolean).join(', ');
+    }
+
+    // "35 metres at 7 o'clock" — the explored point relative to the avatar
+    // (the physical you when tracking, the virtual you otherwise). Clock face
+    // when the compass knows which way you face, cardinal words otherwise.
+    // Silent within 10 m: that's where you're standing, not a direction.
+    _relativeToYou(x, y) {
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return '';
+        const you = (this.avatar && this.avatar.position) || (this.mapRenderer && this.mapRenderer.center);
+        if (!you || !this.locationTracker) return '';
+        const p = this._clientToLatLng(x, y);
+        const m = this.locationTracker.calculateDistance(you.lat, you.lng, p.lat, p.lng);
+        if (!Number.isFinite(m) || m < 10) return '';
+        return `${this.phraseDistance(m)} ${this._where(you, p)}`;
+    }
+
     describeMapCentre() {
         const cont = document.getElementById('map-container');
         if (!cont) return '';
         const r = cont.getBoundingClientRect();
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        const GENERIC = /^(buildings?|apartment building|house|detached house|residential building|commercial building|office building|industrial building|garage|shed|roof|footpath|path|service road|minor road|parking|tree|grass|water|construction site|crossing|sidewalk|steps|fence|wall|gate|driveway|laneway|alley)$/i;
+        const GENERIC = GENERIC_NAME;   // shared with StreetContext.js
         const nameOf = (g) => {
             const label = g.getAttribute('aria-label') || '';
             // Never anchor on the a11y overlay markers or on aggregate

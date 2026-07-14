@@ -300,12 +300,18 @@ export class MapRenderer {
         this.svg.dispatchEvent(event);
     }
 
-    drawUserLocation(lat, lng, accuracy) {
-        // Clear existing location marker
+    // The GPS overlay only means something WHILE tracking: once tracking
+    // stops, a lingering accuracy disc would claim a fix we no longer have.
+    clearUserLocation() {
         while (this.locationGroup.firstChild) {
             this.locationGroup.removeChild(this.locationGroup.firstChild);
         }
-        
+    }
+
+    drawUserLocation(lat, lng, accuracy) {
+        // Clear existing location marker
+        this.clearUserLocation();
+
         const pos = this.project(lat, lng);
         
         // Accuracy circle
