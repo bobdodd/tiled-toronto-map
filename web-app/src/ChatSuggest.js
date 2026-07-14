@@ -38,6 +38,8 @@ const API_URL = (() => {
 })();
 
 const MIN_CHARS = 4;
+const MAX_CHARS = 80;   // place names aren't sentences — a long text is a
+                        // question (or a stray echo transcript), never a query
 const DEBOUNCE_MS = 250;
 const MAX_SHOWN = 8;
 
@@ -195,7 +197,7 @@ export function setupChatSuggest({ getCenter, onSelect }) {
     input.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         const q = input.value.trim();
-        if (q.length < MIN_CHARS) { close(); return; }
+        if (q.length < MIN_CHARS || q.length > MAX_CHARS) { close(); return; }
         debounceTimer = setTimeout(() => query(q), DEBOUNCE_MS);
     });
 

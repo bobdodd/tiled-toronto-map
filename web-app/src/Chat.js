@@ -685,9 +685,15 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             // closeMic() and would otherwise re-arm the idle timer into the answer.
             // The real 'input' event makes the live transcript drive the place
             // suggestions (ChatSuggest) — VISUALLY only; nothing announces.
+            // Echo guard on the DISPLAY too: the mic opens as the answer ends
+            // and Deepgram's finals trail the audio, so the answer's tail can
+            // arrive as an interim — it must not land in the input box and
+            // drive the suggestion search (seen live).
             if (recording && shown) {
-                input.value = shown;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
+                if (!(announcer.echoOf && announcer.echoOf(shown))) {
+                    input.value = shown;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
                 armIdle();
             }
         };
