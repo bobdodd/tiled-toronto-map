@@ -227,6 +227,10 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             if (data.mapAction && onMapTarget) {
                 try { landFocus = onMapTarget(data.mapAction) || null; } catch { landFocus = null; }
             }
+            // Hands-free: pre-warm the next listen WHILE the answer speaks —
+            // token, mic, and the Deepgram socket are ready (held silent) so
+            // the mic-open at answer-end is instant and a fast "yes" is heard.
+            if (convo) startListen({ prepareOnly: true });
             // caption:false — the reply is already its own message in the
             // transcript; the announcer's visible mirror would double it.
             announcer.announce(reply, landFocus
@@ -314,6 +318,7 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
                 : "You're already as zoomed out as it goes.";
         } else line = r.say || cmd.ack;
         setStatus(line);
+        if (convo) startListen({ prepareOnly: true });   // pre-warm the reopen
         announcer.announce(line, convo ? onAnswerSpoken : undefined);
     }
 
@@ -431,12 +436,20 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         await startListen();
     }
 
-    function closeMic() { clearIdle(); recording = false; cleanupStream(); }
+    // Between turns: shut the forwarding GATE, keep the session (mic, context,
+    // socket — keepalives hold the socket) so the next listen is instant.
+    // Full teardown is endConvo's job.
+    function closeMic() {
+        clearIdle();
+        recording = false;
+        if (dgSocket) startKeepAlive();
+    }
 
     function endConvo(message) {
         convo = false;
         clearIdle();
         recording = false;
+        engageWhenReady = false;   // an explicit stop owes no pending engage
         cleanupStream();
         announcer.stop();
         setConvoButton(false);
@@ -457,57 +470,148 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         if (convo) { convo = false; setConvoButton(false); }
     }
 
-    async function startListen() {
-        if (recording || opening) return;
-        opening = true;
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.AudioWorkletNode) {
-            bailListen("Voice input isn't available on this device — please type your question."); return;
-        }
-        let token;
-        try {
-            const [tk, stream] = await Promise.all([
-                fetch(TOKEN_API, { method: 'POST' }).then((r) => r.json().catch(() => ({}))),
-                navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }),
-            ]);
-            micStream = stream;
-            if (!tk || !tk.token) throw new Error((tk && tk.error) || 'no speech token');
-            token = tk.token;
-        } catch (e) {
-            if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
-            const name = (e && e.name) || '';
-            const msg = name === 'NotAllowedError'
-                ? 'Microphone blocked for this site. Allow the microphone for a11ybob.com (the prompt, or the site permissions behind the address-bar icon — not the phone’s app settings), then tap Speak again.'
-                : name === 'NotFoundError'
-                ? 'No microphone was found on this device — please type your question.'
-                : `Couldn't start speech input (${(e && e.message) || name || 'error'}). You can type your question instead.`;
-            bailListen(msg); return;
-        }
+    // ── Pre-warmed listening. A hands-free turn used to COLD-START everything
+    //    after the answer finished — token fetch (a network round trip),
+    //    worklet, Deepgram handshake, mic — one to two seconds on a slow link,
+    //    so a fast "yes" to a "— go?" offer landed on a closed mic (Bob hit
+    //    exactly this). Now the NETWORK half — token, audio context + worklet
+    //    module, an authenticated Deepgram socket kept open with KeepAlive
+    //    frames (it closes after ~10 s without audio, NET-0001) — is built
+    //    while the answer is still speaking. The MICROPHONE deliberately does
+    //    NOT open until the answer ends: an open input flips the OS audio
+    //    session into voice-processing and DUCKS the answer mid-sentence (Bob
+    //    heard exactly that at 111 Hannaford). Engaging = a warm getUserMedia
+    //    plus wiring the stream — a couple hundred milliseconds — and nothing
+    //    is ever sent before the `recording` gate opens, so the
+    //    never-hears-its-own-voice rule holds throughout. ──
+    let keepAliveTimer = null;
+    let engageWhenReady = false;   // answer finished while the prepare was still in flight
 
-        try {
-            sttCtx = new (window.AudioContext || window.webkitAudioContext)();
-            await sttCtx.audioWorklet.addModule('src/pcm-worklet.js');
-            sttSource = sttCtx.createMediaStreamSource(micStream);
-            sttNode = new AudioWorkletNode(sttCtx, 'pcm-worklet');
-            sttSource.connect(sttNode);
-            sttNode.port.onmessage = (e) => { if (dgSocket && dgSocket.readyState === WebSocket.OPEN) dgSocket.send(e.data); };
-        } catch {
-            cleanupStream();
-            bailListen("Couldn't start audio capture — please type your question."); return;
+    // A prepare has settled: engage if the answer already finished waiting on
+    // it; on a failed prepare, retry COLD so the real error (mic blocked, no
+    // token) is surfaced by the normal path instead of a silent stall.
+    function prepareSettled(ok) {
+        if (engageWhenReady) {
+            engageWhenReady = false;
+            if (ok) engagePrepared();
+            else startListen();
+        } else if (ok) {
+            startKeepAlive();
         }
+    }
 
-        const params = new URLSearchParams({
-            model: 'nova-3', encoding: 'linear16', sample_rate: String(Math.round(sttCtx.sampleRate)), channels: '1',
-            diarize: 'true', interim_results: 'true', utterance_end_ms: '1000', endpointing: '300',
-            smart_format: 'true', punctuate: 'true', vad_events: 'true',
-        });
+    function startKeepAlive() {
+        stopKeepAlive();
+        keepAliveTimer = window.setInterval(() => {
+            if (dgSocket && dgSocket.readyState === WebSocket.OPEN) {
+                try { dgSocket.send('{"type":"KeepAlive"}'); } catch { /* dying — engage rebuilds */ }
+            }
+        }, 8000);
+    }
+    function stopKeepAlive() { if (keepAliveTimer) { window.clearInterval(keepAliveTimer); keepAliveTimer = null; } }
+
+    function micErrorMessage(e) {
+        const name = (e && e.name) || '';
+        return name === 'NotAllowedError'
+            ? 'Microphone blocked for this site. Allow the microphone for a11ybob.com (the prompt, or the site permissions behind the address-bar icon — not the phone’s app settings), then tap Speak again.'
+            : name === 'NotFoundError'
+            ? 'No microphone was found on this device — please type your question.'
+            : `Couldn't start speech input (${(e && e.message) || name || 'error'}). You can type your question instead.`;
+    }
+
+    function engageListen() {
+        stopKeepAlive();
+        // Fresh utterance state EVERY turn — the capture session is now
+        // persistent across the conversation, so this no longer resets itself
+        // by being rebuilt.
         lockedSpeaker = null; finalWords = []; speakerCounts.clear();
-        openDeepgram(`wss://api.deepgram.com/v1/listen?${params.toString()}`, token);
-
         recording = true;
-        opening = false;
         setStatus('Listening… ask your question, or reply. It sends when you pause; tap Stop to end.');
         beep(880);
         armIdle();
+    }
+
+    // The MIC half. Opened ONCE per conversation and then kept: between turns
+    // only the forwarding gate closes, so the next listen starts with zero
+    // latency — the dead beat between "— go?" and being able to say "yes" was
+    // the per-turn getUserMedia + wiring. echoCancellation is OFF on purpose:
+    // it routes capture through the OS voice-processing unit, which DUCKS all
+    // output while the mic is open (the mid-answer volume drop). Turn-taking
+    // makes AEC needless here — the gate is shut while the map talks, so its
+    // own voice is never forwarded. Noise suppression and AGC stay on
+    // (software-side, no audio-session change).
+    async function engagePrepared() {
+        if (micStream && sttNode) { engageListen(); return; }   // persistent session: gate only
+        opening = true;
+        try {
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: false, noiseSuppression: true, autoGainControl: true } });
+        } catch (e) {
+            opening = false;
+            cleanupStream();
+            bailListen(micErrorMessage(e)); return;
+        }
+        try {
+            if (sttCtx.state === 'suspended') await sttCtx.resume();
+            sttSource = sttCtx.createMediaStreamSource(micStream);
+            sttNode = new AudioWorkletNode(sttCtx, 'pcm-worklet');
+            sttSource.connect(sttNode);
+            // `recording` is the forwarding gate: nothing is sent before it opens.
+            sttNode.port.onmessage = (e) => { if (recording && dgSocket && dgSocket.readyState === WebSocket.OPEN) dgSocket.send(e.data); };
+        } catch {
+            cleanupStream();
+            opening = false;
+            bailListen("Couldn't start audio capture — please type your question."); return;
+        }
+        opening = false;
+        engageListen();
+    }
+
+    async function startListen({ prepareOnly = false } = {}) {
+        if (recording) return;
+        if (opening) {
+            // A prepare is mid-flight; a real listen request rides it rather
+            // than bailing (the stall Bob would otherwise hit on short answers).
+            if (!prepareOnly) engageWhenReady = true;
+            return;
+        }
+        // A session prepared during the answer: token, context and socket are
+        // ready — only the mic half remains. A quietly dead socket (despite
+        // keepalives) is rebuilt cold instead.
+        if (dgSocket && sttCtx) {
+            if (dgSocket.readyState === WebSocket.OPEN || dgSocket.readyState === WebSocket.CONNECTING) {
+                if (!prepareOnly) engagePrepared();
+                return;
+            }
+            cleanupStream();
+        }
+        opening = true;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.AudioWorkletNode) {
+            if (prepareOnly) { opening = false; prepareSettled(false); return; }   // speculative — stay silent
+            bailListen("Voice input isn't available on this device — please type your question."); return;
+        }
+        // NETWORK half: token, context + worklet module (their sample rate
+        // names the socket's encoding), authenticated Deepgram socket. NO mic.
+        try {
+            const tk = await fetch(TOKEN_API, { method: 'POST' }).then((r) => r.json().catch(() => ({})));
+            if (!tk || !tk.token) throw new Error((tk && tk.error) || 'no speech token');
+            sttCtx = new (window.AudioContext || window.webkitAudioContext)();
+            await sttCtx.audioWorklet.addModule('src/pcm-worklet.js');
+            const params = new URLSearchParams({
+                model: 'nova-3', encoding: 'linear16', sample_rate: String(Math.round(sttCtx.sampleRate)), channels: '1',
+                diarize: 'true', interim_results: 'true', utterance_end_ms: '1000', endpointing: '300',
+                smart_format: 'true', punctuate: 'true', vad_events: 'true',
+            });
+            lockedSpeaker = null; finalWords = []; speakerCounts.clear();
+            openDeepgram(`wss://api.deepgram.com/v1/listen?${params.toString()}`, tk.token);
+        } catch (e) {
+            cleanupStream();
+            opening = false;
+            if (prepareOnly) { prepareSettled(false); return; }   // cold path surfaces errors
+            bailListen(micErrorMessage(e)); return;
+        }
+        opening = false;
+        if (prepareOnly) { prepareSettled(true); return; }   // network half ready, mic on engage
+        await engagePrepared();
     }
 
     // The token rides the Sec-WebSocket-Protocol header (browsers can't set
@@ -556,6 +660,7 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
     }
 
     function cleanupStream() {
+        stopKeepAlive();
         try { if (sttNode) sttNode.port.onmessage = null; } catch { /* */ }
         try { if (sttSource) sttSource.disconnect(); } catch { /* */ }
         try { if (sttNode) sttNode.disconnect(); } catch { /* */ }
