@@ -42,7 +42,7 @@ const LISTEN_IDLE_MS = 10000; // silence after an answer before the conversation
 // separate from the Knowledge Map demo's store (same origin, different demo).
 const MEM_KEY = 'tiled-map-memory-v1';
 
-export function setupChat({ announcer, heading, isTracking, getVirtualLocation, onFollow, onUnfollow, onMapCommand }) {
+export function setupChat({ announcer, heading, isTracking, getVirtualLocation, onFollow, onUnfollow, onMapCommand, onMapTarget }) {
     const $ = (id) => document.getElementById(id);
     const panel = $('chat-panel');
     if (!panel) return;
@@ -173,7 +173,7 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
     }
 
     // ── Ask ──
-    async function ask(message) {
+    async function ask(message, spoken) {
         addMessage('user', message);
         history.push({ role: 'user', content: message });
         setBusy(true, 'Thinking…');
@@ -193,7 +193,15 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             const res = await fetch(CHAT_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message, location: loc || undefined, history: history.slice(-MAX_HISTORY - 1, -1), memory }),
+                // canShowMap: THIS client has a visual map the chat may drive
+                // (gates the server's show_on_map tool). modality: voice
+                // confirms before moving the map on a single match; typed
+                // goes direct — a typed send is already deliberate.
+                body: JSON.stringify({
+                    message, location: loc || undefined,
+                    history: history.slice(-MAX_HISTORY - 1, -1), memory,
+                    canShowMap: true, modality: spoken ? 'voice' : 'typed',
+                }),
                 signal: ctrl.signal,
             });
             const data = await res.json().catch(() => ({}));
@@ -210,7 +218,18 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             history.push({ role: 'assistant', content: reply });
             if (history.length > MAX_HISTORY * 2) history.splice(0, history.length - MAX_HISTORY * 2);
             setBusy(false, '');
-            announcer.announce(reply, onAnswerSpoken);  // hands-free: re-open the mic when done
+            // The model chose to move the map: recentre NOW, silently — the
+            // reply's own words are the announcement ("Taking you there…").
+            // Focus lands on the feature only AFTER the reply finishes, so
+            // the feature announcing itself never talks over the answer; the
+            // hands-free mic reopen follows that, like any other turn.
+            let landFocus = null;
+            if (data.mapAction && onMapTarget) {
+                try { landFocus = onMapTarget(data.mapAction) || null; } catch { landFocus = null; }
+            }
+            announcer.announce(reply, landFocus
+                ? () => { landFocus(); onAnswerSpoken(); }
+                : onAnswerSpoken);
             focusInput();
         } catch (e) {
             if (e && e.name === 'AbortError' && !ctrl.timedOut) return;  // mid-flight shush
@@ -296,7 +315,7 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         announcer.announce(line, convo ? onAnswerSpoken : undefined);
     }
 
-    function handleInput(message) {
+    function handleInput(message, spoken = false) {
         // A message is leaving (typed, spoken, or command) — tell the input's
         // suggestion combobox so the offer withdraws (ChatSuggest listens).
         if (input) input.dispatchEvent(new CustomEvent('chat-send'));
@@ -310,7 +329,7 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         const mapCmd = mapCommandOf(n);
         if (mapCmd) { runMapCommand(mapCmd); return; }
         lastUserInput = message;
-        ask(message);
+        ask(message, spoken);
     }
 
     // "Shush": stop what the map is saying and hand the turn back, staying in
@@ -423,7 +442,7 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         if (message) setStatus(message);
     }
 
-    function handleUtterance(t) { input.value = t; handleInput(t); }
+    function handleUtterance(t) { input.value = t; handleInput(t, true); }
 
     function onAnswerSpoken() { if (convo && !recording) startListen(); }
 

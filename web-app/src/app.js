@@ -198,6 +198,22 @@ class MapApplication {
                 try { btn.click(); } finally { delete this.announceStatus; }
                 return { ok: true, say: captured };
             },
+            // The LLM chose to move the map (its show_on_map tool → the
+            // response's mapAction). Recentre immediately — SILENT, the
+            // reply's own words carry the announcement — and hand back a
+            // lander the chat calls after the reply finishes speaking, so
+            // focus arrives on the feature without talking over the answer.
+            onMapTarget: (t) => {
+                if (!t || !Number.isFinite(t.lat) || !Number.isFinite(t.lon)) return null;
+                if (this.mapRenderer.zoom < 18) this.mapRenderer.setZoom(18);
+                this.mapRenderer.setCenter(t.lat, t.lon);
+                if (!t.osm_id) return null;   // recentre only — nothing to focus
+                return () => {
+                    this.waitForFeature(String(t.osm_id), 3000).then((el) => {
+                        if (el) this.focusFeatureElement(el);
+                    });
+                };
+            },
         });
 
         // Clicking a feature moves focus onto it — one focus model for mouse,
