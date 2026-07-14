@@ -70,6 +70,9 @@ function detailLine(r) {
         if (a) bits.push(a);
     }
     if (r.parent && r.parent !== r.display) bits.push(`in ${r.parent}`);
+    // Street positioning (present only when nothing else positions the
+    // feature — arrives with the on_street rebuild).
+    if (!r.address && !r.parent && r.on_street) bits.push(`on ${r.on_street}`);
     return bits.join(' · ');
 }
 

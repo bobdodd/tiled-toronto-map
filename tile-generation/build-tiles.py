@@ -1156,6 +1156,109 @@ class TileBuilder:
                 f['_named_parent_id'] = ids[0]
         return n
 
+    # Named STREETS for the positioning pass: real roads, not paths — an
+    # unnamed feature is "on Queen Street", never "on a footway".
+    _STREET_HIGHWAYS = {
+        'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified',
+        'residential', 'living_street', 'pedestrian', 'road',
+        'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link',
+    }
+
+    def assign_street_context(self, features):
+        """Positioning context from the street grid, for features that have NO
+        other positioning: no OSM address ("at 330 Central Parkway West") and
+        no named container ("in Kariya Park") — those already say where they
+        are, and stacking phrases would bloat every announcement. What's left
+        is the floating "Residential area" / standalone POI class explore-by-
+        touch surfaces with no anchor at all (Bob). Type-appropriate, short:
+          - small feature beside a street        -> "on <A>"   (<=30 m)
+          -                                      -> "near <A>" (<=120 m)
+          - large area flanked by two streets    -> "between <A> and <B>"
+          - large area along one street          -> "along <A>"
+        Stored as f['_street_ctx'] (the phrase, spoken in the aria label) and
+        f['_on_street'] (the primary street name, for the search doc and the
+        data-street attribute). Distances are approximated in degrees
+        (1 m ~ 1/111000°) — thresholds, not measurements, so the ~30%%
+        longitude anisotropy at Toronto's latitude is acceptable."""
+        try:
+            from shapely import STRtree
+        except Exception:
+            from shapely.strtree import STRtree
+
+        M = 1.0 / 111000.0   # ~metres -> degrees
+        ON_M, NEAR_M, EDGE_M, BIG_M = 30 * M, 120 * M, 15 * M, 120 * M
+
+        streets, geoms = [], []
+        for f in features:
+            props = f.get('properties') or {}
+            if props.get('highway') in self._STREET_HIGHWAYS and props.get('name'):
+                g = f.get('geometry')
+                if g is not None and not g.is_empty and g.geom_type in ('LineString', 'MultiLineString'):
+                    streets.append(props['name'])
+                    geoms.append(g)
+        if not geoms:
+            return 0
+        tree = STRtree(geoms)
+
+        n = 0
+        for f in features:
+            props = f.get('properties') or {}
+            # Roads position themselves; addresses and contained features
+            # already carry their own positioning; aggregates keep their
+            # ready-made labels.
+            if props.get('highway') is not None:
+                continue
+            if props.get('addr:street') or f.get('_ancestor_names') or f.get('_aggregate_label'):
+                continue
+            g = f.get('geometry')
+            if g is None or g.is_empty:
+                continue
+
+            minx, miny, maxx, maxy = g.bounds
+            extent = max(maxx - minx, maxy - miny)
+            phrase = None
+            primary = None
+
+            if extent >= BIG_M:
+                # A large area: which streets run along its boundary?
+                contact = {}
+                edge = g.buffer(EDGE_M)
+                for i in tree.query(edge):
+                    try:
+                        inter = geoms[i].intersection(edge)
+                    except Exception:
+                        continue
+                    if not inter.is_empty:
+                        contact[streets[i]] = contact.get(streets[i], 0.0) + inter.length
+                ranked = sorted(contact.items(), key=lambda kv: -kv[1])
+                if len(ranked) >= 2:
+                    primary = ranked[0][0]
+                    phrase = f"between {ranked[0][0]} and {ranked[1][0]}"
+                elif len(ranked) == 1:
+                    primary = ranked[0][0]
+                    phrase = f"along {primary}"
+
+            if phrase is None:
+                # Small feature (or a big one with no flanking street): the
+                # nearest named street, with honesty about how near.
+                best, best_d = None, NEAR_M
+                for i in tree.query(g.buffer(NEAR_M)):
+                    try:
+                        d = geoms[i].distance(g)
+                    except Exception:
+                        continue
+                    if d < best_d:
+                        best, best_d = streets[i], d
+                if best is not None:
+                    primary = best
+                    phrase = f"on {best}" if best_d <= ON_M and extent < BIG_M else f"near {best}"
+
+            if phrase:
+                f['_street_ctx'] = phrase
+                f['_on_street'] = primary
+                n += 1
+        return n
+
     # ---- Multi-level model (facet 1) — the vertical stack -----------------
     # Bob's ordering (top -> bottom): Gardiner (elevated road) ABOVE surface ABOVE
     # PATH (underground pedestrian) ABOVE subway/LRT tunnel. So four ordered planes;
@@ -1425,6 +1528,12 @@ class TileBuilder:
             for r in rings:
                 if r and r != base_label:
                     aria = f"{aria}, in {r}"
+        # STREET context (the positioning layer): only set on features with no
+        # address and no named container — the floating "Residential area"
+        # class — so nothing announces two positionings.
+        sctx = feature.get('_street_ctx')
+        if sctx and not feature.get('_aggregate_label'):
+            aria = f"{aria}, {sctx}"
 
         group = self.create_svg_element('g', class_=' '.join(tokens), role='img', aria_label=aria)
         group.set('data-osm-id', str(props.get('osm_id', '')))
@@ -1432,6 +1541,10 @@ class TileBuilder:
             # The container's osm_id — the hook for keyboard hierarchy navigation
             # (tab containers, enter, tab the children that point back here).
             group.set('data-parent', str(feature['_parent']))
+        if feature.get('_on_street'):
+            # The positioning street's name — the client-side hook (centre
+            # descriptions, future explore aids), matching the spoken phrase.
+            group.set('data-street', feature['_on_street'])
         if overlays:
             group.set('data-overlays', ' '.join(o['id'] for o in overlays))
         if feature.get('_aggregate_count'):
@@ -2131,6 +2244,11 @@ class TileBuilder:
                     'lat': round(c.y, 6),
                     'lng': round(c.x, 6),
                 }
+                # STREET positioning (only set where nothing else positions the
+                # feature — see assign_street_context): searchable and shown.
+                if f.get('_on_street'):
+                    doc['on_street'] = f['_on_street']
+                    doc['text'] += ' ' + f['_on_street']
                 if anon == 'building':
                     # Lightweight: centroid + size class only — NO geometry, NO outline
                     # sampling. There are millions of buildings; this keeps the index lean
@@ -2222,6 +2340,14 @@ class TileBuilder:
         # and tiling, so the parent context flows into both.
         parented = self.assign_parents(features)
         print(f"  Containment: {parented} features assigned a parent container", flush=True)
+
+        # STREET context (the information model's positioning layer) — for the
+        # features containment can't place: explore-by-touch finds a bare
+        # "Residential area" with nothing to anchor it to (Bob). Runs after
+        # assign_parents so it can skip everything that already positions
+        # itself (an address, a named container).
+        streeted = self.assign_street_context(features)
+        print(f"  Street context: {streeted} features positioned by street", flush=True)
 
         # Build the search index from the SAME parse (named things, POIs and
         # addresses; accessibility tags as filterable fields) so it can never
