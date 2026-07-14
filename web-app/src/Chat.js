@@ -283,6 +283,18 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         'southeast': 'southeast', 'south east': 'southeast', 'down right': 'southeast',
         'southwest': 'southwest', 'south west': 'southwest', 'down left': 'southwest',
     };
+    // Vertical-plane names → LevelSwitch planes ("show the PATH" etc.).
+    const PLANE_OF = {
+        'gardiner': 'above', 'gardiner expressway': 'above',
+        'elevated road': 'above', 'elevated roads': 'above', 'elevated': 'above',
+        'street level': 'surface', 'street': 'surface', 'streets': 'surface', 'surface': 'surface',
+        'path': 'path', 'underground walkway': 'path', 'underground walkways': 'path',
+        'walkway': 'path', 'walkways': 'path', 'underground': 'path',
+        'rail transit': 'transit', 'transit': 'transit', 'rail': 'transit',
+        'subway': 'transit', 'subways': 'transit', 'subway lines': 'transit',
+        'streetcar': 'transit', 'streetcars': 'transit', 'lrt': 'transit',
+        'trains': 'transit', 'train lines': 'transit',
+    };
     function mapCommandOf(n) {
         const s = n.replace(/^please\s+/, '').replace(/\s+please$/, '');
         let m = s.match(/^zoom\s?(in|out)(?:\s+(?:more|again|a bit|a little))?$/);
@@ -293,6 +305,26 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         if (/^(?:re)?cent(?:er|re)(?:\s+(?:the\s+)?map)?(?:\s+on\s+(?:me|my\s+(?:location|position)))?$/.test(s)
             || /^(?:go|jump)\s+to\s+my\s+(?:location|position)$/.test(s)) {
             return { action: 'centre', ack: 'Centred the map.' };
+        }
+        // Map LEVELS (the retired Map Level accordion's planes): show/hide a
+        // vertical overlay by name. "me" and courtesy openers are allowed —
+        // "show me the PATH" is how people actually say it (Bob's first try) —
+        // and the guard against hijacking questions is the END-of-phrase rule:
+        // "show me the path TO UNION STATION" doesn't end at a plane name, so
+        // it stays a question for the LLM.
+        m = s.match(/^(?:can you\s+|could you\s+|would you\s+)?(show|display|turn on|enable|add|hide|turn off|disable|remove)\s+(?:me\s+)?(?:the\s+)?(.+)$/);
+        if (m) {
+            const plane = PLANE_OF[m[2]];
+            if (plane) {
+                const on = /^(?:show|display|turn on|enable|add)$/.test(m[1]);
+                return { action: `level-${plane}-${on ? 'on' : 'off'}`, ack: on ? 'Shown.' : 'Hidden.' };
+            }
+        }
+        // Postfix form: "turn the path on" / "turn rail transit off".
+        m = s.match(/^turn\s+(?:the\s+)?(.+)\s+(on|off)$/);
+        if (m) {
+            const plane = PLANE_OF[m[1]];
+            if (plane) return { action: `level-${plane}-${m[2]}`, ack: m[2] === 'on' ? 'Shown.' : 'Hidden.' };
         }
         m = s.match(/^(?:pan|move|go|scroll|shift)(?:\s+(?:the\s+)?map)?(?:\s+to)?(?:\s+the)?\s+(.+)$/);
         const dirWord = m ? m[1]
@@ -627,7 +659,19 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             let msg; try { msg = JSON.parse(e.data); } catch { return; }
             if (msg.type === 'UtteranceEnd') {
                 const t = lockedTranscript() || rawTranscript();
-                if (recording && t) { closeMic(); handleUtterance(t); }
+                if (recording && t) {
+                    // The map heard ITSELF (echo cancellation is off — see the
+                    // mic block): discard the transcript, reset the utterance
+                    // state and the voice lock the echo may have stolen, and
+                    // keep listening for the human.
+                    if (announcer.echoOf && announcer.echoOf(t)) {
+                        lockedSpeaker = null; finalWords = []; speakerCounts.clear();
+                        input.value = '';
+                        armIdle();
+                        return;
+                    }
+                    closeMic(); handleUtterance(t);
+                }
                 return;
             }
             const alt = msg.channel && msg.channel.alternatives && msg.channel.alternatives[0];
@@ -652,7 +696,9 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             if (recording) {
                 const t = lockedTranscript() || rawTranscript();
                 closeMic();
-                if (t) handleUtterance(t);
+                // Same self-echo guard as UtteranceEnd: never send the map's
+                // own words back to it off a dying socket.
+                if (t && !(announcer.echoOf && announcer.echoOf(t))) handleUtterance(t);
                 else if (convo) endConvo('Speech connection dropped — tap Speak to try again, or type your question.');
             }
         };

@@ -117,9 +117,10 @@ class MapApplication {
             this.accessibilityManager.updateTabOrder();
         };
 
-        // Vertical plane switcher (street / underground / elevated). Sets the
-        // active plane on #map-tiles (CSS shows one plane at a time) and re-scopes
-        // the rotor to it. Default is street level.
+        // Vertical plane switcher (street / underground / elevated / transit),
+        // driven conversationally ("show the PATH" — Chat.js intercepts, the
+        // onMapCommand plumbing calls levelSwitch.set). Owns its own state;
+        // the old Map Level accordion is retired.
         this.levelSwitch = new LevelSwitch({
             announce: (msg) => this.announceStatus(msg),
             onChange: () => {
@@ -184,21 +185,32 @@ class MapApplication {
             // here: the chat re-speaks it with its hands-free continuation,
             // so a spoken command never strands the conversation loop.
             onMapCommand: (action) => {
-                const ids = {
-                    'pan-north': 'nav-n', 'pan-northeast': 'nav-ne',
-                    'pan-east': 'nav-e', 'pan-southeast': 'nav-se',
-                    'pan-south': 'nav-s', 'pan-southwest': 'nav-sw',
-                    'pan-west': 'nav-w', 'pan-northwest': 'nav-nw',
-                    'zoom-in': 'nav-zoom-in', 'zoom-out': 'nav-zoom-out',
-                    'centre': 'nav-center',
-                };
-                const btn = document.getElementById(ids[action] || '');
-                if (!btn) return null;
-                if (btn.disabled) return { disabled: true };
                 let captured = null;
                 this.announceStatus = (m) => { captured = m; };
-                try { btn.click(); } finally { delete this.announceStatus; }
-                return { ok: true, say: captured };
+                try {
+                    // Vertical planes ("show the PATH") — the retired Map
+                    // Level accordion's job, now LevelSwitch.set directly.
+                    const lvl = action.match(/^level-(\w+)-(on|off)$/);
+                    if (lvl) {
+                        const r = this.levelSwitch ? this.levelSwitch.set(lvl[1], lvl[2] === 'on') : null;
+                        if (!r) return null;
+                        if (!r.changed) return { ok: true, say: `${r.label} is already ${r.on ? 'shown' : 'hidden'}.` };
+                        return { ok: true, say: captured };
+                    }
+                    const ids = {
+                        'pan-north': 'nav-n', 'pan-northeast': 'nav-ne',
+                        'pan-east': 'nav-e', 'pan-southeast': 'nav-se',
+                        'pan-south': 'nav-s', 'pan-southwest': 'nav-sw',
+                        'pan-west': 'nav-w', 'pan-northwest': 'nav-nw',
+                        'zoom-in': 'nav-zoom-in', 'zoom-out': 'nav-zoom-out',
+                        'centre': 'nav-center',
+                    };
+                    const btn = document.getElementById(ids[action] || '');
+                    if (!btn) return null;
+                    if (btn.disabled) return { disabled: true };
+                    btn.click();
+                    return { ok: true, say: captured };
+                } finally { delete this.announceStatus; }
             },
             // The LLM chose to move the map (its show_on_map tool → the
             // response's mapAction). Recentre immediately — SILENT, the

@@ -729,16 +729,8 @@ main {
     #map-tiles :is(polygon, path).ugparking { fill: #1c3450; fill-opacity: 0.55; stroke: #7ea8d6; }
 }
 
-/* Level switcher control (in the accordion, like Filters / Rotor) */
-#level-switch { border: 0; margin: 0; padding: 0; }
-#level-switch .level-hint { font-size: 0.8125rem; color: #3a3a3a; margin: 0 0 0.5rem; line-height: 1.4; }
-.level-option { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.4rem 0.25rem; cursor: pointer; }
-.level-option input { margin: 0; flex: none; }
-.level-sub { color: #555; }
-@media (prefers-color-scheme: dark) {
-    #level-switch .level-hint { color: #c7c7c7; }
-    .level-sub { color: #b8b8b8; }
-}
+/* The Map Level accordion is retired — the vertical planes are driven from
+   the chat ("show the PATH"); LevelSwitch.js owns the state. */
 
 
 #directions-list {

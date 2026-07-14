@@ -152,24 +152,9 @@
                 </div>
             </div>
             
-            <!-- Map Level Accordion -->
-            <div class="accordion-item">
-                <button class="accordion-header" aria-expanded="false" aria-controls="level-content" tabindex="3500">
-                    <span class="icon" aria-hidden="true">🛗</span>
-                    <span class="label">Map level</span>
-                    <span class="accordion-arrow">▼</span>
-                </button>
-                <div id="level-content" class="accordion-content" hidden>
-                    <fieldset id="level-switch">
-                        <legend>Map level — show any combination</legend>
-                        <p class="level-hint" id="level-hint">Toronto stacks vertically. The street level is on by default; the underground and elevated levels are overlays you can switch on or off independently, in any combination.</p>
-                        <label class="level-option"><input type="checkbox" name="map-level" value="above" tabindex="3501"> <span class="level-name">Elevated road <span class="level-sub">(Gardiner)</span></span></label>
-                        <label class="level-option"><input type="checkbox" name="map-level" value="surface" checked tabindex="3502"> <span class="level-name">Street level</span></label>
-                        <label class="level-option"><input type="checkbox" name="map-level" value="path" tabindex="3503"> <span class="level-name">Underground walkway <span class="level-sub">(PATH)</span></span></label>
-                        <label class="level-option"><input type="checkbox" name="map-level" value="transit" tabindex="3504"> <span class="level-name">Rail transit <span class="level-sub">(subway / streetcar / LRT)</span></span></label>
-                    </fieldset>
-                </div>
-            </div>
+            <!-- Map LEVELS live in the CHAT now — "show the PATH", "hide rail
+                 transit", typed or spoken (local intercepts, LevelSwitch.js
+                 owns the state). The Map Level accordion is retired. -->
 
             <!-- Rotor Accordion -->
             <div class="accordion-item">
@@ -358,9 +343,9 @@
                     aria-label="Place suggestions" hidden></ul>
                 <p id="chat-hint" class="chat-hint">
                     For example: &ldquo;what&rsquo;s near me?&rdquo;, &ldquo;find the
-                    accessible washrooms nearby&rdquo;, or &ldquo;what&rsquo;s this
-                    area known for?&rdquo; Typing a place name offers suggestions
-                    you can pick to go there.
+                    accessible washrooms nearby&rdquo;, &ldquo;show the PATH&rdquo;,
+                    or &ldquo;what&rsquo;s this area known for?&rdquo; Typing a place
+                    name offers suggestions you can pick to go there.
                 </p>
             </form>
             <section class="chat-logwrap" aria-label="Conversation">
