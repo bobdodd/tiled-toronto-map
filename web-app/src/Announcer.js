@@ -13,8 +13,10 @@
 // The audio toggle is a real button (persisted); with audio off a screen-reader
 // user keeps the familiar live-region behaviour and no double-voice.
 //
-// Every announcement is also mirrored to the visible captions panel (the
-// caption callback) for Deaf/deafened and sighted users — whatever the channel.
+// Every announcement is also mirrored to the visible CHAT TRANSCRIPT (the
+// caption callback → announcement-styled entries) for Deaf/deafened and
+// sighted users — whatever the channel. Chat replies opt out (caption:false):
+// they are already their own transcript messages.
 export class Announcer {
     constructor({ regionId = 'map-announcements', caption = null } = {}) {
         this.regionId = regionId;
@@ -68,6 +70,10 @@ export class Announcer {
      *  new announcement cancels queued speech, and replaces a pending
      *  live-region write that hasn't landed yet.
      *
+     *  opts.caption=false skips the visible mirror — for text that is ALREADY
+     *  its own entry in the visible transcript (the chat's replies), which
+     *  would otherwise appear twice.
+     *
      *  `onDone` (optional) fires when the announcement has FINISHED — the chat's
      *  hands-free loop re-opens the microphone on it, so it must never fire
      *  mid-sentence and must always fire eventually. The end-detection is the
@@ -77,9 +83,9 @@ export class Announcer {
      *  announcement satisfies that too, which is right: the turn is over.)
      *  On the live-region channel there is no signal at all — estimate from the
      *  text length, best effort. */
-    announce(text, onDone) {
+    announce(text, onDone, { caption = true } = {}) {
         if (!text) { if (onDone) onDone(); return; }
-        if (this.caption) this.caption(text);
+        if (caption && this.caption) this.caption(text);
 
         let done = false;
         const finish = onDone ? () => { if (!done) { done = true; onDone(); } } : null;

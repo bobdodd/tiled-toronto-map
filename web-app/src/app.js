@@ -1610,17 +1610,31 @@ class MapApplication {
         });
     }
 
-    // Append a spoken line to the visible captions log. The panel is aria-hidden, so
-    // this never double-announces to a screen reader — the speech comes from the live
-    // region above. Keeps a short scrollback so a line you missed can be re-read.
+    // The visible twin of everything spoken lands in the CHAT transcript (the
+    // old bottom-of-page captions panel is retired — one output surface). An
+    // announcement entry, styled apart from conversation turns. NOT a live
+    // region: the speech itself comes from the Announcer; this is the
+    // re-readable record. Chat replies skip this mirror (caption:false) —
+    // they are already their own transcript messages.
     _caption(message) {
-        const log = document.getElementById('captions-log');
+        const log = document.getElementById('chat-log');
         if (!log) return;
-        const li = document.createElement('li');
-        li.textContent = message;
-        log.appendChild(li);
-        while (log.children.length > 8) log.removeChild(log.firstChild);
-        log.scrollTop = log.scrollHeight;
+        // Collapse an immediate repeat (hover sweeps re-announce the same
+        // feature) rather than stacking identical lines.
+        const last = log.lastElementChild;
+        if (last && last.classList.contains('chat-msg--announce')
+            && last.querySelector('.chat-msg__text')?.textContent === message) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'chat-msg chat-msg--announce';
+        const who = document.createElement('span');
+        who.className = 'screen-reader-only';
+        who.textContent = 'Map: ';
+        const p = document.createElement('p');
+        p.className = 'chat-msg__text';
+        p.textContent = message;
+        wrap.append(who, p);
+        log.append(wrap);
+        wrap.scrollIntoView({ block: 'nearest' });
     }
 
     announceMapChange() {

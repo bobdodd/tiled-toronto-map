@@ -227,9 +227,11 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
             if (data.mapAction && onMapTarget) {
                 try { landFocus = onMapTarget(data.mapAction) || null; } catch { landFocus = null; }
             }
+            // caption:false — the reply is already its own message in the
+            // transcript; the announcer's visible mirror would double it.
             announcer.announce(reply, landFocus
                 ? () => { landFocus(); onAnswerSpoken(); }
-                : onAnswerSpoken);
+                : onAnswerSpoken, { caption: false });
             focusInput();
         } catch (e) {
             if (e && e.name === 'AbortError' && !ctrl.timedOut) return;  // mid-flight shush

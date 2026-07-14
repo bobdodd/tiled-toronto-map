@@ -2233,52 +2233,6 @@ body.tooltip-below .poi-tooltip::after {
     }
 }
 
-/* ── Captions panel: the visible twin of everything spoken ─────────────────────
-   Soft fill + a strong GREY border so the boundary survives macOS Invert Colours
-   (colour edges flip hue and lose contrast; a grey luminance edge doesn't). The
-   latest line is emphasised; older lines stay at body legibility (never shrink
-   below body — re-reading what just went by is exactly when legibility matters). */
-.captions-panel {
-    margin-top: 0.75rem;
-    padding: 0.625rem 0.75rem;
-    background: #f4f6f8;
-    border: 2px solid #5a5a5a;
-    border-radius: 6px;
-}
-.captions-title {
-    margin: 0 0 0.375rem;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #2a2a2a;
-}
-.captions-log {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    max-height: 9rem;
-    overflow-y: auto;
-}
-.captions-log li {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.35;
-    color: #3a3a3a;            /* recent lines: comfortably past AAA 7:1 on the fill */
-}
-.captions-log li:last-child {
-    color: #111;
-    font-weight: 600;          /* the just-spoken line stands out */
-}
-.captions-log:empty::after {
-    content: "Spoken descriptions appear here.";
-    color: #555;
-    font-size: 0.9375rem;
-}
-
 /* ── Detailed surroundings modal ─────────────────────────────────────────────
    A real dialog for the deliberate one-off read-out (focus trapped in JS, Escape
    closes, focus returns to its button). The continuous Auto-describe never uses
@@ -2508,14 +2462,6 @@ body.chat-split #toggle-chat-panel { display: none; }
 body.chat-split .location-info {
     bottom: calc(var(--chat-split-h, 40vh) + 2.25rem);
 }
-/* The captions panel lives below the fold (scroll to read) — keep it there,
-   out of the flex flow, or it would squeeze the map. */
-body.chat-split .captions-panel {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-}
 .chat-msg {
     margin: 0.375rem 0;
 }
@@ -2535,6 +2481,24 @@ body.chat-split .captions-panel {
 }
 .chat-msg--bot .chat-msg__text {
     margin-right: 1.5rem;
+}
+/* Map announcements (the visible twin of everything spoken — hover, proximity,
+   status). Styled APART from conversation turns: no card, muted-but-AAA text,
+   a grey left rule as the invert-safe marker. */
+.chat-msg--announce .chat-msg__text {
+    background: transparent;
+    border: none;
+    border-left: 3px solid #767676;
+    border-radius: 0;
+    padding: 0.125rem 0.625rem;
+    color: #333;
+    font-size: 0.8125rem;
+}
+@media (prefers-color-scheme: dark) {
+    .chat-msg--announce .chat-msg__text { color: #c9c9c9; border-left-color: #9a9a9a; }
+}
+@media (prefers-contrast: high) {
+    .chat-msg--announce .chat-msg__text { color: #000; border-left-color: #000; }
 }
 .chat-label {
     display: block;
@@ -2594,10 +2558,7 @@ body.chat-split .captions-panel {
 .detail-modal__close:focus { outline: 2px solid #0066ff; outline-offset: 2px; }
 
 @media (prefers-contrast: high) {
-    .captions-panel,
     .detail-modal__panel { border-color: #000; border-width: 3px; }
-    .captions-log li { color: #000; }
-    .captions-log li:last-child { color: #000; }
     .detail-modal { background: rgba(0, 0, 0, 0.7); }
     .detail-modal__close { border-color: #000; color: #000; }
     .chat-panel { border-color: #000; border-width: 3px; }

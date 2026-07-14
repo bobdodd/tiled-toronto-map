@@ -383,14 +383,9 @@
             <p>Accuracy: <span id="location-accuracy">N/A</span></p>
         </div>
 
-        <!-- Captions: the VISIBLE twin of everything spoken, for Deaf/deafened and
-             sighted users. aria-hidden so screen readers don't double-announce — the
-             speech itself comes from #map-announcements. Latest line is emphasised;
-             a short scrollback keeps the last few so you can re-read what just went by. -->
-        <div id="captions-panel" class="captions-panel" aria-hidden="true">
-            <h2 class="captions-title">Spoken</h2>
-            <ol id="captions-log" class="captions-log"></ol>
-        </div>
+        <!-- The visible twin of everything spoken lives in the CHAT transcript
+             (announcement-styled entries) — the old bottom-of-page captions
+             panel is retired: one output surface, actually on screen. -->
     </main>
 
     <div id="debug-panel" class="debug-panel" style="display: none;">
