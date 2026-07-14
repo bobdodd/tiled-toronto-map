@@ -385,6 +385,12 @@ class MapApplication {
             });
         });
         
+        // Escape clears the go-to highlight, like it clears the sticky
+        // tooltip (they arrive together). Passive alongside other Escape uses.
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this._gotoHighlightId) this._setGotoHighlight(null);
+        });
+
         // Toggle buttons
         document.getElementById('toggle-tracking').addEventListener('click', (e) => {
             this.toggleLocationTracking(e.currentTarget);
@@ -1399,25 +1405,106 @@ class MapApplication {
         if (!this.isTracking && this.avatar) this.avatar.setPosition(lat, lng, false);
     }
 
+    _cssEscape(id) {
+        return (window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id).replace(/"/g, '\\"');
+    }
+
+    _featureEls(osmId) {
+        return [...document.querySelectorAll(`#map-tiles [data-osm-id="${this._cssEscape(osmId)}"]`)];
+    }
+
+    // Go-to HIGHLIGHT: every segment/shape of the arrived-at feature (a road
+    // spans many tiles; each carries the same data-osm-id). Sticky like the
+    // tooltip — cleared by the next go-to or Escape — and re-applied to
+    // matching geometry in freshly inserted tiles (see renderSVGTiles).
+    _setGotoHighlight(osmId) {
+        document.querySelectorAll('#map-tiles .goto-highlight')
+            .forEach((el) => el.classList.remove('goto-highlight'));
+        this._gotoHighlightId = osmId ? String(osmId) : null;
+        if (!this._gotoHighlightId) return [];
+        const els = this._featureEls(this._gotoHighlightId);
+        els.forEach((el) => el.classList.add('goto-highlight'));
+        return els;
+    }
+
+    // Convert a CLIENT-space point to lat/lng via the current viewBox (the
+    // projection is linear: 1000 px per 0.01° at zoom 18, Y southward).
+    _clientToLatLng(cx, cy) {
+        const svg = this.mapRenderer.svg;
+        const r = svg.getBoundingClientRect();
+        const vb = this.mapRenderer.viewBox;
+        const ux = vb.x + ((cx - r.left) / r.width) * vb.width;
+        const uy = vb.y + ((cy - r.top) / r.height) * vb.height;
+        return { lat: -uy / 100000, lng: ux / 100000 };
+    }
+
     // Keyboard/screen-reader context must ARRIVE too: the actual feature when
     // its tile has it, otherwise the map itself (the skip-link's programmatic
     // target) so focus is at the destination, never stranded where you were.
-    // The sticky tooltip arrives with it: the pill from the place just LEFT is
-    // cleared up front (it would otherwise hang, stale, over the new view —
-    // seen live: "86 Shuter Street" still showing after a go-to to Hannaford),
-    // and a destination with NO drawn feature (a bare address) gets the pill +
-    // marker at the recentred point with the destination's own name.
+    // The sticky tooltip arrives with it (the pill from the place just LEFT is
+    // cleared up front; a destination with NO drawn feature gets the pill +
+    // marker at the recentred point). For features WITH geometry, the view is
+    // FIT to the feature's whole extent — a road or an area gets a zoom that
+    // frames it, not a z18 keyhole onto one segment — and every piece of it
+    // is highlighted.
     async _focusArrival(osmId, name) {
         if (this.tooltip) this.tooltip.hide();
         if (this.accessibilityManager) this.accessibilityManager.hideFocusOutline();
-        const el = osmId ? await this.waitForFeature(String(osmId), 8000) : null;
-        if (el) { this.focusFeatureElement(el); return; }
-        const svg = document.getElementById('map-svg');
-        if (svg) svg.focus({ preventScroll: true });
-        // The destination IS the map centre (we just recentred on it).
-        if (this.tooltip && name) {
-            const r = document.getElementById('map-container').getBoundingClientRect();
-            this.tooltip.showLabel(name, r.left + r.width / 2, r.top + r.height / 2);
+        this._setGotoHighlight(null);
+        const first = osmId ? await this.waitForFeature(String(osmId), 8000) : null;
+        if (!first) {
+            const svg = document.getElementById('map-svg');
+            if (svg) svg.focus({ preventScroll: true });
+            // The destination IS the map centre (we just recentred on it).
+            if (this.tooltip && name) {
+                const r = document.getElementById('map-container').getBoundingClientRect();
+                this.tooltip.showLabel(name, r.left + r.width / 2, r.top + r.height / 2);
+            }
+            return;
+        }
+
+        await this._fitToFeature(String(osmId));
+        this._setGotoHighlight(osmId);
+        const el = this.bestFeatureMatch(document.querySelectorAll(`#map-tiles [data-osm-id="${this._cssEscape(osmId)}"]`));
+        if (el) this.focusFeatureElement(el);
+    }
+
+    // Fit the view to a feature's loaded extent. Iterative by necessity: at
+    // z18 only a keyhole of a long road is in the DOM — fit to what's loaded,
+    // zoom out, MORE of it loads, re-fit — converging in a few rounds. Only
+    // zooms OUT (a small feature keeps the arrival zoom), floored at z13 so a
+    // city-length road never fits the whole metro, and if the coarser LOD
+    // band culled the feature entirely, steps back in until it exists again.
+    async _fitToFeature(osmId) {
+        const container = document.getElementById('map-container');
+        for (let round = 0; round < 3; round++) {
+            const els = this._featureEls(osmId);
+            if (!els.length) break;
+            let l = Infinity, t = Infinity, rgt = -Infinity, b = -Infinity;
+            for (const el of els) {
+                const r = el.getBoundingClientRect();
+                if (!r.width && !r.height) continue;
+                l = Math.min(l, r.left); t = Math.min(t, r.top);
+                rgt = Math.max(rgt, r.right); b = Math.max(b, r.bottom);
+            }
+            if (!Number.isFinite(l)) break;
+            const vp = container.getBoundingClientRect();
+            const w = Math.max(rgt - l, 1), h = Math.max(b - t, 1);
+            // How many zoom levels OUT to fit the extent into ~80% of the view.
+            const fit = Math.floor(Math.log2(Math.min((vp.width * 0.8) / w, (vp.height * 0.8) / h)));
+            const targetZoom = Math.max(13, Math.min(18, this.mapRenderer.zoom + Math.min(fit, 0)));
+            const centre = this._clientToLatLng(l + (rgt - l) / 2, t + (b - t) / 2);
+            const done = targetZoom === this.mapRenderer.zoom && round > 0;
+            if (targetZoom !== this.mapRenderer.zoom) this.mapRenderer.setZoom(targetZoom);
+            this.mapRenderer.setCenter(centre.lat, centre.lng);
+            await this.loadMapTiles();
+            // The coarser band may have CULLED the feature — step back in.
+            let guard = 0;
+            while (!this._featureEls(osmId).length && this.mapRenderer.zoom < 18 && guard++ < 3) {
+                this.mapRenderer.setZoom(this.mapRenderer.zoom + 1);
+                await this.loadMapTiles();
+            }
+            if (done) break;
         }
     }
 
@@ -1976,6 +2063,13 @@ class MapApplication {
                 // before its first paint): scoped to this one tile, skipping
                 // default-state filters — see FilterManager.applyVisibilityWithin.
                 if (this.filterManager) this.filterManager.applyVisibilityWithin(tileGroup);
+
+                // A live go-to highlight carries over to fresh geometry: a
+                // highlighted road's newly loaded segments light up too.
+                if (this._gotoHighlightId) {
+                    tileGroup.querySelectorAll(`[data-osm-id="${this._cssEscape(this._gotoHighlightId)}"]`)
+                        .forEach((el) => el.classList.add('goto-highlight'));
+                }
 
                 tilesGroup.appendChild(tileGroup);
             } catch (error) {

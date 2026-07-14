@@ -2631,3 +2631,21 @@ body.chat-split .location-info {
     }
     .chat-msg--user .chat-msg__text { background: #103050; }
 }
+
+/* ---- Go-to highlight: the arrived-at feature, every segment of it ---------
+   A road spans many tiles (same data-osm-id per segment); an area is a shape.
+   Amber carries the state in BOTH themes — bright enough to read on the light
+   and dark maps alike, and luminance-distinct so it survives macOS Invert.
+   !important is deliberate and load-bearing: the dark-mode recolour rules
+   carry long :not() chains with higher specificity, and a transient STATE
+   must beat every theme SKIN. Excluded: the transparent .road-hit corridors
+   (the donut gotcha), circles (POI dots keep their category colour — points
+   are marked by the focus outline + tooltip), and text (in-road labels stay
+   legible on the amber). Cleared by the next go-to or Escape. */
+#map-tiles .goto-highlight [stroke]:not([stroke="none"]):not(.road-hit):not(text) {
+    stroke: #ffb300 !important;
+}
+#map-tiles .goto-highlight [fill]:not([fill="none"]):not(circle):not(text) {
+    fill: #ffb300 !important;
+    fill-opacity: 0.28;
+}
