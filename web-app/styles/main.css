@@ -460,6 +460,23 @@ main[hidden] {
     margin-right: 0.375rem;
 }
 
+/* Subgroups inside a filter/rotor section: native fieldset+legend so a screen
+   reader announces and skims the grouping without a second accordion level.
+   The boundary is a GREY line (invert-safe — carried on luminance, not hue). */
+.filter-subgroup {
+    margin: 0.375rem 0;
+    padding: 0.125rem 0.375rem 0.25rem;
+    border: 1px solid #767676;
+    border-radius: 4px;
+    min-inline-size: 0;
+}
+
+.filter-subgroup legend {
+    font-size: 0.625rem;
+    font-weight: 700;
+    padding: 0 0.25rem;
+}
+
 
 main {
     display: block;
@@ -975,6 +992,10 @@ main {
     .filter-accordion-content label:hover {
         background: rgba(255, 255, 255, 0.05);
     }
+
+    .filter-subgroup {
+        border-color: #8a8a8a;
+    }
 }
 
 /* High contrast mode support */
@@ -1125,6 +1146,10 @@ main {
     .filter-accordion-content input {
         background: #000;
         border: 1px solid #fff;
+    }
+
+    .filter-subgroup {
+        border: 2px solid #fff;
     }
 }
 

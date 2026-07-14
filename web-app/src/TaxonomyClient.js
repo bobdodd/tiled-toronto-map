@@ -59,4 +59,19 @@ export class TaxonomyClient {
     }
     return groups;
   }
+
+  // The two-level filter/rotor model: section (accordion) -> subgroup
+  // (fieldset) -> features. Insertion order follows taxonomy list order;
+  // the SECTION order policy lives in FilterUI.
+  bySection() {
+    const sections = {};
+    for (const f of this.features) {
+      const ui = f.ui || {};
+      const section = ui.section || 'Other';
+      const sub = ui.filterGroup || 'Other';
+      const s = (sections[section] = sections[section] || {});
+      (s[sub] = s[sub] || []).push(f);
+    }
+    return sections;
+  }
 }
