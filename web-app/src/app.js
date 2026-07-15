@@ -77,6 +77,7 @@ class MapApplication {
         this.setupCompassToggle();
         this.setupRelativeToggle();
         this.setupTooltipSpeechToggle();
+        this.setupSpotlightSlider();
 
         // Initialize map renderer
         const mapSvg = document.getElementById('map-svg');
@@ -257,6 +258,13 @@ class MapApplication {
                         'zoom-in': 'nav-zoom-in', 'zoom-out': 'nav-zoom-out',
                         'centre': 'nav-center',
                     };
+                    // "Clear results" — drop the conversational result set
+                    // (pins, highlights, spotlight, rotor takeover).
+                    if (action === 'clear-results') {
+                        if (!this._results && !this._spotlightSelectors) return { ok: true, say: 'No results are showing.' };
+                        this.clearResults();
+                        return { ok: true, say: 'Results cleared.' };
+                    }
                     const btn = document.getElementById(ids[action] || '');
                     if (!btn) return null;
                     if (btn.disabled) return { disabled: true };
@@ -270,7 +278,13 @@ class MapApplication {
             // lander the chat calls after the reply finishes speaking, so
             // focus arrives on the feature without talking over the answer.
             onMapTarget: (t) => {
-                if (!t || !Number.isFinite(t.lat) || !Number.isFinite(t.lon)) return null;
+                if (!t) return null;
+                // The LLM's other two map-driving tools arrive on the same
+                // channel: a result SET (highlight_places) and a filter
+                // switch (set_filters). Both silent here — the reply narrates.
+                if (t.kind === 'results') return this.showResults(t);
+                if (t.kind === 'filters') return this.applyFilterAction(t);
+                if (!Number.isFinite(t.lat) || !Number.isFinite(t.lon)) return null;
                 if (this.mapRenderer.zoom < 18) this.mapRenderer.setZoom(18);
                 this.mapRenderer.setCenter(t.lat, t.lon);
                 // The departed feature's sticky pill/outline must not hang
@@ -290,10 +304,10 @@ class MapApplication {
         // position; anything else gets the same "direct target" treatment as a
         // search result. Delegated, so it covers tiles loaded later too.
         document.getElementById('map-svg').addEventListener('click', (e) => {
-            const feature = e.target.closest('#map-tiles [role="img"]');
+            const feature = e.target.closest('#map-tiles [role="img"], #result-pins [role="img"]');
             if (!feature) return;
             if (feature.hasAttribute('tabindex')) feature.focus({ preventScroll: true });
-            else this.focusFeatureElement(feature);
+            else if (feature.closest('#map-tiles')) this.focusFeatureElement(feature);
         });
 
         // Map search lives in the CHAT: the chat input is an APG combobox
@@ -359,6 +373,8 @@ class MapApplication {
             if (needsNewTiles) {
                 this.loadMapTiles();
             }
+            // Result pins hold a constant SCREEN size across zooms.
+            if (this._results) this._sizeResultPins();
             // Refresh which features can take focus — only those now on-screen.
             // Debounced because a pan/zoom fires viewBoxChanged rapidly; silent so
             // it doesn't spam the live region while panning.
@@ -446,6 +462,11 @@ class MapApplication {
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             if (this._gotoHighlightId) this._setGotoHighlight(null);
+            if (this._results || this._spotlightSelectors) {
+                const hadPins = !!this._results;
+                this.clearResults();
+                this.announceStatus(hadPins ? 'Results cleared.' : 'Dimming cleared.');
+            }
             if (this.announcer) this.announcer.stop();
         });
 
@@ -1501,6 +1522,194 @@ class MapApplication {
         return els;
     }
 
+    // ── Conversational result sets ─────────────────────────────────────────
+    // "Show me accessible restaurants near me" → the LLM's highlight_places →
+    // mapAction {kind:'results', label, items (nearest first, with osm_ids)}.
+    // The set gets: amber highlights on rendered geometry, a numbered
+    // constant-size pin per result, a view fitted to the whole set, the
+    // SPOTLIGHT (everything except roads/results dims — Settings slider), and
+    // the rotor: Tab walks the results, nearest first. Escape or "clear
+    // results" drops it; a new set replaces it.
+    showResults(action) {
+        this.clearResults();
+        const items = (action.items || []).filter(
+            (it) => Number.isFinite(it.lat) && Number.isFinite(it.lng));
+        if (!items.length) return null;
+        this._results = { label: action.label || 'matching', items };
+        this._fitToResults(items);
+        this._renderResultPins();
+        document.body.classList.add('results-active');
+        if (this.tooltip) this.tooltip.hide();
+        if (this.accessibilityManager) {
+            this.accessibilityManager.hideFocusOutline();
+            this.accessibilityManager.setResultSet(
+                () => [...document.querySelectorAll('#result-pins .result-pin')]);
+        }
+        // Lander (the chat calls it after the reply finishes speaking):
+        // focus starts on the nearest result, without talking over the answer.
+        return () => {
+            const first = document.querySelector('#result-pins .result-pin');
+            if (first) first.focus({ preventScroll: true });
+        };
+    }
+
+    clearResults() {
+        if (!this._results && !this._spotlightSelectors) return;
+        this._results = null;
+        this._spotlightSelectors = null;
+        document.body.classList.remove('results-active');
+        const pins = document.getElementById('result-pins');
+        if (pins) pins.remove();
+        document.querySelectorAll('#map-tiles .result-highlight')
+            .forEach((el) => el.classList.remove('result-highlight'));
+        document.querySelectorAll('#map-tiles .has-result')
+            .forEach((el) => el.classList.remove('has-result'));
+        if (this.accessibilityManager) this.accessibilityManager.setResultSet(null);
+    }
+
+    // Spotlight for a conversational FILTER switch ("show me all the
+    // benches"): the switched-on category stays full strength while the rest
+    // of the map dims — the same mode a result set gets, minus pins/rotor
+    // (the rotor checkboxes remain the instrument for narrowing Tab).
+    // Escape lifts the DIMMING only; the filter itself stays on.
+    _setSpotlightSelectors(selectors) {
+        this._spotlightSelectors = selectors;
+        this._applySpotlightKeep(document);
+        document.body.classList.add('results-active');
+    }
+
+    _applySpotlightKeep(root) {
+        if (!this._spotlightSelectors) return;
+        for (const sel of this._spotlightSelectors) {
+            const q = root === document ? `#map-tiles ${sel}` : sel;
+            root.querySelectorAll(q).forEach((el) => {
+                const g = el.closest('[role="img"]') || el;
+                g.classList.add('has-result');
+            });
+        }
+    }
+
+    // Numbered pins, one per result, in #map-labels (which survives tile
+    // reloads) — map coordinates so they pan/rotate with the map, resized on
+    // every viewBox change so they hold a constant SCREEN size at any zoom.
+    _renderResultPins() {
+        const old = document.getElementById('result-pins');
+        if (old) old.remove();
+        if (!this._results) return;
+        const host = document.querySelector('#map-labels') || document.querySelector('#map-svg');
+        if (!host) return;
+        const NS = 'http://www.w3.org/2000/svg';
+        const group = document.createElementNS(NS, 'g');
+        group.id = 'result-pins';
+        const items = this._results.items;
+        items.forEach((it, i) => {
+            const pos = this.mapRenderer.project(it.lat, it.lng);
+            const pin = document.createElementNS(NS, 'g');
+            pin.setAttribute('class', 'result-pin');
+            pin.setAttribute('role', 'img');
+            const what = [it.display, it.subtype ? String(it.subtype).replace(/_/g, ' ') : '']
+                .filter(Boolean).join(', ');
+            pin.setAttribute('aria-label',
+                `Result ${i + 1} of ${items.length}: ${what || this._results.label}`);
+            const dot = document.createElementNS(NS, 'circle');
+            dot.setAttribute('cx', pos.x);
+            dot.setAttribute('cy', pos.y);
+            const num = document.createElementNS(NS, 'text');
+            num.setAttribute('class', 'result-pin__num');
+            num.setAttribute('x', pos.x);
+            num.setAttribute('y', pos.y);
+            num.setAttribute('text-anchor', 'middle');
+            num.setAttribute('dominant-baseline', 'central');
+            num.textContent = String(i + 1);
+            pin.append(dot, num);
+            group.appendChild(pin);
+        });
+        host.appendChild(group);
+        this._sizeResultPins();
+        this._applyResultHighlights(document);
+    }
+
+    // Constant screen size: radius/font set in user units from the current
+    // scale. Re-run on every viewBox change while a set is live.
+    _sizeResultPins() {
+        const group = document.getElementById('result-pins');
+        if (!group) return;
+        const rect = this.mapRenderer.svg.getBoundingClientRect();
+        if (!rect.width) return;
+        const upp = this.mapRenderer.viewBox.width / rect.width; // units per screen px
+        group.querySelectorAll('circle').forEach((c) => c.setAttribute('r', 12 * upp));
+        group.querySelectorAll('text').forEach((t) => t.setAttribute('font-size', 14 * upp));
+    }
+
+    // Amber-light every rendered piece of a result's geometry (by osm_id) and
+    // mark its group so the spotlight leaves it at full strength. Run against
+    // the whole document on show, and per-tile as fresh tiles insert.
+    _applyResultHighlights(root) {
+        if (!this._results) return;
+        for (const it of this._results.items) {
+            if (!it.osm_id) continue;
+            root.querySelectorAll(`[data-osm-id="${this._cssEscape(it.osm_id)}"]`).forEach((el) => {
+                el.classList.add('result-highlight');
+                const g = el.closest('[role="img"]');
+                if (g) g.classList.add('has-result');
+            });
+        }
+    }
+
+    // Frame the whole set: centre on its bounding box and zoom OUT only as
+    // far as needed (projection: 1000 px per 0.01° at z18). Floor z13 (a
+    // metro-wide set never fits the whole region), cap z18 (a single nearby
+    // result doesn't keyhole in past street level).
+    _fitToResults(items) {
+        const lats = items.map((i) => i.lat), lngs = items.map((i) => i.lng);
+        const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+        const rect = document.getElementById('map-container').getBoundingClientRect();
+        const wPx = (maxLng - minLng) * 100000, hPx = (maxLat - minLat) * 100000; // px at z18
+        const factor = Math.max(wPx / Math.max(1, rect.width), hPx / Math.max(1, rect.height)) * 1.35;
+        const zoom = factor > 1 ? 18 - Math.ceil(Math.log2(factor)) : 18;
+        this.mapRenderer.setZoom(Math.min(18, Math.max(13, zoom)));
+        this.mapRenderer.setCenter((minLat + maxLat) / 2, (minLng + maxLng) / 2);
+        this.updateZoomButtonStates();
+    }
+
+    // The LLM's set_filters → mapAction {kind:'filters', features, on}: drive
+    // the map's OWN filter checkboxes, so the conversation and the sidebar
+    // are one visible state — inspectable and undoable by hand. The section
+    // holding a switched-ON checkbox opens, so the change can be SEEN.
+    applyFilterAction(t) {
+        const on = t.on !== false;
+        for (const id of t.features || []) {
+            const box = document.getElementById('filter-' + id);
+            if (!box) continue;
+            if (box.checked !== on) {
+                box.checked = on;
+                box.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (on) {
+                const content = box.closest('.filter-accordion-content');
+                if (content && content.hidden) {
+                    content.hidden = false;
+                    const hdr = document.querySelector(`[aria-controls="${content.id}"]`);
+                    if (hdr) hdr.setAttribute('aria-expanded', 'true');
+                }
+            }
+        }
+        // A conversational "show X" also SPOTLIGHTS X: the asked-for category
+        // holds full strength while the rest dims (roads always exempt), so
+        // the answer stands out — same visual mode as a result set. Asking to
+        // HIDE something needs no spotlight; drop any category dimming.
+        if (on && this.taxonomy) {
+            const sels = (t.features || [])
+                .map((id) => { const f = this.taxonomy.getById(id); return f ? this.taxonomy.selectorFor(f) : null; })
+                .filter(Boolean);
+            if (sels.length) this._setSpotlightSelectors(sels);
+        } else if (!on && this._spotlightSelectors && !this._results) {
+            this.clearResults();
+        }
+        return null; // no lander — the reply narrates the switch
+    }
+
     // Convert a CLIENT-space point to lat/lng via the current viewBox (the
     // projection is linear: 1000 px per 0.01° at zoom 18, Y southward).
     _clientToLatLng(cx, cy) {
@@ -1767,11 +1976,12 @@ class MapApplication {
         modal.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') { e.preventDefault(); shut(); return; }
             if (e.key !== 'Tab') return;
-            // Cycle focus through the dialog's VISIBLE buttons — the page's
-            // positive tabindex bands must not pull focus out of an open modal,
-            // and a display:none button (the Chat panel toggle hides in mobile
-            // split mode) must not wedge the cycle.
-            const items = Array.from(modal.querySelectorAll('button'))
+            // Cycle focus through the dialog's VISIBLE controls (buttons +
+            // the dimming slider) — the page's positive tabindex bands must
+            // not pull focus out of an open modal, and a display:none button
+            // (the Chat panel toggle hides in mobile split mode) must not
+            // wedge the cycle.
+            const items = Array.from(modal.querySelectorAll('button, input[type="range"]'))
                 .filter((b) => b.getClientRects().length);
             if (!items.length) return;
             const i = items.indexOf(document.activeElement);
@@ -1844,6 +2054,32 @@ class MapApplication {
             this.announceStatus(this.tooltipSpeechOn
                 ? 'Tooltips spoken aloud.'
                 : 'Tooltips muted. They still go to the screen reader.');
+        });
+    }
+
+    // Result dimming: while a conversational result SET is highlighted, the
+    // rest of the map drops back so the results carry the contrast — but
+    // SELECTIVELY: roads and their names never dim (the street layout is the
+    // frame that makes result positions mean anything). A slider, not a
+    // toggle: different eye conditions want different levels; 0 = no dimming.
+    // The value drives the --spotlight-keep custom property (a class-based
+    // primitive tuned per instance — the legitimate inline use). Persists.
+    setupSpotlightSlider() {
+        const apply = (dim) => document.documentElement.style.setProperty(
+            '--spotlight-keep', String(1 - dim / 100));
+        const stored = parseInt(localStorage.getItem('map-spotlight-dim') ?? '60', 10);
+        const dim0 = Number.isFinite(stored) ? Math.min(80, Math.max(0, stored)) : 60;
+        apply(dim0);
+        const slider = document.getElementById('spotlight-dim');
+        if (!slider) return;
+        slider.value = String(dim0);
+        slider.addEventListener('change', () => {
+            const dim = Math.min(80, Math.max(0, parseInt(slider.value, 10) || 0));
+            localStorage.setItem('map-spotlight-dim', String(dim));
+            apply(dim);
+            this.announceStatus(dim === 0
+                ? 'Result dimming off — the map stays at full strength behind results.'
+                : `Map dims to ${100 - dim} percent behind results. Roads stay full strength.`);
         });
     }
 
@@ -2283,6 +2519,12 @@ class MapApplication {
                     tileGroup.querySelectorAll(`[data-osm-id="${this._cssEscape(this._gotoHighlightId)}"]`)
                         .forEach((el) => el.classList.add('goto-highlight'));
                 }
+                // Same for a live result SET: fresh tiles light up their
+                // matching results (and stay exempt from the spotlight).
+                if (this._results) this._applyResultHighlights(tileGroup);
+                // And a category spotlight ("show me all the benches") keeps
+                // its category full-strength in fresh tiles too.
+                if (this._spotlightSelectors) this._applySpotlightKeep(tileGroup);
 
                 tilesGroup.appendChild(tileGroup);
             } catch (error) {

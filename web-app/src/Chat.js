@@ -322,6 +322,13 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
         }
         if (/^(?:zoom\s+)?closer$/.test(s)) return { action: 'zoom-in', ack: 'Zoomed in.' };
         if (/^(?:zoom\s+)?(?:further|farther|back)\s+out$/.test(s)) return { action: 'zoom-out', ack: 'Zoomed out.' };
+        // Clear a conversational result set (highlight_places highlights).
+        // BEFORE the level matcher: "clear the results" must never reach the
+        // LLM as a question.
+        if (/^(?:clear|remove|hide|dismiss)\s+(?:the\s+|those\s+|my\s+)?(?:results?|highlights?|pins?)$/.test(s)
+            || /^show\s+everything(?:\s+again)?$/.test(s)) {
+            return { action: 'clear-results', ack: 'Cleared.' };
+        }
         // Centre — BEFORE pan, so "go to my location" never parses as a pan.
         if (/^(?:re)?cent(?:er|re)(?:\s+(?:the\s+)?map)?(?:\s+on\s+(?:me|my\s+(?:location|position)))?$/.test(s)
             || /^(?:go|jump)\s+to\s+my\s+(?:location|position)$/.test(s)) {

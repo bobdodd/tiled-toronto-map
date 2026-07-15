@@ -2683,3 +2683,55 @@ body.chat-split .location-info {
     fill: #ffb300 !important;
     fill-opacity: 0.28;
 }
+
+/* ---- Conversational result sets ("show me accessible restaurants") --------
+   The same amber treatment, applied to EVERY member of the set (each result's
+   geometry carries .result-highlight; same exclusions as above). */
+#map-tiles .result-highlight [stroke]:not([stroke="none"]):not(.road-hit):not(text) {
+    stroke: #ffb300 !important;
+}
+#map-tiles .result-highlight [fill]:not([fill="none"]):not(circle):not(text) {
+    fill: #ffb300 !important;
+    fill-opacity: 0.28;
+}
+
+/* Numbered result pins (r + font-size are set by the app per zoom, so they
+   hold a constant SCREEN size): amber dot, dark rim — luminance-stepped so
+   they read on light and dark ground alike and survive macOS Invert. */
+#result-pins .result-pin circle {
+    fill: #ffb300;
+    stroke: #1a1a1a;
+    stroke-width: 2.5px;
+    vector-effect: non-scaling-stroke;
+    cursor: pointer;
+}
+#result-pins .result-pin__num {
+    fill: #1a1a1a;
+    font-weight: 700;
+    pointer-events: none;
+    user-select: none;
+}
+/* The shared #focus-outline ring marks a focused pin; no double outline. */
+#result-pins .result-pin:focus { outline: none; }
+
+/* Spotlight: while a result set is live, the map steps back so the results
+   carry the contrast — SELECTIVELY: roads (and the street names they carry)
+   and the result features stay at full strength, because the street layout
+   is the frame that makes result positions mean anything. The level comes
+   from the Settings "Result dimming" slider via --spotlight-keep (1 = off). */
+body.results-active #map-tiles [role="img"]:not(.road):not(.has-result) {
+    opacity: var(--spotlight-keep, 0.4);
+}
+
+/* Settings: the Result dimming slider. */
+.settings-slider {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.settings-slider label {
+    font-weight: 600;
+}
+.settings-slider input[type="range"] {
+    inline-size: 100%;
+}

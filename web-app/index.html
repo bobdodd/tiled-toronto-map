@@ -440,6 +440,15 @@
                     <span class="icon" aria-hidden="true">🗨️</span>
                     <span class="label">Speak tooltips</span>
                 </button>
+                <!-- How much the map fades behind conversational search
+                     results ("show me accessible restaurants near me").
+                     A slider, not a toggle — different eye conditions want
+                     different levels; 0 = no fade. Roads, street names and
+                     the results themselves never fade. Persists. -->
+                <div class="settings-slider">
+                    <label for="spotlight-dim">Result dimming</label>
+                    <input type="range" id="spotlight-dim" min="0" max="80" step="10" value="60">
+                </div>
                 <button id="toggle-tracking" class="control-button" aria-pressed="false">
                     <span class="icon" aria-hidden="true">📍</span>
                     <span class="label">Track Location</span>

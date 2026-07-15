@@ -23,6 +23,10 @@ export class AccessibilityManager {
         // only while the pointer moves SLOWLY (or has settled) — sliding
         // across the map is travel, not a question.
         this.pace = null;
+        // Active conversational result set: a () => elements getter. While
+        // set, Tab walks ONLY the results (the rotor's narrowing idiom driven
+        // by the conversation instead of the checkboxes).
+        this._resultSet = null;
 
         this.setupEventListeners();
     }
@@ -37,7 +41,7 @@ export class AccessibilityManager {
     // live positional suffix ("80 metres from County Road 507").
     announceFeature(target, x, y) {
         if (!this.announcer || !target || !target.closest) return;
-        const g = target.closest('#map-tiles [aria-label]');
+        const g = target.closest('#map-tiles [aria-label], #result-pins [aria-label]');
         if (!g) return;
         if (g === this._lastAnnounced) return;
         this._lastAnnounced = g;
@@ -127,7 +131,7 @@ export class AccessibilityManager {
         // audio is on, the polite live region otherwise — so a screen-reader
         // double-tap still gets the answer on a device with no speech API.
         mapSvg.addEventListener('click', (e) => {
-            const g = e.target && e.target.closest ? e.target.closest('#map-tiles [aria-label]') : null;
+            const g = e.target && e.target.closest ? e.target.closest('#map-tiles [aria-label], #result-pins [aria-label]') : null;
             if (!g) return;
             this._lastAnnounced = null;
             this.showFocusOutline(g);
@@ -165,7 +169,7 @@ export class AccessibilityManager {
     _exploreAt(x, y) {
         if (this.pace && !this.pace.slow()) return;
         const under = document.elementFromPoint(x, y);
-        const g = under && under.closest ? under.closest('#map-tiles [aria-label]') : null;
+        const g = under && under.closest ? under.closest('#map-tiles [aria-label], #result-pins [aria-label]') : null;
         if (!g) { this._lastAnnounced = null; return; }
         if (g !== this._lastAnnounced) {
             this.showFocusOutline(g);
@@ -179,7 +183,7 @@ export class AccessibilityManager {
     revealAt(x, y) {
         const under = document.elementFromPoint(x, y);
         if (!under || !under.closest || !this.isMapFeatureForHover(under)) return;
-        const g = under.closest('#map-tiles [aria-label]');
+        const g = under.closest('#map-tiles [aria-label], #result-pins [aria-label]');
         if (!g || g === this._lastAnnounced) return;
         this.showFocusOutline(under);
         this.announceFeature(g, x, y);
@@ -246,6 +250,9 @@ export class AccessibilityManager {
         
         // Don't show hover on the focus outline itself
         if (element.closest('#focus-outline')) return false;
+
+        // Result pins are always explorable.
+        if (element.closest('#result-pins')) return true;
         
         // Check if it's any SVG shape element that could be a map feature
         const shapeElements = ['polygon', 'polyline', 'circle', 'path', 'rect'];
@@ -441,9 +448,29 @@ export class AccessibilityManager {
         return selected;
     }
     
+    // A conversational result set takes over keyboard navigation: pass a
+    // () => elements getter to narrow Tab to the results (nearest first),
+    // null to hand navigation back to the rotor's own selection.
+    setResultSet(getter) {
+        this._resultSet = getter || null;
+        this.updateTabOrder();
+    }
+
     updateTabOrder(notify = false) {
-        // Clear any previous rotor tab order from the tile features.
-        document.querySelectorAll('#map-tiles [tabindex]').forEach((el) => el.removeAttribute('tabindex'));
+        // Clear any previous rotor tab order from the tile features (and any
+        // result pins — theirs is reassigned below while the set is live).
+        document.querySelectorAll('#map-tiles [tabindex], #result-pins [tabindex]')
+            .forEach((el) => el.removeAttribute('tabindex'));
+
+        // Result-set mode: Tab walks the RESULTS, all of them, in the set's
+        // own order (nearest first) — not the viewport-limited rotor scan.
+        // The set is what the user just asked for; every member is reachable.
+        if (this._resultSet) {
+            let t = 9000;
+            for (const el of this._resultSet() || []) el.setAttribute('tabindex', String(t++));
+            this.ensureFocusOutlineOnTop();
+            return;
+        }
 
         const region = document.getElementById('map-announcements');
         // Announce only on an explicit rotor change (notify=true) — NOT on the

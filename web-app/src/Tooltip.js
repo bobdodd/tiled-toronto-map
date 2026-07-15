@@ -82,7 +82,9 @@ export function setupTooltip(opts = {}) {
     // The feature is the nearest labelled element inside the tile layer, resolved
     // up from whatever geometry the pointer/focus landed on.
     function featureFrom(e) {
-        const t = e.target && e.target.closest ? e.target.closest('#map-tiles [aria-label]') : null;
+        const t = e.target && e.target.closest
+            ? e.target.closest('#map-tiles [aria-label], #result-pins [aria-label]')
+            : null;
         return (t && t !== map) ? t : null;
     }
 
@@ -127,7 +129,9 @@ export function setupTooltip(opts = {}) {
     // exploring, even though the entry pointerover was gated as travel.
     function revealAt(x, y) {
         const under = document.elementFromPoint(x, y);
-        const f = under && under.closest ? under.closest('#map-tiles [aria-label]') : null;
+        const f = under && under.closest
+            ? under.closest('#map-tiles [aria-label], #result-pins [aria-label]')
+            : null;
         if (f && f !== current) showAt(f, x, y);
     }
 
