@@ -19,6 +19,10 @@ export class AccessibilityManager {
         // tooltips" setting — sighted users reading the pill can silence the
         // voice; screen readers still get the region).
         this.speakFeatures = null;
+        // Optional PointerPace, injected by the app: hover/explore announce
+        // only while the pointer moves SLOWLY (or has settled) — sliding
+        // across the map is travel, not a question.
+        this.pace = null;
 
         this.setupEventListeners();
     }
@@ -156,7 +160,10 @@ export class AccessibilityManager {
 
     // What is under the finger at (x, y)? Announce + outline it once per visit;
     // moving onto empty map resets the dedupe so returning re-announces.
+    // Gated on pace: a finger SWEEPING across the map is travelling, not
+    // asking — it announces nothing until it slows (or settles, see revealAt).
     _exploreAt(x, y) {
+        if (this.pace && !this.pace.slow()) return;
         const under = document.elementFromPoint(x, y);
         const g = under && under.closest ? under.closest('#map-tiles [aria-label]') : null;
         if (!g) { this._lastAnnounced = null; return; }
@@ -164,6 +171,18 @@ export class AccessibilityManager {
             this.showFocusOutline(g);
             this.announceFeature(g, x, y);
         }
+    }
+
+    // The pointer settled (stopped for a beat) at (x, y): reveal what's under
+    // it exactly as a slow hover would — arriving fast then STOPPING is still
+    // exploring, even though the entry event itself was gated as travel.
+    revealAt(x, y) {
+        const under = document.elementFromPoint(x, y);
+        if (!under || !under.closest || !this.isMapFeatureForHover(under)) return;
+        const g = under.closest('#map-tiles [aria-label]');
+        if (!g || g === this._lastAnnounced) return;
+        this.showFocusOutline(under);
+        this.announceFeature(g, x, y);
     }
     
     handleFocusIn(event) {
@@ -188,6 +207,10 @@ export class AccessibilityManager {
         // feature crossing it would announce and outline in turn — churn the
         // user did not ask for (dragging is travel, not exploring).
         if (document.body.classList.contains('map-dragging')) return;
+        // Travelling, not exploring: a fast slide announces nothing. If the
+        // pointer stops on the feature, the pace tracker's settle callback
+        // reveals it (revealAt).
+        if (this.pace && !this.pace.slow()) return;
         const target = event.target;
         // Show outline on hover for ANY map feature, not just those with tabindex
         if (this.isMapFeatureForHover(target)) {

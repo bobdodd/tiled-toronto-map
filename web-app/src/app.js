@@ -14,6 +14,7 @@ import { setupChatSuggest } from './ChatSuggest.js';
 import { LevelSwitch } from './LevelSwitch.js';
 import { HeadingProvider } from './HeadingProvider.js';
 import { streetContextAt, GENERIC_NAME } from './StreetContext.js';
+import { createPointerPace } from './PointerPace.js';
 
 class MapApplication {
     constructor() {
@@ -118,6 +119,11 @@ class MapApplication {
         // live region only, so a sighted user reading the pill isn't spoken
         // over while chat and status speech stay audible.
         this.accessibilityManager.speakFeatures = () => this.tooltipSpeechOn;
+        // Hover/explore announce only at EXPLORING pace: sliding the mouse or
+        // finger smoothly across the map is travel and stays silent; slowing
+        // down (or stopping — see onSettle below) is the question.
+        this.pointerPace = createPointerPace(mapSvg);
+        this.accessibilityManager.pace = this.pointerPace;
 
         // After a USER filter toggle, refresh the rotor's tab order too.
         // Wrapped at toggleFilter, NOT updateVisibility: the programmatic
@@ -156,6 +162,15 @@ class MapApplication {
         // destination that has no drawn feature (a bare address).
         this.tooltip = setupTooltip({
             contextFor: (g, x, y) => this.streetContextFor(g, x, y),
+            paceOk: () => this.pointerPace.slow(),
+        });
+
+        // The settled pointer reveals: arriving somewhere fast and STOPPING
+        // is exploring, so announce + pill for whatever it rests on (both
+        // entry events were gated as travel).
+        this.pointerPace.onSettle((x, y) => {
+            this.accessibilityManager.revealAt(x, y);
+            if (this.tooltip && this.tooltip.revealAt) this.tooltip.revealAt(x, y);
         });
 
         // The chat panel's housing: floating (moveable/resizable/closeable)

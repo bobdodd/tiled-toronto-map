@@ -16,8 +16,12 @@
 // opts.contextFor(feature, x, y) — optional live positional suffix for the
 // explored point ("80 metres from County Road 507", see StreetContext.js),
 // appended to the label when the feature carries no baked positioning.
+// opts.paceOk() — optional gate from the pointer-pace tracker: hover shows
+// the pill only while the pointer moves slowly (sliding across the page is
+// travel, not a question); the settled pointer reveals via revealAt.
 export function setupTooltip(opts = {}) {
     const contextFor = opts.contextFor || null;
+    const paceOk = opts.paceOk || null;
     const tooltip = document.getElementById('poiTooltip');
     const map = document.querySelector('#map-svg');
     if (!tooltip || !map) return;
@@ -97,6 +101,7 @@ export function setupTooltip(opts = {}) {
         map.addEventListener('pointerover', function (e) {
             if (e.pointerType !== 'mouse') return;
             if (document.body.classList.contains('map-dragging')) return;
+            if (paceOk && !paceOk()) return;   // travelling — no pill per feature crossed
             const f = featureFrom(e);
             if (f) showAt(f, e.clientX, e.clientY);
         });
@@ -117,7 +122,16 @@ export function setupTooltip(opts = {}) {
     // Avoid a stale position if the map re-lays-out.
     window.addEventListener('resize', function () { if (!tooltip.hidden) hideTooltip(); });
 
+    // The pointer settled at (x, y): show the pill for the feature under it,
+    // exactly as a slow hover would — arriving fast then stopping is still
+    // exploring, even though the entry pointerover was gated as travel.
+    function revealAt(x, y) {
+        const under = document.elementFromPoint(x, y);
+        const f = under && under.closest ? under.closest('#map-tiles [aria-label]') : null;
+        if (f && f !== current) showAt(f, x, y);
+    }
+
     // For the app's go-to arrival handling: clear a stale pill from the place
     // just LEFT, and label a destination that has no drawn feature.
-    return { hide: hideTooltip, showLabel };
+    return { hide: hideTooltip, showLabel, revealAt };
 }
