@@ -158,21 +158,40 @@ export class Announcer {
     //    keep the recent utterances and let the chat test a transcript
     //    against them before treating it as the human. ──
     _normSpeech(s) {
-        return String(s).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+        return String(s).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ')
+            // Deepgram transcribes American spellings; the map speaks
+            // Canadian. Canonicalize so the words actually match.
+            .replace(/\bmetres?\b/g, 'meter').replace(/\bmeters\b/g, 'meter')
+            .replace(/\bcentre\b/g, 'center')
+            .trim();
     }
 
     _noteSpoken(text) {
         if (!this._recentSpoken) this._recentSpoken = [];
-        this._recentSpoken.push({ norm: this._normSpeech(text), at: Date.now() });
-        if (this._recentSpoken.length > 6) this._recentSpoken.shift();
+        const now = Date.now();
+        this._recentSpoken.push({ norm: this._normSpeech(text), at: now });
+        // Prune by TIME, not a tiny count: feature announcements (hover/
+        // click/explore) fire far faster than chat answers ever did, and an
+        // utterance evicted early lets its own tail through the echo filter.
+        // Keep everything younger than the echo window (+ margin for a long
+        // tail), with a generous hard cap as the backstop.
+        const KEEP_MS = 60000;
+        while (this._recentSpoken.length &&
+               (now - this._recentSpoken[0].at > KEEP_MS || this._recentSpoken.length > 80)) {
+            this._recentSpoken.shift();
+        }
     }
 
     /** Is this transcript (very likely) the map's own recent speech?
-     *  Matches a verbatim fragment of a recent utterance, or ≥80% of the
-     *  transcript's words appearing in one — but NEVER a 1–2 word transcript:
-     *  "yes" / "stop" must always reach the conversation, even if the map
-     *  happened to say those words. The window is generous (45 s) because a
-     *  long answer's TAIL is heard long after the announce() call. */
+     *  Matches a verbatim fragment of a recent utterance, ≥80% of the
+     *  transcript's words appearing in ONE utterance, or — because rapid
+     *  feature announcements (hover/click/explore) get MERGED by the
+     *  recognizer into a single transcript spanning several of them — ≥80%
+     *  of its words appearing in the UNION of everything spoken in the
+     *  window. Never a 1–2 word transcript: "yes" / "stop" must always
+     *  reach the conversation, even if the map happened to say those words.
+     *  The window is generous (45 s) because a long answer's TAIL is heard
+     *  long after the announce() call. */
     echoOf(text, windowMs = 45000) {
         if (!this._recentSpoken || !this._recentSpoken.length) return false;
         const norm = this._normSpeech(text);
@@ -180,12 +199,20 @@ export class Announcer {
         const words = norm.split(' ');
         if (words.length < 3) return false;
         const now = Date.now();
-        return this._recentSpoken.some((u) => {
-            if (now - u.at > windowMs) return false;
+        const recent = this._recentSpoken.filter((u) => now - u.at <= windowMs);
+        if (!recent.length) return false;
+        const union = new Set();
+        for (const u of recent) {
             if (u.norm.includes(norm)) return true;   // verbatim fragment of the announcement
-            const hay = new Set(u.norm.split(' '));
-            const hit = words.filter((w) => hay.has(w)).length;
-            return hit / words.length >= 0.8;
-        });
+            const hay = u.norm.split(' ');
+            for (const w of hay) union.add(w);
+            const set = new Set(hay);
+            if (words.filter((w) => set.has(w)).length / words.length >= 0.8) return true;
+        }
+        // Merged-announcement check: the transcript is stitched from map
+        // speech if nearly all its words were spoken recently. A human
+        // question brings its own words ("where", "how far", "take me") that
+        // the map didn't say, so it stays under the threshold.
+        return words.filter((w) => union.has(w)).length / words.length >= 0.8;
     }
 }
