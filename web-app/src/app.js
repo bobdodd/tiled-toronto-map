@@ -438,9 +438,15 @@ class MapApplication {
         });
         
         // Escape clears the go-to highlight, like it clears the sticky
-        // tooltip (they arrive together). Passive alongside other Escape uses.
+        // tooltip (they arrive together) — and SILENCES the speech channel:
+        // the tooltip hides, so its announcement must stop with it. A live
+        // region can't be recalled, but speech can. Unconditional: cancelling
+        // idle speech is a no-op, and the chat's richer shush (which only
+        // arms once a conversation is active) still runs alongside.
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this._gotoHighlightId) this._setGotoHighlight(null);
+            if (e.key !== 'Escape') return;
+            if (this._gotoHighlightId) this._setGotoHighlight(null);
+            if (this.announcer) this.announcer.stop();
         });
 
         // Toggle buttons
