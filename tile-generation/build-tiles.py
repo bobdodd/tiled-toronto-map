@@ -1271,6 +1271,152 @@ class TileBuilder:
                 n += 1
         return n
 
+    # ---- Street-furniture OWNERSHIP (relations, not phrases) ---------------
+    # Bob's data model (2026-07-15/16): every piece of street furniture —
+    # kerb cuts, crossings, signals, benches, trees, bollards... — is OWNED by
+    # the road it is on, the intersection it is at, and/or the named feature
+    # that CONTAINS it. Containment already flows to the search doc as
+    # parent/parent_id (assign_parents); this pass adds the ROAD relations, so
+    # "which intersections have kerb cuts" becomes a filtered query instead of
+    # a spatial join at ask time.
+    #
+    # Topology FIRST: kerb / crossing / signal nodes are usually members of
+    # the road way itself, and a node shared by two differently-named roads IS
+    # the intersection — both exact, no geometric guessing. Geometric nearest
+    # (with honest caps) is only the fallback for detached furniture.
+    def assign_ownership(self, features):
+        M = 1.0 / 111000.0
+        ON_ROAD_M = 30 * M      # fallback cap for road-bound furniture
+        FURNITURE_M = 50 * M    # detached furniture (benches, trees): looser
+        JUNCTION_M = 30 * M     # "at the intersection" — kerbs sit at corners
+
+        # 1. Named street ways WITH topology (stamped by the OSM handler).
+        ways = []
+        for f in features:
+            props = f.get('properties') or {}
+            if props.get('highway') in self._STREET_HIGHWAYS and props.get('name') \
+                    and f.get('_way_nodes'):
+                ways.append(f)
+        if not ways:
+            return 0
+
+        # node ref -> named ways sharing it, + each ref's coordinates.
+        node_ways, node_coord = {}, {}
+        for w in ways:
+            for (ref, lon, lat) in w['_way_nodes']:
+                node_ways.setdefault(ref, []).append(w)
+                node_coord[ref] = (lon, lat)
+
+        # 2. Junctions: a node shared by >=2 DISTINCT street names. The name
+        # pair IS the intersection ("Church Street and Wellesley Street").
+        junctions = {}
+        for ref, ws in node_ways.items():
+            names = list(dict.fromkeys(w['properties'].get('name') for w in ws))
+            if len(names) >= 2:
+                junctions[ref] = (node_coord[ref], names[:2])
+
+        CELL = 0.002   # junction lookup grid (~220 m cells; search radius 30 m)
+        jgrid = {}
+        for ref, ((lon, lat), names) in junctions.items():
+            jgrid.setdefault((int(lon / CELL), int(lat / CELL)), []).append((ref, lon, lat, names))
+
+        def nearest_junction(lon, lat, max_d):
+            best = None
+            ci, cj = int(lon / CELL), int(lat / CELL)
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    for (ref, jlon, jlat, names) in jgrid.get((ci + di, cj + dj), ()):
+                        d = ((jlon - lon) ** 2 + (jlat - lat) ** 2) ** 0.5
+                        if d <= max_d and (best is None or d < best[0]):
+                            best = (d, ref, names)
+            return best
+
+        try:
+            from shapely import STRtree
+        except Exception:
+            from shapely.strtree import STRtree
+        wgeoms = [w['geometry'] for w in ways]
+        tree = STRtree(wgeoms)
+
+        # 3. Furniture: classified POINT features (bench, tree, kerb node,
+        # signal, bollard...), plus crossings mapped as short WAYS. Roads own,
+        # they aren't owned; places/addresses/boundaries aren't furniture.
+        n = 0
+        for f in features:
+            props = f.get('properties') or {}
+            if props.get('highway') in self._STREET_HIGHWAYS:
+                continue
+            cls = f.get('classification') or {}
+            primary = cls.get('primary')
+            overlays = cls.get('overlays') or []
+            if not primary and not overlays:
+                continue
+            pcat = (primary or {}).get('category')
+            if pcat in ('place', 'address', 'boundary', 'landuse', 'water', 'vegetation'):
+                continue
+            # Address nodes classify as amenity/address — they are POSITIONS,
+            # not furniture, and already own their street via addr:street.
+            if props.get('addr:housenumber') or (primary or {}).get('subtype') == 'address':
+                continue
+            g = f.get('geometry')
+            if g is None or g.is_empty:
+                continue
+            is_point = g.geom_type == 'Point'
+            is_crossing = pcat == 'crossing' or any(o.get('category') == 'crossing' for o in overlays)
+            if not (is_point or is_crossing):
+                continue
+
+            try:
+                rp = g if is_point else g.representative_point()
+            except Exception:
+                continue
+            lon, lat = rp.x, rp.y
+
+            # (a) ON ROAD — exact topology first: the furniture node is a
+            # node OF the road way. (Node and way ids are separate OSM
+            # namespaces; node_ways is keyed by node refs, so only points
+            # may look themselves up.)
+            oid = props.get('osm_id')
+            owner_names = None
+            if is_point and oid in node_ways:
+                owner_names = list(dict.fromkeys(
+                    w['properties'].get('name') for w in node_ways[oid]))
+            if owner_names is None:
+                # Fallback: geometric nearest, capped tighter for road-bound
+                # furniture (kerbs, crossings, signals, tactile paving) than
+                # for detached furniture (benches, trees).
+                tight = bool(props.get('kerb') or props.get('crossing')
+                             or props.get('highway') == 'traffic_signals'
+                             or props.get('tactile_paving') or is_crossing)
+                cap = ON_ROAD_M if tight else FURNITURE_M
+                best_i, best_d = None, cap
+                for i in tree.query(g.buffer(cap)):
+                    try:
+                        d = wgeoms[i].distance(g)
+                    except Exception:
+                        continue
+                    if d < best_d:
+                        best_i, best_d = i, d
+                if best_i is not None:
+                    owner_names = [ways[best_i]['properties'].get('name')]
+            if owner_names:
+                f['_on_road'] = owner_names[0]
+
+            # (b) AT INTERSECTION — own node a junction (exact), else the
+            # nearest junction within reach.
+            if is_point and oid in junctions:
+                f['_at_intersection'] = junctions[oid][1]
+                f['_intersection_ref'] = oid
+            else:
+                best = nearest_junction(lon, lat, JUNCTION_M)
+                if best:
+                    f['_at_intersection'] = best[2]
+                    f['_intersection_ref'] = best[1]
+
+            if f.get('_on_road') or f.get('_at_intersection'):
+                n += 1
+        return n
+
     # ---- Multi-level model (facet 1) — the vertical stack -----------------
     # Bob's ordering (top -> bottom): Gardiner (elevated road) ABOVE surface ABOVE
     # PATH (underground pedestrian) ABOVE subway/LRT tunnel. So four ordered planes;
@@ -2270,6 +2416,17 @@ class TileBuilder:
                 if f.get('_on_street'):
                     doc['on_street'] = f['_on_street']
                     doc['text'] += ' ' + f['_on_street']
+                # OWNERSHIP relations (assign_ownership): the road this
+                # furniture is ON and the intersection it is AT — queryable
+                # fields, so "which intersections have kerb cuts" is a
+                # filter, not a join. Intersection names also join `text`
+                # ("benches at Church and Wellesley" as a text search).
+                if f.get('_on_road'):
+                    doc['on_road'] = f['_on_road']
+                if f.get('_at_intersection'):
+                    doc['at_intersection'] = f['_at_intersection']
+                    doc['intersection_id'] = f.get('_intersection_ref')
+                    doc['text'] = (doc['text'] + ' at ' + ' and '.join(f['_at_intersection'])).strip()
                 if anon == 'building':
                     # Lightweight: centroid + size class only — NO geometry, NO outline
                     # sampling. There are millions of buildings; this keeps the index lean
@@ -2369,6 +2526,11 @@ class TileBuilder:
         # itself (an address, a named container).
         streeted = self.assign_street_context(features)
         print(f"  Street context: {streeted} features positioned by street", flush=True)
+
+        # OWNERSHIP relations (the queryable model, not the phrase): the road
+        # each piece of street furniture is on and the intersection it is at.
+        owned = self.assign_ownership(features)
+        print(f"  Ownership: {owned} furniture features own a road/intersection", flush=True)
 
         # Build the search index from the SAME parse (named things, POIs and
         # addresses; accessibility tags as filterable fields) so it can never

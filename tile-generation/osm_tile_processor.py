@@ -125,6 +125,19 @@ class OSMHandler(osmium.SimpleHandler):
                 })
                 return
         self._collect(line, tags, w.id, 'way')
+        # Street-furniture OWNERSHIP needs the way's node TOPOLOGY: kerb /
+        # crossing / signal nodes are usually members of the road way itself,
+        # which gives exact ownership (no geometric guessing), and shared
+        # nodes between named roads ARE the intersections. Retain (ref, lon,
+        # lat) per node for NAMED highway ways only — collected features are
+        # appended by _collect just above, so stamp the last one.
+        if tags.get('highway') and tags.get('name') and self.features \
+                and self.features[-1]['properties'].get('osm_id') == w.id:
+            try:
+                self.features[-1]['_way_nodes'] = [
+                    (n.ref, n.location.lon, n.location.lat) for n in w.nodes]
+            except Exception:
+                pass   # a node without a resolved location — topology skipped
 
     def area(self, a):
         tags = {t.k: t.v for t in a.tags}
