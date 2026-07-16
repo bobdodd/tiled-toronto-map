@@ -126,6 +126,16 @@ class MapApplication {
         this.pointerPace = createPointerPace(mapSvg);
         this.accessibilityManager.pace = this.pointerPace;
 
+        // A filter checkbox the user touches BY HAND leaves the
+        // conversation's revert set: Escape restores what the CONVERSATION
+        // changed, never what the user chose themselves.
+        const filterGroups = document.getElementById('filter-groups');
+        if (filterGroups) filterGroups.addEventListener('change', (e) => {
+            if (this._applyingFilterAction || !this._convoFilters) return;
+            const id = ((e.target && e.target.id) || '').replace(/^filter-/, '');
+            if (id) this._convoFilters.delete(id);
+        });
+
         // After a USER filter toggle, refresh the rotor's tab order too.
         // Wrapped at toggleFilter, NOT updateVisibility: the programmatic
         // re-application that runs when tiles load calls updateVisibility for
@@ -261,9 +271,12 @@ class MapApplication {
                     // "Clear results" — drop the conversational result set
                     // (pins, highlights, spotlight, rotor takeover).
                     if (action === 'clear-results') {
-                        if (!this._results && !this._spotlightSelectors) return { ok: true, say: 'No results are showing.' };
+                        if (!this._results && !this._spotlightSelectors
+                            && !(this._convoFilters && this._convoFilters.size)) {
+                            return { ok: true, say: 'No results are showing.' };
+                        }
                         this.clearResults();
-                        return { ok: true, say: 'Results cleared.' };
+                        return { ok: true, say: 'Map restored.' };
                     }
                     const btn = document.getElementById(ids[action] || '');
                     if (!btn) return null;
@@ -462,10 +475,10 @@ class MapApplication {
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             if (this._gotoHighlightId) this._setGotoHighlight(null);
-            if (this._results || this._spotlightSelectors) {
-                const hadPins = !!this._results;
+            if (this._results || this._spotlightSelectors
+                || (this._convoFilters && this._convoFilters.size)) {
                 this.clearResults();
-                this.announceStatus(hadPins ? 'Results cleared.' : 'Dimming cleared.');
+                this.announceStatus('Map restored.');
             }
             if (this.announcer) this.announcer.stop();
         });
@@ -1553,8 +1566,28 @@ class MapApplication {
         };
     }
 
-    clearResults() {
-        if (!this._results && !this._spotlightSelectors) return;
+    // Clears the conversational display. revertFilters=true (the default —
+    // Escape, "clear results", a replacing ask) also UNTICKS any filter
+    // checkboxes the conversation itself switched on, returning the map to
+    // its previous state; checkboxes the USER touched by hand are never
+    // reverted (they left the revert set at the moment of the manual touch).
+    // revertFilters=false drops only the visual emphasis.
+    clearResults(revertFilters = true) {
+        const hasConvoFilters = this._convoFilters && this._convoFilters.size > 0;
+        if (!this._results && !this._spotlightSelectors && !(revertFilters && hasConvoFilters)) return;
+        if (revertFilters && hasConvoFilters) {
+            this._applyingFilterAction = true;
+            try {
+                for (const id of this._convoFilters) {
+                    const box = document.getElementById('filter-' + id);
+                    if (box && box.checked) {
+                        box.checked = false;
+                        box.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            } finally { this._applyingFilterAction = false; }
+            this._convoFilters.clear();
+        }
         this._results = null;
         this._spotlightSelectors = null;
         document.body.classList.remove('results-active');
@@ -1564,6 +1597,10 @@ class MapApplication {
             .forEach((el) => el.classList.remove('result-highlight'));
         document.querySelectorAll('#map-tiles .has-result')
             .forEach((el) => el.classList.remove('has-result'));
+        document.querySelectorAll('#map-tiles .spotlight-feature')
+            .forEach((el) => el.classList.remove('spotlight-feature'));
+        document.querySelectorAll('#map-tiles .spotlight-rim-outer, #map-tiles .spotlight-rim-inner')
+            .forEach((el) => el.remove());
         if (this.accessibilityManager) this.accessibilityManager.setResultSet(null);
     }
 
@@ -1580,11 +1617,35 @@ class MapApplication {
 
     _applySpotlightKeep(root) {
         if (!this._spotlightSelectors) return;
+        const NS = 'http://www.w3.org/2000/svg';
         for (const sel of this._spotlightSelectors) {
             const q = root === document ? `#map-tiles ${sel}` : sel;
             root.querySelectorAll(q).forEach((el) => {
                 const g = el.closest('[role="img"]') || el;
                 g.classList.add('has-result');
+                // The asked-for features themselves get the LOUD treatment
+                // (amber halo + glow) — exemption from the dimming alone
+                // left a bench dot invisible against downtown detail.
+                if (el.tagName !== 'text') el.classList.add('spotlight-feature');
+                // The amber band alone is low-contrast on pale ground: rim
+                // BOTH its edges (theme-inverse dark/light, see CSS) and let
+                // the core dot fill with the rims' inverse. One stroke per
+                // SVG element, so the rims are injected sibling circles,
+                // sized by the same constant-screen vars as the halo.
+                const circles = el.tagName === 'circle' ? [el] : [...el.querySelectorAll('circle')];
+                circles.forEach((c) => {
+                    if (c.classList.contains('spotlight-rim-outer')
+                        || c.classList.contains('spotlight-rim-inner')
+                        || c.parentElement.querySelector(':scope > .spotlight-rim-outer')) return;
+                    for (const cls of ['spotlight-rim-outer', 'spotlight-rim-inner']) {
+                        const rim = document.createElementNS(NS, 'circle');
+                        rim.setAttribute('class', cls);
+                        rim.setAttribute('cx', c.getAttribute('cx'));
+                        rim.setAttribute('cy', c.getAttribute('cy'));
+                        rim.setAttribute('aria-hidden', 'true');
+                        c.parentElement.appendChild(rim);
+                    }
+                });
             });
         }
     }
@@ -1679,22 +1740,34 @@ class MapApplication {
     // holding a switched-ON checkbox opens, so the change can be SEEN.
     applyFilterAction(t) {
         const on = t.on !== false;
-        for (const id of t.features || []) {
-            const box = document.getElementById('filter-' + id);
-            if (!box) continue;
-            if (box.checked !== on) {
-                box.checked = on;
-                box.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            if (on) {
-                const content = box.closest('.filter-accordion-content');
-                if (content && content.hidden) {
-                    content.hidden = false;
-                    const hdr = document.querySelector(`[aria-controls="${content.id}"]`);
-                    if (hdr) hdr.setAttribute('aria-expanded', 'true');
+        // A new "show X" replaces the previous conversational display in
+        // full — emphasis dropped AND its filters reverted (same as Escape).
+        if (on) this.clearResults();
+        if (!this._convoFilters) this._convoFilters = new Set();
+        this._applyingFilterAction = true;
+        try {
+            for (const id of t.features || []) {
+                const box = document.getElementById('filter-' + id);
+                if (!box) continue;
+                if (box.checked !== on) {
+                    box.checked = on;
+                    box.dispatchEvent(new Event('change', { bubbles: true }));
+                    // Only a checkbox the CONVERSATION actually flipped joins
+                    // the revert set — one already on by the user's hand
+                    // stays theirs.
+                    if (on) this._convoFilters.add(id);
+                }
+                if (!on) this._convoFilters.delete(id);
+                if (on) {
+                    const content = box.closest('.filter-accordion-content');
+                    if (content && content.hidden) {
+                        content.hidden = false;
+                        const hdr = document.querySelector(`[aria-controls="${content.id}"]`);
+                        if (hdr) hdr.setAttribute('aria-expanded', 'true');
+                    }
                 }
             }
-        }
+        } finally { this._applyingFilterAction = false; }
         // A conversational "show X" also SPOTLIGHTS X: the asked-for category
         // holds full strength while the rest dims (roads always exempt), so
         // the answer stands out — same visual mode as a result set. Asking to
@@ -1705,7 +1778,9 @@ class MapApplication {
                 .filter(Boolean);
             if (sels.length) this._setSpotlightSelectors(sels);
         } else if (!on && this._spotlightSelectors && !this._results) {
-            this.clearResults();
+            // Hiding a category ends the emphasis, but must not revert OTHER
+            // filters the conversation set — emphasis-only clear.
+            this.clearResults(false);
         }
         return null; // no lander — the reply narrates the switch
     }
@@ -1889,11 +1964,33 @@ class MapApplication {
     // app stays hidden (and out of the accessibility tree) until accepted.
     // Re-shown every visit. The Start click is also the user gesture that
     // primes the speech engine.
+    // Screen Wake Lock — the phone's screen lock was cutting access even
+    // while the map was mid-answer. Held for the whole session once the
+    // gate opens (like the audio-only maps): the map is used hands-busy and
+    // eyes-busy, timed screen-off is exactly wrong here. The OS releases it
+    // whenever the page hides; the visibilitychange handler below re-takes
+    // it. No-op (and harmless) where the API doesn't exist.
+    async _acquireWakeLock() {
+        if (this._wakeLock || !('wakeLock' in navigator)) return;
+        try {
+            this._wakeLock = await navigator.wakeLock.request('screen');
+            this._wakeLock.addEventListener('release', () => { this._wakeLock = null; });
+        } catch { this._wakeLock = null; }
+    }
+
     setupGate() {
         const gate = document.getElementById('map-gate');
         const accept = document.getElementById('gate-accept');
         const start = document.getElementById('gate-start');
         if (!gate || !accept || !start) return;
+
+        // Out of the pocket / screen unlocked: the wake lock was auto-released
+        // while the page was hidden — take it again (gated on the disclaimer
+        // having been accepted this session).
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible' || !this._gateStarted) return;
+            this._acquireWakeLock();
+        });
         accept.addEventListener('change', () => { start.disabled = !accept.checked; });
         start.addEventListener('click', () => {
             gate.hidden = true;
@@ -1919,6 +2016,13 @@ class MapApplication {
             const busy = document.getElementById('map-busy');
             if (busy) busy.hidden = false;
             this.announcer.prime();
+            // Keep the screen ON while the map is up — the screen lock was
+            // cutting access mid-answer. Same pattern as the Context /
+            // Conversational / Knowledge maps: acquired here inside the
+            // Start gesture, re-acquired on visibility resume (the OS
+            // auto-releases it whenever the page is hidden).
+            this._gateStarted = true;
+            this._acquireWakeLock();
             const title = document.getElementById('app-title');
             if (title) title.focus();
             this.announceStatus('Loading the map…');
@@ -2067,8 +2171,8 @@ class MapApplication {
     setupSpotlightSlider() {
         const apply = (dim) => document.documentElement.style.setProperty(
             '--spotlight-keep', String(1 - dim / 100));
-        const stored = parseInt(localStorage.getItem('map-spotlight-dim') ?? '60', 10);
-        const dim0 = Number.isFinite(stored) ? Math.min(80, Math.max(0, stored)) : 60;
+        const stored = parseInt(localStorage.getItem('map-spotlight-dim') ?? '70', 10);
+        const dim0 = Number.isFinite(stored) ? Math.min(80, Math.max(0, stored)) : 70;
         apply(dim0);
         const slider = document.getElementById('spotlight-dim');
         if (!slider) return;

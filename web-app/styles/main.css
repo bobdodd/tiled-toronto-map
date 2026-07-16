@@ -2720,7 +2720,80 @@ body.chat-split .location-info {
    is the frame that makes result positions mean anything. The level comes
    from the Settings "Result dimming" slider via --spotlight-keep (1 = off). */
 body.results-active #map-tiles [role="img"]:not(.road):not(.has-result) {
-    opacity: var(--spotlight-keep, 0.4);
+    opacity: var(--spotlight-keep, 0.3);
+}
+
+/* The conversationally asked-for category must SHOUT — the filter's own thin
+   ring was invisible against downtown detail (Bob's bench screenshot). The
+   class sits on the feature GROUP; the paint goes on the CHILD geometry
+   (like .filter-highlight above), because the children carry their own
+   stroke and never inherit the group's. For marker dots, the transparent
+   24px-screen TOUCH ring (already constant-size via the --target vars)
+   becomes the halo itself. Amber = the established highlight state,
+   luminance-distinct in both themes and under macOS Invert; !important
+   beats the dark-mode recolour chains, as with .goto-highlight. */
+#map-tiles .spotlight-feature :is(polygon, polyline, path, rect) {
+    stroke: #c77800 !important;
+    stroke-width: 7px;
+    vector-effect: non-scaling-stroke;
+}
+#map-tiles .spotlight-feature circle:not(.spotlight-rim-outer):not(.spotlight-rim-inner) {
+    /* #c77800, not the goto-highlight's #ffb300: the band borders the
+       near-white core and (in dark mode) the light rims, and #ffb300 is
+       only ~1.7:1 against them. #c77800 holds >=3:1 (WCAG 1.4.11) on every
+       edge in both themes — 3.36 core / 5.07 rims light, 3.15 / 5.07 dark. */
+    stroke: #c77800 !important;
+    /* The full 24px-screen touch ring, PAINTED — !important beats the
+       .filter-highlight children rule's thin stroke-width:4, which
+       otherwise wins the cascade and shrinks the halo to a hairline. The
+       :not() chain keeps this off the injected rim circles, which this
+       selector would otherwise both match and OUTRANK. */
+    stroke-width: var(--hit-ring, 14px) !important;
+    stroke-opacity: 1;
+    /* The core dot fills with the RIMS' inverse (light against dark rims;
+       swapped in dark mode below) — Bob's rule: contrast rides luminance
+       steps, so the marker reads light-core / dark rim / amber / dark rim
+       whatever colour the ground is, and survives macOS Invert. */
+    fill: #fffdf0 !important;
+}
+#map-tiles .spotlight-feature {
+    filter: drop-shadow(0 0 2px #1a1a1a) drop-shadow(0 0 5px #ffb300);
+}
+
+/* The rims: injected sibling circles (one stroke per SVG element) riding the
+   same constant-screen vars as the dots, so they track every zoom. Outer rim
+   sits on the halo's outer edge; inner rim wraps the core dot. */
+#map-tiles .spotlight-rim-outer,
+#map-tiles .spotlight-rim-inner {
+    fill: none !important;
+    stroke: #1a1a1a !important;
+    stroke-width: calc(var(--dot-r, 5px) * 0.4) !important;   /* ~2px screen */
+    pointer-events: none;
+}
+#map-tiles .spotlight-rim-outer {
+    r: calc(var(--dot-r, 5px) + var(--hit-ring, 14px) / 2);
+}
+#map-tiles .spotlight-rim-inner {
+    r: var(--dot-r, 5px);
+}
+/* Cluster dots are a size up — their rims follow. */
+#map-tiles g.cluster .spotlight-rim-outer {
+    r: calc(var(--cluster-r, 7px) + var(--hit-ring, 14px) / 2);
+}
+#map-tiles g.cluster .spotlight-rim-inner {
+    r: var(--cluster-r, 7px);
+}
+
+@media (prefers-color-scheme: dark) {
+    /* Dark theme: rims go light, the core goes dark — the same luminance
+       ladder, inverted with the ground. */
+    #map-tiles .spotlight-feature circle:not(.spotlight-rim-outer):not(.spotlight-rim-inner) {
+        fill: #1a1a1a !important;
+    }
+    #map-tiles .spotlight-rim-outer,
+    #map-tiles .spotlight-rim-inner {
+        stroke: #f5f5f5 !important;
+    }
 }
 
 /* Settings: the Result dimming slider. */
