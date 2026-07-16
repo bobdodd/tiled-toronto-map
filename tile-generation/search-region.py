@@ -95,6 +95,9 @@ def main():
     ap.add_argument("--extract-batch", type=int, help="Slices to cut per osmium pass (default: all at once). "
                     "Lower it (e.g. 8) if `osmium extract` OOMs on a dense province — fewer simultaneous "
                     "output buffers + relation-completion sets per pass, at the cost of re-reading the .pbf.")
+    ap.add_argument("--dem", action="store_true",
+                    help="Forward --dem to every slice parse: pedestrian ways with no mapped "
+                         "incline get a computed street grade (see build-tiles --dem).")
     args = ap.parse_args()
 
     region = resolve_region(args.region)
@@ -170,7 +173,8 @@ def main():
             # --bbox=... (joined form) so argparse doesn't read the leading negative lon as a flag.
             rc = subprocess.run([PY, str(BUILD), "--search-only",
                                  f"--source={spath(i)}", f"--bbox={w},{S},{e},{N}",
-                                 f"--out={odir}"], stdout=lg, stderr=lg).returncode
+                                 f"--out={odir}"] + (["--dem"] if args.dem else []),
+                                stdout=lg, stderr=lg).returncode
         c = sum(1 for _ in open(nd)) if nd.exists() else 0
         if rc == 0:
             tmp = work / f"slice-{i:02d}.done.tmp"      # atomic: never a half-written marker

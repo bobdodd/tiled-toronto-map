@@ -2392,6 +2392,10 @@ class TileBuilder:
                     e['label'] for e in ([primary] + overlays) if e and e.get('label')))
                 addr_str = ' '.join(filter(None, (addr.get('housenumber'), addr.get('street'))))
                 access = {k.replace(':', '_'): props[k] for k in self._A11Y_KEYS if k in props}
+                # DEM-computed grades are ESTIMATES, not ground truth — the
+                # doc says so, so the chat can disclose "estimated" honestly.
+                if props.get('_incline_source') == 'dem' and 'incline' in access:
+                    access['incline_source'] = 'dem'
                 info = {k.replace(':', '_'): props[k] for k in self._INFO_KEYS if k in props}
                 # Hierarchy CONTEXT (the information model): the NAMED containers this
                 # feature nests inside (a campus building inside a school inside...).
