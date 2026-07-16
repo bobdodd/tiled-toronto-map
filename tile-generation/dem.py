@@ -149,6 +149,13 @@ def assign_dem_grades(features, bounds, taxonomy):
             continue
         if props.get('footway') == 'crossing':
             continue
+        # Bridges and tunnels: the DTM is BARE EARTH — under a bridge it dives
+        # into the valley/corridor below, so a way crossing on the structure
+        # samples a violent false grade (seen live: a Kitchener rail-bridge
+        # cycleway "estimated at 40%"). The structure's own grade can't come
+        # from a terrain model; skip.
+        if props.get('bridge') or props.get('tunnel'):
+            continue
         g = f.get('geometry')
         if g is None or g.is_empty or g.geom_type not in ('LineString', 'MultiLineString'):
             continue
@@ -190,7 +197,14 @@ def assign_dem_grades(features, bounds, taxonomy):
             run = math.hypot((lon_b - lon_a) * klon, lat_b - lat_a) / DEG
             if run < MIN_SEG_M:
                 continue
-            worst = max(worst, abs(zb - za) / run * 100.0)
+            grade = abs(zb - za) / run * 100.0
+            # A single pair past ~35% on a walkable way is a raster artefact
+            # (an unsplit bridge approach, a retaining-wall edge, a lidar
+            # void), not a path anyone graded — drop the pair, keep the way's
+            # honest next-worst.
+            if grade > 35.0:
+                continue
+            worst = max(worst, grade)
         if worst > INJECT_OVER:
             props = f['properties']
             props['incline'] = f"{worst:.1f}%"
