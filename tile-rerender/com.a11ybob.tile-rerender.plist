@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.a11ybob.tile-rerender</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map/tile-rerender/run.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map</string>
+
+    <!-- Start on load AND at every login/boot, so it survives a restart. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart ONLY if it exits non-zero (a crash, or it gave up after retries).
+         A clean "ALL DONE" exits 0 and is left alone. The runner skips completed
+         regions on restart, so this resumes rather than repeats. -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>120</integer>
+
+    <!-- Background scheduling + niceness so the user's foreground work always wins. -->
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Nice</key>
+    <integer>10</integer>
+    <key>LowPriorityIO</key>
+    <true/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map/tile-rerender/state/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/bob3/Documents/Bob/Claude/Tiled City Map/tile-rerender/state/launchd.err.log</string>
+</dict>
+</plist>
