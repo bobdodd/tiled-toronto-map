@@ -42,7 +42,7 @@ const LISTEN_IDLE_MS = 10000; // silence after an answer before the conversation
 // separate from the Knowledge Map demo's store (same origin, different demo).
 const MEM_KEY = 'tiled-map-memory-v1';
 
-export function setupChat({ announcer, heading, isTracking, getVirtualLocation, onFollow, onUnfollow, onMapCommand, onMapTarget }) {
+export function setupChat({ announcer, heading, isTracking, getVirtualLocation, getViewport, onFollow, onUnfollow, onMapCommand, onMapTarget }) {
     const $ = (id) => document.getElementById(id);
     const panel = $('chat-panel');
     if (!panel) return;
@@ -201,6 +201,9 @@ export function setupChat({ announcer, heading, isTracking, getVirtualLocation, 
                     message, location: loc || undefined,
                     history: history.slice(-MAX_HISTORY - 1, -1), memory,
                     canShowMap: true, modality: spoken ? 'voice' : 'typed',
+                    // The current map view: the default FRAME for "show me"
+                    // result sets ("all the benches" = the ones in view).
+                    viewport: getViewport ? getViewport() : undefined,
                 }),
                 signal: ctrl.signal,
             });

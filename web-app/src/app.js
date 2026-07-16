@@ -126,16 +126,6 @@ class MapApplication {
         this.pointerPace = createPointerPace(mapSvg);
         this.accessibilityManager.pace = this.pointerPace;
 
-        // A filter checkbox the user touches BY HAND leaves the
-        // conversation's revert set: Escape restores what the CONVERSATION
-        // changed, never what the user chose themselves.
-        const filterGroups = document.getElementById('filter-groups');
-        if (filterGroups) filterGroups.addEventListener('change', (e) => {
-            if (this._applyingFilterAction || !this._convoFilters) return;
-            const id = ((e.target && e.target.id) || '').replace(/^filter-/, '');
-            if (id) this._convoFilters.delete(id);
-        });
-
         // After a USER filter toggle, refresh the rotor's tab order too.
         // Wrapped at toggleFilter, NOT updateVisibility: the programmatic
         // re-application that runs when tiles load calls updateVisibility for
@@ -184,6 +174,24 @@ class MapApplication {
             if (this.tooltip && this.tooltip.revealAt) this.tooltip.revealAt(x, y);
         });
 
+        // Focus is never invisible (the terminal map's rule): Tab landing on
+        // a result pin that sits outside the view brings the map to it. The
+        // set FREEZES on pan/zoom by design — this is the complement that
+        // keeps every frozen member reachable and visible.
+        document.addEventListener('focusin', (e) => {
+            const pin = e.target && e.target.closest ? e.target.closest('#result-pins .result-pin') : null;
+            if (!pin) return;
+            const lat = parseFloat(pin.dataset.lat), lng = parseFloat(pin.dataset.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            const r = document.getElementById('map-container').getBoundingClientRect();
+            const b = pin.getBoundingClientRect();
+            const cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+            const M = 24;
+            if (cx < r.left + M || cx > r.right - M || cy < r.top + M || cy > r.bottom - M) {
+                this.mapRenderer.setCenter(lat, lng);
+            }
+        });
+
         // The chat panel's housing: floating (moveable/resizable/closeable)
         // on desktop, split-screen with a draggable divider on mobile. The
         // divider changes the map's height without a window resize, so it
@@ -206,6 +214,9 @@ class MapApplication {
             // the chat: tracking ON = the device's GPS; OFF = the AVATAR (the
             // virtual you on the map, falling back to the map centre).
             isTracking: () => this.isTracking,
+            // The current view bounds ride every chat message — the default
+            // FRAME for "show me" result sets.
+            getViewport: () => { try { return this.getBoundsFromView(); } catch { return undefined; } },
             getVirtualLocation: () => {
                 const p = (this.avatar && this.avatar.position) || (this.mapRenderer && this.mapRenderer.center);
                 return p ? { lat: +p.lat.toFixed(6), lon: +p.lng.toFixed(6) } : null;
@@ -271,12 +282,9 @@ class MapApplication {
                     // "Clear results" — drop the conversational result set
                     // (pins, highlights, spotlight, rotor takeover).
                     if (action === 'clear-results') {
-                        if (!this._results && !this._spotlightSelectors
-                            && !(this._convoFilters && this._convoFilters.size)) {
-                            return { ok: true, say: 'No results are showing.' };
-                        }
+                        if (!this._results) return { ok: true, say: 'No results are showing.' };
                         this.clearResults();
-                        return { ok: true, say: 'Map restored.' };
+                        return { ok: true, say: 'Results cleared.' };
                     }
                     const btn = document.getElementById(ids[action] || '');
                     if (!btn) return null;
@@ -475,10 +483,9 @@ class MapApplication {
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             if (this._gotoHighlightId) this._setGotoHighlight(null);
-            if (this._results || this._spotlightSelectors
-                || (this._convoFilters && this._convoFilters.size)) {
+            if (this._results) {
                 this.clearResults();
-                this.announceStatus('Map restored.');
+                this.announceStatus('Results cleared.');
             }
             if (this.announcer) this.announcer.stop();
         });
@@ -1549,7 +1556,10 @@ class MapApplication {
             (it) => Number.isFinite(it.lat) && Number.isFinite(it.lng));
         if (!items.length) return null;
         this._results = { label: action.label || 'matching', items };
-        this._fitToResults(items);
+        // Only a NAMED scope moves the view (fit=true from the server): a
+        // view- or near-me-scoped set is inside the frame the user is
+        // already looking at, and the frame must not shift under them.
+        if (action.fit) this._fitToResults(items);
         this._renderResultPins();
         document.body.classList.add('results-active');
         if (this.tooltip) this.tooltip.hide();
@@ -1566,30 +1576,9 @@ class MapApplication {
         };
     }
 
-    // Clears the conversational display. revertFilters=true (the default —
-    // Escape, "clear results", a replacing ask) also UNTICKS any filter
-    // checkboxes the conversation itself switched on, returning the map to
-    // its previous state; checkboxes the USER touched by hand are never
-    // reverted (they left the revert set at the moment of the manual touch).
-    // revertFilters=false drops only the visual emphasis.
-    clearResults(revertFilters = true) {
-        const hasConvoFilters = this._convoFilters && this._convoFilters.size > 0;
-        if (!this._results && !this._spotlightSelectors && !(revertFilters && hasConvoFilters)) return;
-        if (revertFilters && hasConvoFilters) {
-            this._applyingFilterAction = true;
-            try {
-                for (const id of this._convoFilters) {
-                    const box = document.getElementById('filter-' + id);
-                    if (box && box.checked) {
-                        box.checked = false;
-                        box.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                }
-            } finally { this._applyingFilterAction = false; }
-            this._convoFilters.clear();
-        }
+    clearResults() {
+        if (!this._results) return;
         this._results = null;
-        this._spotlightSelectors = null;
         document.body.classList.remove('results-active');
         const pins = document.getElementById('result-pins');
         if (pins) pins.remove();
@@ -1597,60 +1586,7 @@ class MapApplication {
             .forEach((el) => el.classList.remove('result-highlight'));
         document.querySelectorAll('#map-tiles .has-result')
             .forEach((el) => el.classList.remove('has-result'));
-        document.querySelectorAll('#map-tiles .spotlight-feature')
-            .forEach((el) => el.classList.remove('spotlight-feature'));
-        document.querySelectorAll('#map-tiles .spotlight-rim-outer, #map-tiles .spotlight-rim-inner')
-            .forEach((el) => el.remove());
         if (this.accessibilityManager) this.accessibilityManager.setResultSet(null);
-    }
-
-    // Spotlight for a conversational FILTER switch ("show me all the
-    // benches"): the switched-on category stays full strength while the rest
-    // of the map dims — the same mode a result set gets, minus pins/rotor
-    // (the rotor checkboxes remain the instrument for narrowing Tab).
-    // Escape lifts the DIMMING only; the filter itself stays on.
-    _setSpotlightSelectors(selectors) {
-        this._spotlightSelectors = selectors;
-        this._applySpotlightKeep(document);
-        document.body.classList.add('results-active');
-        // Dimmed content leaves the tab order and gains aria-hidden (its
-        // pointer half is CSS); the sweep lives in updateTabOrder.
-        if (this.accessibilityManager) this.accessibilityManager.updateTabOrder();
-    }
-
-    _applySpotlightKeep(root) {
-        if (!this._spotlightSelectors) return;
-        const NS = 'http://www.w3.org/2000/svg';
-        for (const sel of this._spotlightSelectors) {
-            const q = root === document ? `#map-tiles ${sel}` : sel;
-            root.querySelectorAll(q).forEach((el) => {
-                const g = el.closest('[role="img"]') || el;
-                g.classList.add('has-result');
-                // The asked-for features themselves get the LOUD treatment
-                // (amber halo + glow) — exemption from the dimming alone
-                // left a bench dot invisible against downtown detail.
-                if (el.tagName !== 'text') el.classList.add('spotlight-feature');
-                // The amber band alone is low-contrast on pale ground: rim
-                // BOTH its edges (theme-inverse dark/light, see CSS) and let
-                // the core dot fill with the rims' inverse. One stroke per
-                // SVG element, so the rims are injected sibling circles,
-                // sized by the same constant-screen vars as the halo.
-                const circles = el.tagName === 'circle' ? [el] : [...el.querySelectorAll('circle')];
-                circles.forEach((c) => {
-                    if (c.classList.contains('spotlight-rim-outer')
-                        || c.classList.contains('spotlight-rim-inner')
-                        || c.parentElement.querySelector(':scope > .spotlight-rim-outer')) return;
-                    for (const cls of ['spotlight-rim-outer', 'spotlight-rim-inner']) {
-                        const rim = document.createElementNS(NS, 'circle');
-                        rim.setAttribute('class', cls);
-                        rim.setAttribute('cx', c.getAttribute('cx'));
-                        rim.setAttribute('cy', c.getAttribute('cy'));
-                        rim.setAttribute('aria-hidden', 'true');
-                        c.parentElement.appendChild(rim);
-                    }
-                });
-            });
-        }
     }
 
     // Numbered pins, one per result, in #map-labels (which survives tile
@@ -1675,6 +1611,10 @@ class MapApplication {
                 .filter(Boolean).join(', ');
             pin.setAttribute('aria-label',
                 `Result ${i + 1} of ${items.length}: ${what || this._results.label}`);
+            // Focus-follows: the focusin handler recentres on these when a
+            // focused pin sits outside the view (focus is never invisible).
+            pin.dataset.lat = String(it.lat);
+            pin.dataset.lng = String(it.lng);
             const dot = document.createElementNS(NS, 'circle');
             dot.setAttribute('cx', pos.x);
             dot.setAttribute('cy', pos.y);
@@ -1741,49 +1681,28 @@ class MapApplication {
     // the map's OWN filter checkboxes, so the conversation and the sidebar
     // are one visible state — inspectable and undoable by hand. The section
     // holding a switched-ON checkbox opens, so the change can be SEEN.
+    // A filter is a durable viewing MODE (Bob's model, 2026-07-16): no
+    // spotlight, no dimming, no focus move, and Escape does not revert it —
+    // an explicit "turn on the benches filter" is the same commitment as
+    // ticking the box by hand. Bounded, counted answers are the "show me"
+    // result sets (showResults).
     applyFilterAction(t) {
         const on = t.on !== false;
-        // A new "show X" replaces the previous conversational display in
-        // full — emphasis dropped AND its filters reverted (same as Escape).
-        if (on) this.clearResults();
-        if (!this._convoFilters) this._convoFilters = new Set();
-        this._applyingFilterAction = true;
-        try {
-            for (const id of t.features || []) {
-                const box = document.getElementById('filter-' + id);
-                if (!box) continue;
-                if (box.checked !== on) {
-                    box.checked = on;
-                    box.dispatchEvent(new Event('change', { bubbles: true }));
-                    // Only a checkbox the CONVERSATION actually flipped joins
-                    // the revert set — one already on by the user's hand
-                    // stays theirs.
-                    if (on) this._convoFilters.add(id);
-                }
-                if (!on) this._convoFilters.delete(id);
-                if (on) {
-                    const content = box.closest('.filter-accordion-content');
-                    if (content && content.hidden) {
-                        content.hidden = false;
-                        const hdr = document.querySelector(`[aria-controls="${content.id}"]`);
-                        if (hdr) hdr.setAttribute('aria-expanded', 'true');
-                    }
+        for (const id of t.features || []) {
+            const box = document.getElementById('filter-' + id);
+            if (!box) continue;
+            if (box.checked !== on) {
+                box.checked = on;
+                box.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            if (on) {
+                const content = box.closest('.filter-accordion-content');
+                if (content && content.hidden) {
+                    content.hidden = false;
+                    const hdr = document.querySelector(`[aria-controls="${content.id}"]`);
+                    if (hdr) hdr.setAttribute('aria-expanded', 'true');
                 }
             }
-        } finally { this._applyingFilterAction = false; }
-        // A conversational "show X" also SPOTLIGHTS X: the asked-for category
-        // holds full strength while the rest dims (roads always exempt), so
-        // the answer stands out — same visual mode as a result set. Asking to
-        // HIDE something needs no spotlight; drop any category dimming.
-        if (on && this.taxonomy) {
-            const sels = (t.features || [])
-                .map((id) => { const f = this.taxonomy.getById(id); return f ? this.taxonomy.selectorFor(f) : null; })
-                .filter(Boolean);
-            if (sels.length) this._setSpotlightSelectors(sels);
-        } else if (!on && this._spotlightSelectors && !this._results) {
-            // Hiding a category ends the emphasis, but must not revert OTHER
-            // filters the conversation set — emphasis-only clear.
-            this.clearResults(false);
         }
         return null; // no lander — the reply narrates the switch
     }
@@ -2629,9 +2548,6 @@ class MapApplication {
                 // Same for a live result SET: fresh tiles light up their
                 // matching results (and stay exempt from the spotlight).
                 if (this._results) this._applyResultHighlights(tileGroup);
-                // And a category spotlight ("show me all the benches") keeps
-                // its category full-strength in fresh tiles too.
-                if (this._spotlightSelectors) this._applySpotlightKeep(tileGroup);
 
                 tilesGroup.appendChild(tileGroup);
             } catch (error) {
