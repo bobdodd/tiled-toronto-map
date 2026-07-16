@@ -1613,6 +1613,9 @@ class MapApplication {
         this._spotlightSelectors = selectors;
         this._applySpotlightKeep(document);
         document.body.classList.add('results-active');
+        // Dimmed content leaves the tab order and gains aria-hidden (its
+        // pointer half is CSS); the sweep lives in updateTabOrder.
+        if (this.accessibilityManager) this.accessibilityManager.updateTabOrder();
     }
 
     _applySpotlightKeep(root) {

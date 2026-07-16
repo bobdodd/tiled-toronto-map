@@ -456,11 +456,33 @@ export class AccessibilityManager {
         this.updateTabOrder();
     }
 
+    // While a spotlight/result display is active, a feature that is DIMMED
+    // is stepped back from the page entirely: no tabindex and aria-hidden
+    // (its pointer half is CSS pointer-events:none). Roads and the asked-for
+    // content stay reachable.
+    _isDimmed(el, spotlightActive) {
+        return spotlightActive
+            && !el.classList.contains('road')
+            && !el.classList.contains('has-result');
+    }
+
+    // The aria-hidden sweep runs over EVERY feature group, on-screen or not,
+    // so a cleared spotlight leaves no stale aria-hidden behind.
+    _sweepDimmedAria(spotlightActive) {
+        document.querySelectorAll('#map-tiles [role="img"]').forEach((el) => {
+            if (this._isDimmed(el, spotlightActive)) el.setAttribute('aria-hidden', 'true');
+            else el.removeAttribute('aria-hidden');
+        });
+    }
+
     updateTabOrder(notify = false) {
         // Clear any previous rotor tab order from the tile features (and any
         // result pins — theirs is reassigned below while the set is live).
         document.querySelectorAll('#map-tiles [tabindex], #result-pins [tabindex]')
             .forEach((el) => el.removeAttribute('tabindex'));
+
+        const spotlightActive = document.body.classList.contains('results-active');
+        this._sweepDimmedAria(spotlightActive);
 
         // Result-set mode: Tab walks the RESULTS, all of them, in the set's
         // own order (nearest first) — not the viewport-limited rotor scan.
@@ -538,6 +560,8 @@ export class AccessibilityManager {
         elements.forEach((el) => {
             // Skip features hidden by a base filter.
             if (el.closest('[style*="display: none"], [style*="display:none"]')) return;
+            // Dimmed content leaves the tab order while the spotlight lasts.
+            if (this._isDimmed(el, spotlightActive)) return;
             // Skip features outside the visible viewport (also skips display:none
             // off-toggle planes, which have zero size).
             if (!onScreen(el)) return;

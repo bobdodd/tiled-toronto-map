@@ -2723,6 +2723,17 @@ body.results-active #map-tiles [role="img"]:not(.road):not(.has-result) {
     opacity: var(--spotlight-keep, 0.3);
 }
 
+/* Dimmed content is stepped BACK, so it must not answer either: no hover, no
+   explore-by-touch, no click while the spotlight is live. Children must be
+   silenced explicitly — pointer-events is per-element and the marker/hit
+   rules (pointer-events: all/auto on circles etc.) would otherwise override
+   the group. Roads and the asked-for content stay fully interactive; the
+   tab order and aria-hidden halves live in AccessibilityManager. */
+body.results-active #map-tiles [role="img"]:not(.road):not(.has-result),
+body.results-active #map-tiles [role="img"]:not(.road):not(.has-result) * {
+    pointer-events: none !important;
+}
+
 /* The conversationally asked-for category must SHOUT — the filter's own thin
    ring was invisible against downtown detail (Bob's bench screenshot). The
    class sits on the feature GROUP; the paint goes on the CHILD geometry
