@@ -394,8 +394,6 @@ class MapApplication {
             if (needsNewTiles) {
                 this.loadMapTiles();
             }
-            // Result pins hold a constant SCREEN size across zooms.
-            if (this._results) this._sizeResultPins();
             // Refresh which features can take focus — only those now on-screen.
             // Debounced because a pan/zoom fires viewBoxChanged rapidly; silent so
             // it doesn't spam the live region while panning.
@@ -1556,10 +1554,16 @@ class MapApplication {
             (it) => Number.isFinite(it.lat) && Number.isFinite(it.lng));
         if (!items.length) return null;
         this._results = { label: action.label || 'matching', items };
-        // Only a NAMED scope moves the view (fit=true from the server): a
-        // view- or near-me-scoped set is inside the frame the user is
-        // already looking at, and the frame must not shift under them.
-        if (action.fit) this._fitToResults(items);
+        // Only a NAMED scope moves the view: the fit target is the ASKED-FOR
+        // AREA (centre + radius from the server), never the items' extremes —
+        // one legitimate far member must not zoom the map to the horizon
+        // (seen live: a cross-city parent match dropped the view to minimum
+        // zoom). View/near-me sets never move the frame at all.
+        if (action.fit && typeof action.fit === 'object' && Number.isFinite(action.fit.lat)) {
+            this._fitToArea(action.fit.lat, action.fit.lon, action.fit.radius_m || 1000);
+        } else if (action.fit) {
+            this._fitToResults(items);
+        }
         this._renderResultPins();
         document.body.classList.add('results-active');
         if (this.tooltip) this.tooltip.hide();
@@ -1615,6 +1619,8 @@ class MapApplication {
             // focused pin sits outside the view (focus is never invisible).
             pin.dataset.lat = String(it.lat);
             pin.dataset.lng = String(it.lng);
+            // No r attribute: the --pin-r CSS var (maintained per zoom by
+            // MapRenderer.updateViewBox, like the marker dots) sizes it.
             const dot = document.createElementNS(NS, 'circle');
             dot.setAttribute('cx', pos.x);
             dot.setAttribute('cy', pos.y);
@@ -1629,20 +1635,7 @@ class MapApplication {
             group.appendChild(pin);
         });
         host.appendChild(group);
-        this._sizeResultPins();
         this._applyResultHighlights(document);
-    }
-
-    // Constant screen size: radius/font set in user units from the current
-    // scale. Re-run on every viewBox change while a set is live.
-    _sizeResultPins() {
-        const group = document.getElementById('result-pins');
-        if (!group) return;
-        const rect = this.mapRenderer.svg.getBoundingClientRect();
-        if (!rect.width) return;
-        const upp = this.mapRenderer.viewBox.width / rect.width; // units per screen px
-        group.querySelectorAll('circle').forEach((c) => c.setAttribute('r', 12 * upp));
-        group.querySelectorAll('text').forEach((t) => t.setAttribute('font-size', 14 * upp));
     }
 
     // Amber-light every rendered piece of a result's geometry (by osm_id) and
@@ -1674,6 +1667,18 @@ class MapApplication {
         const zoom = factor > 1 ? 18 - Math.ceil(Math.log2(factor)) : 18;
         this.mapRenderer.setZoom(Math.min(18, Math.max(13, zoom)));
         this.mapRenderer.setCenter((minLat + maxLat) / 2, (minLng + maxLng) / 2);
+        this.updateZoomButtonStates();
+    }
+
+    // Frame a NAMED area: centre on it and zoom so its radius fits, with
+    // margin. Floor z13 (a metro-wide ask never fits the region), cap z18.
+    _fitToArea(lat, lng, radiusM) {
+        const rect = document.getElementById('map-container').getBoundingClientRect();
+        const spanPx = (2 * radiusM / 1.11);   // metres -> px at z18 (1000px per 0.01°)
+        const factor = spanPx * 1.3 / Math.max(1, Math.min(rect.width, rect.height));
+        const zoom = factor > 1 ? 18 - Math.ceil(Math.log2(factor)) : 18;
+        this.mapRenderer.setZoom(Math.min(18, Math.max(13, zoom)));
+        this.mapRenderer.setCenter(lat, lng);
         this.updateZoomButtonStates();
     }
 

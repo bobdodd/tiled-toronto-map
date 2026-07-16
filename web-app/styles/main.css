@@ -2702,6 +2702,11 @@ body.chat-split .location-info {
    hold a constant SCREEN size): amber dot, dark rim — luminance-stepped so
    they read on light and dark ground alike and survive macOS Invert. */
 #result-pins .result-pin circle {
+    /* Constant SCREEN size via the same per-zoom vars as the marker dots
+       (updateViewBox maintains them on EVERY scale change — the old JS
+       resize hung off viewBoxChanged, which pure zooms never fire, so pins
+       ballooned when zooming in from a wide fit; seen live). */
+    r: var(--pin-r, 12px);
     fill: #ffb300;
     stroke: #1a1a1a;
     stroke-width: 2.5px;
@@ -2709,6 +2714,7 @@ body.chat-split .location-info {
     cursor: pointer;
 }
 #result-pins .result-pin__num {
+    font-size: var(--pin-fs, 14px);
     fill: #1a1a1a;
     font-weight: 700;
     pointer-events: none;

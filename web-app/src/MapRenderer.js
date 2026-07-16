@@ -213,6 +213,8 @@ export class MapRenderer {
             this.svg.style.setProperty('--cluster-r', (7 * f) + 'px');  // 14px cluster dot
             this.svg.style.setProperty('--hit-ring', (14 * f) + 'px');  // → 24px transparent touch
             this.svg.style.setProperty('--label-size', (13 * f) + 'px');
+            this.svg.style.setProperty('--pin-r', (12 * f) + 'px');     // 24px result pin
+            this.svg.style.setProperty('--pin-fs', (14 * f) + 'px');    // pin number
         }
     }
 
