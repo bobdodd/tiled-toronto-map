@@ -1695,6 +1695,13 @@ class TileBuilder:
 
         group = self.create_svg_element('g', class_=' '.join(tokens), role='img', aria_label=aria)
         group.set('data-osm-id', str(props.get('osm_id', '')))
+        # Road-name grouping key: a named street is many OSM ways (split at every
+        # intersection) plus per-tile clips, each its own group. Stamping the name
+        # lets the client highlight EVERY visible section of the road when any one
+        # section is selected. Streets only (named highway ways) — the one place
+        # this grouping is meaningful and unambiguous.
+        if name and props.get('highway') in self._STREET_HIGHWAYS:
+            group.set('data-name', name)
         if feature.get('_parent') is not None:
             # The container's osm_id — the hook for keyboard hierarchy navigation
             # (tab containers, enter, tab the children that point back here).

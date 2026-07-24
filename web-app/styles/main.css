@@ -2676,10 +2676,14 @@ body.chat-split .location-info {
    (the donut gotcha), circles (POI dots keep their category colour — points
    are marked by the focus outline + tooltip), and text (in-road labels stay
    legible on the amber). Cleared by the next go-to or Escape. */
-#map-tiles .goto-highlight [stroke]:not([stroke="none"]):not(.road-hit):not(text) {
+/* .road-highlight shares this exact amber: selecting any section of a named
+   road highlights EVERY visible section of it (all groups sharing its
+   data-name). :is() keeps the specificity of a single class, so the !important
+   still governs as before. */
+#map-tiles :is(.goto-highlight, .road-highlight) [stroke]:not([stroke="none"]):not(.road-hit):not(text) {
     stroke: #ffb300 !important;
 }
-#map-tiles .goto-highlight [fill]:not([fill="none"]):not(circle):not(text) {
+#map-tiles :is(.goto-highlight, .road-highlight) [fill]:not([fill="none"]):not(circle):not(text) {
     fill: #ffb300 !important;
     fill-opacity: 0.28;
 }
