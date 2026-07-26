@@ -2525,14 +2525,19 @@ class TileBuilder:
               f"{len(handler.path_node_ids)} nodes", flush=True)
         print(f"Collected {len(features)} features; bucketing into tiles...", flush=True)
 
-        # DEM street grades (opt-in, rebuild item #4): pedestrian ways with no
-        # mapped incline get one computed from the region's best elevation
-        # model and RECLASSIFY into the existing terrain categories. Runs
-        # before the search index and tiling so the grade flows into both.
-        if getattr(self, 'dem_enabled', False):
-            from dem import assign_dem_grades
-            graded = assign_dem_grades(features, self.bounds, taxonomy)
-            print(f"  DEM grades: {graded} pedestrian ways classified by computed incline", flush=True)
+        # DEM street grades: pedestrian ways with no mapped incline get one
+        # computed from the region's best elevation model and RECLASSIFY into
+        # the existing terrain categories. Runs before the search index and
+        # tiling so the grade flows into both.
+        #
+        # ALWAYS ON. A street's grade is part of what the parser produces, not
+        # an optional extra: a region built without it is missing data rather
+        # than carrying a different variant, and slice-resume markers don't
+        # record whether it ran, so an opt-in flag could silently yield a
+        # half-graded region. Every caller passed --dem anyway.
+        from dem import assign_dem_grades
+        graded = assign_dem_grades(features, self.bounds, taxonomy)
+        print(f"  DEM grades: {graded} pedestrian ways classified by computed incline", flush=True)
 
         # Derive the spatial-containment hierarchy (per plane) BEFORE the search index
         # and tiling, so the parent context flows into both.
@@ -2884,10 +2889,10 @@ def main():
     parser.add_argument("--bbox", help="Ad-hoc bounds as 'W,S,E,N' (used with --source).")
     parser.add_argument("--out", help="Ad-hoc output directory (used with --source).")
     parser.add_argument("--dem", action="store_true",
-                        help="Compute street grades from the region's best DEM (NRCan "
-                             "HRDEM/MRDEM ladder) for pedestrian ways with no mapped "
-                             "incline tag — they classify into the existing terrain "
-                             "categories. Needs rasterio; network reads per way.")
+                        help="DEPRECATED and ignored. DEM street grades are always "
+                             "computed now — they are part of the parse, not an "
+                             "option. Accepted so existing callers and in-flight "
+                             "runners don't break; safe to drop from any command.")
     args = parser.parse_args()
 
     if args.source:
@@ -2916,7 +2921,6 @@ def main():
 
     builder = TileBuilder(region)
     builder.search_only = args.search_only
-    builder.dem_enabled = args.dem
     output_dir = builder.build_tiles()
 
     print(f"\nNext: publish '{output_dir.name}' with Tile Studio (Publish pane).")

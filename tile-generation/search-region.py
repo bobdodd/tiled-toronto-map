@@ -96,8 +96,9 @@ def main():
                     "Lower it (e.g. 8) if `osmium extract` OOMs on a dense province — fewer simultaneous "
                     "output buffers + relation-completion sets per pass, at the cost of re-reading the .pbf.")
     ap.add_argument("--dem", action="store_true",
-                    help="Forward --dem to every slice parse: pedestrian ways with no mapped "
-                         "incline get a computed street grade (see build-tiles --dem).")
+                    help="DEPRECATED and ignored. Every slice parse computes DEM street "
+                         "grades now — it is part of the parse, not an option. Accepted "
+                         "so existing callers and in-flight runners don't break.")
     args = ap.parse_args()
 
     region = resolve_region(args.region)
@@ -173,7 +174,7 @@ def main():
             # --bbox=... (joined form) so argparse doesn't read the leading negative lon as a flag.
             rc = subprocess.run([PY, str(BUILD), "--search-only",
                                  f"--source={spath(i)}", f"--bbox={w},{S},{e},{N}",
-                                 f"--out={odir}"] + (["--dem"] if args.dem else []),
+                                 f"--out={odir}"],
                                 stdout=lg, stderr=lg).returncode
         c = sum(1 for _ in open(nd)) if nd.exists() else 0
         if rc == 0:
