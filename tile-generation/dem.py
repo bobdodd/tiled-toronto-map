@@ -36,6 +36,13 @@ CANADA_LADDER = [
     ("mrdem-30", "dtm"),
 ]
 
+# Concurrent block reads per raster (see DemSampler.elevations). Sample points
+# along a path cluster into a handful of COG blocks, so reading each block ONCE
+# and reading blocks in parallel replaces thousands of per-point HTTP round-trips
+# with a few dozen overlapped ones. Kept modest so two slices in parallel
+# (search-region --parallel 2) don't swamp a home uplink; raise on a fast link.
+DEM_READ_WORKERS = 8
+
 
 def _stac_cog_urls(collection, asset, bounds):
     """The COG hrefs of a collection's items covering the region bbox."""
@@ -78,8 +85,22 @@ class DemSampler:
               f"({', '.join(c for c, _ in ladder)})", flush=True)
 
     def elevations(self, pts):
-        """[(lon, lat)] -> [metres | None]. Tries each raster in ladder order
-        per point; None where nothing covers it."""
+        """[(lon, lat)] -> [metres | None]. Tries each raster in ladder order;
+        None where nothing covers a point.
+
+        Reads each touched COG BLOCK exactly once, and reads the blocks
+        concurrently. The old path sampled point-by-point (one small HTTP range
+        read each, up to a full block fetched per point); but the points along a
+        pedestrian way cluster into a handful of blocks, so per-block-once +
+        parallel collapses thousands of sequential reads into a few dozen
+        overlapped ones. Measured ~6x (8 workers) / ~8x (16) on a Regina test
+        with identical results, and more on a real slice (the per-worker handle
+        opens amortise over far more blocks)."""
+        from concurrent.futures import ThreadPoolExecutor
+        from rasterio.transform import rowcol
+        from rasterio.windows import Window
+        import threading
+
         out = [None] * len(pts)
         remaining = list(range(len(pts)))
         for ds, tr, nodata in self.ladder:
@@ -87,22 +108,46 @@ class DemSampler:
                 break
             xs, ys = tr.transform([pts[i][0] for i in remaining],
                                   [pts[i][1] for i in remaining])
-            # Sort by projected row/col so windowed reads hit warm blocks.
-            order = sorted(range(len(remaining)), key=lambda k: (ys[k], xs[k]))
-            coords = [(xs[k], ys[k]) for k in order]
-            try:
-                vals = [v[0] for v in ds.sample(coords)]
-            except Exception:
-                continue
-            still = []
-            for k, v in zip(order, vals):
-                i = remaining[k]
-                bad = (v is None or (nodata is not None and v == nodata)
-                       or not math.isfinite(v) or v < -420)  # below Dead Sea = junk
-                if bad:
-                    still.append(i)
+            rows, cols = rowcol(ds.transform, xs, ys)
+            bh, bw = ds.block_shapes[0]
+            blocks, still = {}, []
+            for k in range(len(remaining)):
+                r, c = int(rows[k]), int(cols[k])
+                if 0 <= r < ds.height and 0 <= c < ds.width:
+                    blocks.setdefault((r // bh, c // bw), []).append((k, r, c))
                 else:
-                    out[i] = float(v)
+                    still.append(remaining[k])       # outside this raster -> next in ladder
+            href = ds.name
+            tl = threading.local()
+
+            def read_block(item):
+                (br, bc), members = item
+                d = getattr(tl, "d", None)
+                if d is None:
+                    d = tl.d = self._rasterio.open(href)   # one handle per worker thread
+                arr = d.read(1, window=Window(bc * bw, br * bh, bw, bh),
+                             boundless=True,
+                             fill_value=(nodata if nodata is not None else 0))
+                res = []
+                for (k, r, c) in members:
+                    lr, lc = r - br * bh, c - bc * bw
+                    v = arr[lr, lc] if (0 <= lr < arr.shape[0] and 0 <= lc < arr.shape[1]) else None
+                    res.append((k, v))
+                return res
+
+            try:
+                with ThreadPoolExecutor(max_workers=DEM_READ_WORKERS) as ex:
+                    batches = list(ex.map(read_block, list(blocks.items())))
+            except Exception:
+                continue                             # whole raster failed -> next in ladder
+            for res in batches:
+                for (k, v) in res:
+                    bad = (v is None or (nodata is not None and v == nodata)
+                           or not math.isfinite(float(v)) or float(v) < -420)  # below Dead Sea = junk
+                    if bad:
+                        still.append(remaining[k])
+                    else:
+                        out[remaining[k]] = float(v)
             remaining = still
         return out
 
