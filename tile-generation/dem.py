@@ -25,6 +25,7 @@ ladder simply skip DEM.
 
 import json
 import math
+import os
 import urllib.request
 
 STAC_SEARCH = "https://datacube.services.geo.ca/stac/api/search"
@@ -39,9 +40,27 @@ CANADA_LADDER = [
 # Concurrent block reads per raster (see DemSampler.elevations). Sample points
 # along a path cluster into a handful of COG blocks, so reading each block ONCE
 # and reading blocks in parallel replaces thousands of per-point HTTP round-trips
-# with a few dozen overlapped ones. Kept modest so two slices in parallel
-# (search-region --parallel 2) don't swamp a home uplink; raise on a fast link.
-DEM_READ_WORKERS = 8
+# with a few dozen overlapped ones.
+#
+# THIS NUMBER MULTIPLIES. search-region.py runs PARALLEL slices at once, so the
+# real concurrency is DEM_READ_WORKERS x PARALLEL — at the old default of 8 with
+# PARALLEL=2 that was SIXTEEN simultaneous range-read connections against the
+# NRCan COGs.
+#
+# The link this runs on is wireless mobile, not a fixed line (~2.5 Mbps, and
+# metered). Measured 2026-07-27: at 8 workers the reindex took roughly half the
+# available bandwidth continuously and drove packet loss to the a11ybob VPS from
+# 0% to 10%, which is enough to make the live site appear dead for minutes at a
+# time while the server itself was provably idle. Small requests survived; large
+# ones collapsed, because TCP congestion control does exactly that under loss.
+#
+# So the default is deliberately low. It is not a performance setting, it is a
+# politeness setting: the machine shares a scarce, shared, metered link with a
+# person trying to use the internet. Raise it with the environment variable on a
+# fast fixed connection, where the original "6x at 8 workers" measurement holds.
+#
+#     DEM_READ_WORKERS=8 bash dem-reindex/run.sh
+DEM_READ_WORKERS = max(1, int(os.environ.get("DEM_READ_WORKERS", "2")))
 
 
 def _stac_cog_urls(collection, asset, bounds):
