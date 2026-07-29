@@ -9,33 +9,22 @@ beat a raster — and gentle/flat ways are left untagged: asserting "gentle
 incline" on every flat footway would flood the terrain overlay with noise
 instead of information.
 
-Canada sources (NRCan Datacube STAC -> public COGs on S3), best-first:
-    hrdem-mosaic-1m  (lidar, urban+growing coverage)
-    hrdem-mosaic-2m
-    mrdem-30         (national medium-res — always covers)
-The DTM asset (bare terrain) is used, never the DSM: a path under trees must
-not inherit the canopy's height. Reads are windowed HTTP range requests
-against the COGs (GDAL /vsicurl) — nothing is downloaded whole; sample
-points are sorted spatially so GDAL's block cache actually gets hits.
+Which provider serves which part of the world now lives in `dem_sources`,
+which covers Canada, the USA, Switzerland, England and — as a global
+bare-earth floor — everywhere else. This module is the sampling and grade
+maths on top of whatever those return.
 
-Other countries (Austin/3DEP, Zurich/swissALTI3D, Ireland) get their own
-ladder entries when their regions are scheduled; regions outside every
-ladder simply skip DEM.
+The DTM (bare terrain) is used, never the DSM: a path under trees must not
+inherit the canopy's height. Reads are windowed HTTP range requests against
+COGs (GDAL /vsicurl) — nothing is downloaded whole — except England, which
+publishes no cloud-optimised mirror and is read through its WCS a window at
+a time instead.
 """
 
-import json
 import math
 import os
-import urllib.request
 
-STAC_SEARCH = "https://datacube.services.geo.ca/stac/api/search"
-
-# (collection, asset) best-first. DTM = bare-earth terrain.
-CANADA_LADDER = [
-    ("hrdem-mosaic-1m", "dtm"),
-    ("hrdem-mosaic-2m", "dtm"),
-    ("mrdem-30", "dtm"),
-]
+import dem_sources          # which provider serves which part of the world
 
 # Concurrent block reads per raster (see DemSampler.elevations). Sample points
 # along a path cluster into a handful of COG blocks, so reading each block ONCE
@@ -63,111 +52,113 @@ CANADA_LADDER = [
 DEM_READ_WORKERS = max(1, int(os.environ.get("DEM_READ_WORKERS", "2")))
 
 
-def _stac_cog_urls(collection, asset, bounds):
-    """The COG hrefs of a collection's items covering the region bbox."""
-    bbox = f"{bounds['west']},{bounds['south']},{bounds['east']},{bounds['north']}"
-    url = f"{STAC_SEARCH}?collections={collection}&bbox={bbox}&limit=50"
-    try:
-        with urllib.request.urlopen(url, timeout=30) as r:
-            items = json.load(r).get("features", [])
-    except Exception:
-        return []
-    out = []
-    for it in items:
-        a = (it.get("assets") or {}).get(asset)
-        if a and a.get("href"):
-            out.append(a["href"])
-    return out
-
-
 class DemSampler:
     """Elevation for lon/lat points from the best available source, with
     per-point fallback down the ladder where a finer mosaic has no data."""
 
-    def __init__(self, bounds, ladder=None):
+    def __init__(self, bounds, tiers=None):
         import rasterio  # noqa: F401 — fail here, loudly, if the dep is absent
         self._rasterio = rasterio
-        self.ladder = []          # [(dataset, transformer, nodata)]
-        self._open(bounds, ladder or CANADA_LADDER)
+        self.tiers = dem_sources.tiers_for(bounds) if tiers is None else tiers
+        # Still called `ladder` because callers test it for truthiness to mean
+        # "this region has any coverage at all".
+        self.ladder = [s for _, srcs in self.tiers for s in srcs]
+        if self.ladder:
+            print(f"  DEM: {len(self.ladder)} candidate sources "
+                  f"({', '.join(label for label, _ in self.tiers)})", flush=True)
 
-    def _open(self, bounds, ladder):
-        from pyproj import Transformer
-        for collection, asset in ladder:
-            for href in _stac_cog_urls(collection, asset, bounds):
-                try:
-                    ds = self._rasterio.open(href)
-                except Exception:
-                    continue
-                tr = Transformer.from_crs("EPSG:4326", ds.crs, always_xy=True)
-                self.ladder.append((ds, tr, ds.nodata))
-        print(f"  DEM: {len(self.ladder)} source rasters "
-              f"({', '.join(c for c, _ in ladder)})", flush=True)
+    def _read_cog(self, src, pts, idxs, out):
+        """Fill out[] from ONE raster for the points inside it; return the rest.
 
-    def elevations(self, pts):
-        """[(lon, lat)] -> [metres | None]. Tries each raster in ladder order;
-        None where nothing covers a point.
-
-        Reads each touched COG BLOCK exactly once, and reads the blocks
-        concurrently. The old path sampled point-by-point (one small HTTP range
-        read each, up to a full block fetched per point); but the points along a
-        pedestrian way cluster into a handful of blocks, so per-block-once +
-        parallel collapses thousands of sequential reads into a few dozen
-        overlapped ones. Measured ~6x (8 workers) / ~8x (16) on a Regina test
-        with identical results, and more on a real slice (the per-worker handle
-        opens amortise over far more blocks)."""
+        Reads each touched BLOCK exactly once, and reads the blocks
+        concurrently. Points along a pedestrian way cluster into a handful of
+        blocks, so per-block-once + parallel collapses thousands of sequential
+        range reads into a few dozen overlapped ones. Measured ~6x (8 workers)
+        / ~8x (16) on a Regina test with identical results."""
         from concurrent.futures import ThreadPoolExecutor
         from rasterio.transform import rowcol
         from rasterio.windows import Window
+        from pyproj import Transformer
         import threading
 
+        ds = src.dataset()
+        if ds is None:
+            return idxs
+        tr = Transformer.from_crs("EPSG:4326", ds.crs, always_xy=True)
+        nodata = ds.nodata
+        xs, ys = tr.transform([pts[i][0] for i in idxs], [pts[i][1] for i in idxs])
+        rows, cols = rowcol(ds.transform, xs, ys)
+        bh, bw = ds.block_shapes[0]
+        blocks, still = {}, []
+        for k, i in enumerate(idxs):
+            r, c = int(rows[k]), int(cols[k])
+            if 0 <= r < ds.height and 0 <= c < ds.width:
+                blocks.setdefault((r // bh, c // bw), []).append((i, r, c))
+            else:
+                still.append(i)                  # outside this raster -> next source
+        if not blocks:
+            return still
+        href = ds.name
+        tl = threading.local()
+
+        def read_block(item):
+            (br, bc), members = item
+            d = getattr(tl, "d", None)
+            if d is None:
+                d = tl.d = self._rasterio.open(href)   # one handle per worker thread
+            arr = d.read(1, window=Window(bc * bw, br * bh, bw, bh),
+                         boundless=True,
+                         fill_value=(nodata if nodata is not None else 0))
+            res = []
+            for (i, r, c) in members:
+                lr, lc = r - br * bh, c - bc * bw
+                v = arr[lr, lc] if (0 <= lr < arr.shape[0] and 0 <= lc < arr.shape[1]) else None
+                res.append((i, v))
+            return res
+
+        try:
+            with ThreadPoolExecutor(max_workers=DEM_READ_WORKERS) as ex:
+                batches = list(ex.map(read_block, list(blocks.items())))
+        except Exception:
+            return idxs                          # whole raster failed -> next source
+        for res in batches:
+            for (i, v) in res:
+                if dem_sources.plausible(v, nodata):
+                    out[i] = float(v)
+                else:
+                    still.append(i)
+        return still
+
+    def elevations(self, pts):
+        """[(lon, lat)] -> [metres | None], best tier first; None where nothing
+        covers a point.
+
+        Sources are opened LAZILY: one whose bbox holds none of the outstanding
+        points is never touched. That is what makes a 200-tile Zurich or a
+        2000-tile US state affordable, where opening every match up front would
+        be thousands of HTTP handles for a job that reads a handful."""
         out = [None] * len(pts)
         remaining = list(range(len(pts)))
-        for ds, tr, nodata in self.ladder:
+        for label, sources in self.tiers:
             if not remaining:
                 break
-            xs, ys = tr.transform([pts[i][0] for i in remaining],
-                                  [pts[i][1] for i in remaining])
-            rows, cols = rowcol(ds.transform, xs, ys)
-            bh, bw = ds.block_shapes[0]
-            blocks, still = {}, []
-            for k in range(len(remaining)):
-                r, c = int(rows[k]), int(cols[k])
-                if 0 <= r < ds.height and 0 <= c < ds.width:
-                    blocks.setdefault((r // bh, c // bw), []).append((k, r, c))
+            for src in sources:
+                if not remaining:
+                    break
+                if hasattr(src, 'sample'):        # a live service, not a file
+                    remaining = src.sample(pts, remaining, out)
+                    continue
+                if src.bbox:
+                    w, s, e, n = src.bbox
+                    inside = [i for i in remaining
+                              if w <= pts[i][0] <= e and s <= pts[i][1] <= n]
+                    if not inside:
+                        continue
+                    keep = set(inside)
+                    outside = [i for i in remaining if i not in keep]
                 else:
-                    still.append(remaining[k])       # outside this raster -> next in ladder
-            href = ds.name
-            tl = threading.local()
-
-            def read_block(item):
-                (br, bc), members = item
-                d = getattr(tl, "d", None)
-                if d is None:
-                    d = tl.d = self._rasterio.open(href)   # one handle per worker thread
-                arr = d.read(1, window=Window(bc * bw, br * bh, bw, bh),
-                             boundless=True,
-                             fill_value=(nodata if nodata is not None else 0))
-                res = []
-                for (k, r, c) in members:
-                    lr, lc = r - br * bh, c - bc * bw
-                    v = arr[lr, lc] if (0 <= lr < arr.shape[0] and 0 <= lc < arr.shape[1]) else None
-                    res.append((k, v))
-                return res
-
-            try:
-                with ThreadPoolExecutor(max_workers=DEM_READ_WORKERS) as ex:
-                    batches = list(ex.map(read_block, list(blocks.items())))
-            except Exception:
-                continue                             # whole raster failed -> next in ladder
-            for res in batches:
-                for (k, v) in res:
-                    bad = (v is None or (nodata is not None and v == nodata)
-                           or not math.isfinite(float(v)) or float(v) < -420)  # below Dead Sea = junk
-                    if bad:
-                        still.append(remaining[k])
-                    else:
-                        out[remaining[k]] = float(v)
-            remaining = still
+                    inside, outside = remaining, []
+                remaining = self._read_cog(src, pts, inside, out) + outside
         return out
 
 
