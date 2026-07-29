@@ -58,16 +58,29 @@ ZSTD_T=2
 MAX_ATTEMPTS=5
 SMALL_PBF=100000000   # <100 MB: single-process build, no slicing overhead
 
-# Bob's order. Canada first (Ontario leads), non-Canada last (ownership only
-# until their DEM providers exist).
+# Bob's order. Canada is COMPLETE (all 21 regions done, nunavut last on
+# 2026-07-29). The old rule here — "non-Canada last, ownership only until
+# their DEM providers exist" — is retired: every region now has a DEM
+# provider. See tile-generation/dem_sources.py for which serves where
+# (3DEP for the US, swissALTI3D, the EA WCS for England, FABDEM elsewhere).
+#
+# ireland runs FIRST by Bob's call 2026-07-29: he needs Dublin grades ahead
+# of everything else, and it would otherwise sit sixth behind london, whose
+# 1 m WCS fetch over a 60x47 km bbox is slow on a metered mobile link.
+#
+# austin/silicon-valley/zurich/south-shields were stripped from done.txt the
+# same day: they completed on 2026-07-28 with DEM skipped (no provider then),
+# so their markers would have hidden them from this pass. Backup of the
+# pre-strip list is state/done.txt.bak-before-dem-strip.
 ORDER=(
+  ireland
   pei
   ontario
   toronto trent-lakes peterborough burlington kitchener-waterloo niagara barrie
   quebec nova-scotia new-brunswick newfoundland-and-labrador
   manitoba saskatchewan alberta calgary british-columbia
   yukon northwest-territories nunavut
-  austin silicon-valley zurich south-shields london ireland
+  austin silicon-valley zurich south-shields london
   new-york boston new-haven new-jersey redmond philadelphia providence
   hanover washington-dc maryland virginia delaware rhode-island north-carolina
 )
