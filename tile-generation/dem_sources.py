@@ -227,8 +227,10 @@ class WcsSource:
     windows are cached per grid cell so a path crossing one cell is fetched
     once, not once per point."""
 
-    CELL = 1000          # metres; one fetch covers a 1 km cell plus margin
+    CELL = 1000          # metres; one full-resolution fetch covers a 1 km cell
+    BLOCK = 10000        # metres; one coarse probe rules out 100 cells at once
     MARGIN = 50
+    PROBE_PX = 48        # target pixels on the long side of a coverage probe
 
     def __init__(self, base, coverage_id, crs, bbox, envelope):
         self.base, self.coverage_id, self.crs, self.bbox = base, coverage_id, crs, bbox
@@ -240,7 +242,8 @@ class WcsSource:
         # and never fell through to FABDEM — and England's own coast and
         # borders would have read 0 m too.
         self.envelope = envelope
-        self._cache = {}
+        self._cache = {}      # 1 km cell  -> (MemoryFile, dataset) | (None, None)
+        self._blocks = {}     # 10 km block -> bool, has any coverage at all
         self._tr = None
 
     def _transformer(self):
@@ -249,39 +252,88 @@ class WcsSource:
             self._tr = Transformer.from_crs("EPSG:4326", self.crs, always_xy=True)
         return self._tr
 
+    def _get(self, x0, y0, x1, y1, scale=None, timeout=180):
+        """One GetCoverage. `scale` is a SCALEFACTOR, which the service honours
+        and which is what makes a coverage test affordable."""
+        url = (f"{self.base}?service=WCS&version=2.0.1&request=GetCoverage"
+               f"&coverageId={self.coverage_id}"
+               f"&subset=E({int(x0)},{int(x1)})&subset=N({int(y0)},{int(y1)})"
+               f"&format=image/tiff")
+        if scale is not None:
+            url += f"&SCALEFACTOR={scale}"
+        req = urllib.request.Request(url, headers={"User-Agent": "a11ybob-dem/1.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            blob = r.read()
+        return blob if blob[:2] in (b'II', b'MM') else None
+
+    def _has_data(self, x0, y0, x1, y1):
+        """Is any of this extent covered? Asked at ~48 px, not full resolution.
+
+        THIS IS A BANDWIDTH FIX AND IT MATTERS MORE THAN IT LOOKS. Outside its
+        coverage this service returns a raster of ZEROS rather than nodata, so
+        the only way to know is to look. Looking at full resolution costs 9.4 MB
+        per 1 km cell, which on a metered 2.5 Mbps link is about thirty seconds
+        burned to learn nothing. Measured 2026-07-30: the Ireland reindex ran at
+        543 docs/min inside the England box against 8,700-11,200 outside it, a
+        twentyfold penalty, and the Dublin slice managed 21 hours and an empty
+        output directory. Downsampled, the same question costs 9.6 KB and gives
+        an identical answer.
+
+        Downsampling the WHOLE extent rather than sampling its middle is
+        deliberate: a coastal cell that is half sea still reports its land."""
+        import numpy as np
+        from rasterio.io import MemoryFile
+        span = max(x1 - x0, y1 - y0)
+        blob = self._get(x0, y0, x1, y1, scale=self.PROBE_PX / float(span), timeout=120)
+        if blob is None:
+            return False
+        with MemoryFile(blob) as mf, mf.open() as ds:
+            return bool(np.any(ds.read(1) != 0))
+
+    def _block_covered(self, bx, by):
+        """One coarse probe answers for 100 cells. Ireland needs ~140 of these
+        instead of ~14,000 full-resolution windows."""
+        key = (bx, by)
+        if key not in self._blocks:
+            try:
+                self._blocks[key] = self._has_data(
+                    bx * self.BLOCK, by * self.BLOCK,
+                    (bx + 1) * self.BLOCK, (by + 1) * self.BLOCK)
+            except Exception:
+                self._blocks[key] = False
+        return self._blocks[key]
+
     def _window(self, cx, cy):
-        """The raster for one grid cell, fetched once."""
+        """The raster for one grid cell: coarse probe, fine probe, then fetch."""
         key = (cx, cy)
         if key in self._cache:
             return self._cache[key]
         x0, y0 = cx * self.CELL - self.MARGIN, cy * self.CELL - self.MARGIN
         x1, y1 = (cx + 1) * self.CELL + self.MARGIN, (cy + 1) * self.CELL + self.MARGIN
-        url = (f"{self.base}?service=WCS&version=2.0.1&request=GetCoverage"
-               f"&coverageId={self.coverage_id}"
-               f"&subset=E({int(x0)},{int(x1)})&subset=N({int(y0)},{int(y1)})"
-               f"&format=image/tiff")
-        ds = None
+
+        # 1) Is the surrounding 10 km covered at all? Rules out whole countries.
+        if not self._block_covered((cx * self.CELL) // self.BLOCK,
+                                   (cy * self.CELL) // self.BLOCK):
+            self._cache[key] = (None, None)
+            return self._cache[key]
+
+        # 2) Is THIS cell covered? A block can be part-covered at a coast or a
+        #    border, so the block passing is not enough.
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "a11ybob-dem/1.0"})
-            with urllib.request.urlopen(req, timeout=180) as r:
-                blob = r.read()
-            if blob[:2] in (b'II', b'MM'):
-                import numpy as np
+            if not self._has_data(x0, y0, x1, y1):
+                self._cache[key] = (None, None)
+                return self._cache[key]
+        except Exception:
+            self._cache[key] = (None, None)
+            return self._cache[key]
+
+        # 3) Only now is the full-resolution window worth 9.4 MB.
+        try:
+            blob = self._get(x0, y0, x1, y1)
+            if blob is not None:
                 from rasterio.io import MemoryFile
                 mf = MemoryFile(blob)
                 ds = mf.open()
-                # Measured 2026-07-29: Dublin, Belfast, Snowdon and the North Sea
-                # each came back 90000/90000 EXACT ZEROS with nodata untouched,
-                # while Primrose Hill came back 90000/90000 non-zero. So all-zero
-                # is how this service says "not covered", and an entire 1.1 km
-                # window of exactly 0.000 m is not something 1 m lidar produces
-                # over land. Without this, Ireland read 0 m everywhere and never
-                # fell through to FABDEM, and England's coast would have too.
-                if not np.any(ds.read(1) != 0):
-                    ds.close()
-                    mf.close()
-                    self._cache[key] = (None, None)
-                    return self._cache[key]
                 self._cache[key] = (mf, ds)      # hold the MemoryFile open
                 return self._cache[key]
         except Exception:
