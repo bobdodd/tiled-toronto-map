@@ -2680,6 +2680,21 @@ body.chat-split .location-info {
    road highlights EVERY visible section of it (all groups sharing its
    data-name). :is() keeps the specificity of a single class, so the !important
    still governs as before. */
+/* .road-hover is the HOVER twin: pointing at any section of a named road lights
+   every visible section of it, in the same blue the focus outline uses (#0066ff)
+   rather than the selection amber — so a road under the pointer and a road you
+   have actually selected stay tellable apart. Declared BEFORE the amber rule on
+   purpose: the two carry equal specificity, so source order decides, and a road
+   that is both hovered and selected stays amber. The deliberate selection
+   outranks the transient pointer. */
+#map-tiles .road-hover [stroke]:not([stroke="none"]):not(.road-hit):not(text) {
+    stroke: #0066ff !important;
+}
+#map-tiles .road-hover [fill]:not([fill="none"]):not(circle):not(text) {
+    fill: #0066ff !important;
+    fill-opacity: 0.28;
+}
+
 #map-tiles :is(.goto-highlight, .road-highlight) [stroke]:not([stroke="none"]):not(.road-hit):not(text) {
     stroke: #ffb300 !important;
 }
