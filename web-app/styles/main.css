@@ -611,18 +611,27 @@ main {
 /* In-road street names. Bob: a thin minor-road casing isn't wide enough to back the
    name, so it spilled onto the terrain as unreadable dark-on-green. Give the label a
    WHITE HALO so it stays legible wherever it sits — on the road OR off it. The halo
-   is non-scaling (constant screen width) and painted BEHIND the fill; the text size
-   is the constant-screen --label-size. The dark-map + high-contrast blocks flip the
-   colours (light text, dark halo) and inherit the rest. (Halo + text invert together
-   under macOS Invert, so legibility survives.) */
+   is painted BEHIND the fill; the text size is the constant-screen --label-size. The
+   dark-map + high-contrast blocks flip the colours (light text, dark halo) and inherit
+   the rest. (Halo + text invert together under macOS Invert, so legibility survives.)
+
+   The halo is sized as a FRACTION of --label-size rather than a fixed px width with
+   vector-effect:non-scaling-stroke. That earlier form assumed the stroke would stay a
+   constant 3.5 SCREEN px, which WebKit does not honour: vector-effect is not applied
+   to <text> in Safari, so the 3.5 was read as 3.5 USER units and multiplied by the
+   viewBox scale. --label-size is 13 * 2^(18 - zoom), so the scale is 2^(zoom - 18):
+   at zoom 21 the halo became 28 screen px around 13 px glyphs and at zoom 22 it was
+   56 px — the dark halo closed over the letterforms completely and a street name
+   rendered as a solid blob (seen on Mutual Street, Toronto). Expressed as a ratio the
+   halo tracks the glyphs at every zoom, needs no vector-effect support, and cannot
+   swallow the text again. /4 keeps the ~3.25 px the fixed 3.5 px was aiming at. */
 #map-tiles text.road-label {
     font-size: var(--label-size);
     font-weight: 600;
     fill: #1a1a1a;
     stroke: #ffffff;
-    stroke-width: 3.5px;
+    stroke-width: calc(var(--label-size, 13px) / 4);
     stroke-linejoin: round;
-    vector-effect: non-scaling-stroke;
     paint-order: stroke;
 }
 
